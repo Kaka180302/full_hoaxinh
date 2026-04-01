@@ -1,0 +1,611 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="assets/style.css">
+    <link rel="shortcut icon" type="image/png" href="/assets/img/hoa_xinh_group_fav.png" />
+    <script src="https://kit.fontawesome.com/98bc3ef128.js" crossorigin="anonymous"></script>
+
+    <title>HoaXinh - Store | Tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam</title>
+    <!-- SEO_Web -->
+    <meta name="description"
+          content="Với hơn 15 năm kinh nghiệm trong lĩnh vực thương mại và dịch vụ, Hoa Xinh Group tự hào là một trong những đơn vị tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam.">
+    <meta name="keywords"
+          content="">
+    <meta name="author" content="HoaXinh - Store | Tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam">
+    <!-- Share_Link -->
+    <meta property="og:type" content="website">
+    <meta property="og:title"
+          content="HoaXinh - Store | Tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam">
+    <meta property="og:description"
+          content="Với hơn 15 năm kinh nghiệm trong lĩnh vực thương mại và dịch vụ, Hoa Xinh Group tự hào là một trong những đơn vị tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam.">
+    <meta property="og:image"
+          content="/assets/img/banner_Artboard.jpg">
+    <meta property="og:url"
+          content="https://hoaxinhstore.com/">
+    <meta property="og:site_name"
+          content="HoaXinh - Store">
+</head>
+
+<body>
+    <header class="header">
+        <div id="no_show" class="header_mobile">
+            <a href="#" class="header_logoLink no_link">
+                <img class="header_logo" src="assets/img/logo_HX.png">
+            </a>
+
+
+
+            <div class="header_mobileWrap">
+                <div title="Giỏ hàng" class="icon_cartWrap">
+                    <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                    </svg>
+
+                    <span id="cart_count" class="cart_count">0</span>
+                </div>
+
+                <button class="menu_toggle" id="menuToggle">
+                    <svg class="icon_mobile" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                        <path d="M96 160C96 142.3 110.3 128 128 128L512 128C529.7 128 544 142.3 544 160C544 177.7
+                            529.7 192 512 192L128 192C110.3 192 96 177.7 96 160zM96 320C96 302.3 110.3 288 128 288L512
+                            288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96
+                            320zM544 480C544 497.7 529.7 512 512 512L128 512C110.3 512 96 497.7 96 480C96 462.3 110.3
+                            448 128 448L512 448C529.7 448 544 462.3 544 480z" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="slider">
+
+            <!-- Menu nav mobile -->
+            <div class="menu_nav">
+                <div class="menu_nav--btnClose">
+                    <button id="btn_close" class="menu_nav--close">✕</button>
+                </div>
+
+                <div class="header_nav">
+                    <ul class="header_navList no_list">
+                        <li class="header_navList--item">
+                            <a href="#Abouts" class="header_navList--link no_link">Giới thiệu</a>
+                        </li>
+
+                        <li class="header_navList--item">
+                            <a href="#Products" class="header_navList--link no_link">Sản phẩm</a>
+                        </li>
+
+                        <li class="header_navList--item">
+                            <a href="#Certificate" class="header_navList--link no_link">Chứng nhận</a>
+                        </li>
+
+                    </ul>
+                </div>
+                        
+            </div>
+    <!-- End menu nav mobile -->
+            <div id="no_header" class="header_info">
+                <div class="header_wrap">
+                    <a href="#" class="header_logoLink no_link">
+                        <img class="header_logo" src="assets/img/Logo_HX.png" alt="Logo_Hoa_Xinh">
+                    </a>
+                    <div class="header_nav">
+                        <ul class="header_navList no_list">
+
+                            <li class="header_navList--item">
+                                <a href="#Products" class="header_navList--link no_link">Sản phẩm</a>
+                                <div class="menu_product">
+                                    <a href="#Products" class="menu_product--item" data-filter="all">Tất cả sản phẩm</a>
+                                    <a href="#Products" class="menu_product--item" data-filter="mypham">Mỹ phẩm</a>
+                                    <a href="#Products" class="menu_product--item" data-filter="thucpham">Thực phẩm</a>
+                                    <a href="#Products" class="menu_product--item" data-filter="thietbi">Thiết bị & gia dụng</a>
+                                </div>
+                            </li>
+
+                            <li class="header_navList--item">
+                                <a href="#Abouts" class="header_navList--link no_link">Giới thiệu</a>
+                            </li>
+                            <li class="header_navList--item">
+                                <a href="#Certificate" class="header_navList--link no_link">Chứng nhận</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="language_top">
+                    <!-- Wrapper ngôn ngữ -->
+                    <div class="lang-switch notranslate">
+                        <!-- Vị trí Google sẽ render select (ẩn đi) -->
+                        <div id="google_translate_element" aria-hidden="true"></div>
+
+                        <!-- Cụm nút flag -->
+                        <div class="lang-flags" role="group" aria-label="Chọn ngôn ngữ">
+                            <!-- Thêm/bớt nút tùy thị trường -->
+                            <button class="lang-flag" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">
+                                <img src="assets/img/language/vietnam.png" class="flag_1" />
+                            </button>
+                            <button class="lang-flag" data-lang="en" title="English" aria-label="English">
+                                <img src="assets/img/language/united-kingdom.png" class="flag_1" />
+                            </button>
+                            <button class="lang-flag" data-lang="ko" title="한국어" aria-label="Korean">
+                                <img src="assets/img/language/ko.png" class="flag_1" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div title="Giỏ hàng" class="icon_cartWrap">
+                    <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                    </svg>
+
+                    <span id="cart_count" class="cart_count">0</span>
+                </div>
+
+
+            </div>
+            <!-- radio -->
+            <input type="radio" name="slider_check" id="s1" checked>
+            <input type="radio" name="slider_check" id="s2">
+            <input type="radio" name="slider_check" id="s3">
+            <input type="radio" name="slider_check" id="s4">
+            <div class="slider_item">
+                <img src="assets/img/banner_Artboard.jpg" alt="img_slide4">
+                <img src="assets/img/banner_Artboard.jpg" alt="img_slide1">
+                <img src="assets/img/banner_Artboard.jpg">
+                <img src="assets/img/banner_Artboard.jpg">
+                <img src="assets/img/banner_Artboard.jpg">
+                <img src="assets/img/banner_Artboard.jpg">
+            </div>
+            <!-- navigation dots -->
+            <div class="slider_navigation">
+                <label for="s1"></label>
+                <label for="s2"></label>
+                <label for="s3"></label>
+                <label for="s4"></label>
+            </div>
+        </div>
+
+    </header>
+    <!-- Slider -->
+
+    <div class="main">
+        <!-- Sản phẩm -->
+        <section id="Products" class="products">
+            <div class="products_container">
+                <h1 class="products_title">Sản Phẩm</h1>
+                <hr>
+                
+                <div class="product_nav">
+                    <div class="product_navList">
+                        <div class="product_nav--item active" data-filter="all">Tất cả</div>
+                        <div class="product_nav--item" data-filter="mypham">Mỹ phẩm</div>
+                        <div class="product_nav--item" data-filter="thietbi">Thiết bị & gia dụng</div>
+                        <div class="product_nav--item" data-filter="thucpham">Thực phẩm</div>
+                    </div>
+                </div>
+
+                <div class="product_list">
+                    <div
+                        class="product_track"
+                        data-sheet-id="1WfZltI7HJ68zZM-hTRRsJXnPdVNxOM6Tk6OrXny4G68"
+                        data-sheet-gid="0"
+                    >
+                        <p class="google-sheet-status">Đang tải sản phẩm...</p>
+                    </div>
+                    
+                    <div class="load-more_wrap">
+                        <button type="button" id="load-more-btn" class="btn_loadMore" style="display: none;">
+                            Xem thêm sản phẩm
+                        </button>
+                    </div>
+                    
+                </div>
+            </div>
+        </section>
+        <!-- End sản phẩm -->
+        <!-- Giới thiệu -->
+        <section id="Abouts" class="abouts">
+            <h1 class="abouts_title">PEOPLE x HAPPINESS</h1>
+            <hr>
+            <div class="abouts_main">
+                <div class="abouts_contents">
+                    <p class="abouts_contens--main">
+                        Với hơn 15 năm kinh nghiệm trong lĩnh vực thương mại và dịch vụ, <b>Hoa Xinh Group</b> tự hào là một trong những đơn
+                        vị tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam.
+                    </p>
+                    <p>
+                        <b>Hoa Xinh</b> đang từng bước xây dựng hệ thống vận hành chuyên nghiệp, hợp tác với nhiều thương hiệu quốc tế trong
+                        lĩnh vực mỹ phẩm, thực phẩm và thiết bị gia dụng.
+                    </p>
+                </div>
+                <div class="abouts_logoBrand">
+                    <div class="abouts_wrap">
+                        <!-- center đứng yên -->
+                        <div class="center">
+                            <img src="assets/img/logoHX.png">
+                        </div>
+                        <!-- chỉ cái này quay -->
+                        <div class="orbit_container">
+                            <div class="orbit"><img src="assets/img/logoazian.png"></div>
+                            <div class="orbit"><img src="assets/img/logoCocoon.png"></div>
+                            <div class="orbit"><img src="assets/img/logocooku.png"></div>
+                            <div class="orbit"><img src="assets/img/logocoway.png"></div>
+                            <div class="orbit"><img src="assets/img/logo-happys1.png"></div>
+                            <div class="orbit"><img src="assets/img/logonano365_.png"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <!-- End giới thiệu -->
+        <!-- Chứng nhận -->
+        <section id="Certificate" class="certificate">
+            <h1 class="certificate_title">Chứng nhận</h1>
+            <img class="certificate_img" src="assets/img/certificate.png" alt="img_certificate">
+            <h2 class="certificate_subTitle">
+                Giấy chứng nhận đăng ký kinh doanh
+            </h2>
+        </section>
+        <!-- End chứng nhận -->
+    </div>
+    <!-- End main -->
+    <!-- Footer -->
+    <footer class="footer">
+
+        <div class="footer_content">
+            <div class="footer_logoWrap">
+                <a href="#" class="footer_logoLink no_link">
+                    <img class="footer_logo" src="assets/img/Logo_HX.png" alt="img_logo-footer">
+                    <div class="footer_nameCty no_link">
+                        CÔNG TY TNHH SX TM & DV HOA XINH
+                    </div>
+                </a>
+            </div>
+            <div class="footer_info line_height">
+                <div class="footer_info--title title">
+                    Contact
+                </div>
+                <div class="footer_info--address">
+                    <svg class="footer_svg--address" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                        <path d="M128 252.6C128 148.4 214 64 320 64C426 64 512
+                        148.4 512 252.6C512 371.9 391.8 514.9 341.6 569.4C329.8 582.2 310.1 582.2 298.3 569.4C248.1 514.9 127.9 371.9 127.9
+                        252.6zM320 320C355.3 320 384 291.3 384 256C384 220.7 355.3 192 320 192C284.7 192 256 220.7 256 256C256 291.3 284.7
+                        320 320 320z" />
+                    </svg>
+                    <p>68 Nguyễn Huệ, Phường Sài Gòn, TP HCM</p>
+                </div>
+                <div class="footer_info--hotline">
+                    <svg class="footer_svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                        <path d="M224.2 89C216.3 70.1 195.7 60.1 176.1 65.4L170.6 66.9C106 84.5 50.8 147.1 66.9 223.3C104 398.3 241.7
+                        536 416.7 573.1C493 589.3 555.5 534 573.1 469.4L574.6 463.9C580 444.2 569.9 423.6 551.1 415.8L453.8 375.3C437.3
+                        368.4 418.2 373.2 406.8 387.1L368.2 434.3C297.9 399.4 241.3 341 208.8 269.3L253 233.3C266.9 222 271.6 202.9 264.8
+                        186.3L224.2 89z" />
+                    </svg>
+                    <p>08.1998.1900</p>
+                </div>
+                <div class="footer_email">
+                    <svg class="footer_svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                        <path d="M125.4 128C91.5 128 64 155.5 64 189.4C64 190.3
+                        64 191.1 64.1 192L64 192L64 448C64 483.3 92.7 512 128 512L512 512C547.3 512 576 483.3 576 448L576 192L575.9
+                        192C575.9 191.1 576 190.3 576 189.4C576 155.5 548.5 128 514.6 128L125.4 128zM528 256.3L528 448C528 456.8 520.8
+                        464 512 464L128 464C119.2 464 112 456.8 112 448L112 256.3L266.8 373.7C298.2 397.6 341.7 397.6 373.2 373.7L528
+                        256.3zM112 189.4C112 182 118 176 125.4 176L514.6 176C522 176 528 182 528 189.4C528 193.6 526 197.6 522.7
+                        200.1L344.2 335.5C329.9 346.3 310.1 346.3 295.8 335.5L117.3 200.1C114 197.6 112 193.6 112 189.4z" />
+                    </svg>
+                    <p>infor@hoaxinhgroup.vn</p>
+                </div>
+            </div>
+            <div class="footer_time line_height">
+                <div class="footer_time--title title">
+                    Opening Hours
+                </div>
+                <div class="footer_time--end">
+                    8:00 - 19:00 <br>
+                    Monday - Saturday
+                </div>
+            </div>
+            <div class="footer_abouts line_height">
+                <div class="footer_abous--title title">About us</div>
+                <div class="footer_abouts--content">
+
+                    <a href="#Abouts" class="footer_about--link">Introduce</a>
+                    <a href="#Products" class="footer_about--link">Products</a>
+                    <a href="#Certificate" class="footer_about--link">Certification</a>
+
+                </div>
+            </div>
+        </div>
+        <div class="footer_end">
+            <div class="footer_copyright">
+                Copyright © HOA XINH STORE. All rights reserved. hosting by cafe24 corporation
+            </div>
+            <!-- platform -->
+            <ul class="footer_platfom no_list">
+                <li>Follow Us</li>
+                <li class="footer_platfom--item">
+                    <a target="_blank" href="https://www.tiktok.com/@hoaxinhstore.vn" class="footer_platfom--link">
+                        <svg id="tiktok" class="logo_svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                            <path d="M544.5 273.9C500.5 274 457.5 260.3 421.7 234.7L421.7 413.4C421.7 446.5
+                            411.6 478.8 392.7 506C373.8 533.2 347.1 554 316.1 565.6C285.1 577.2 251.3 579.1
+                            219.2 570.9C187.1 562.7 158.3 545 136.5 520.1C114.7 495.2 101.2 464.1 97.5 431.2C93.8
+                            398.3 100.4 365.1 116.1 336C131.8 306.9 156.1 283.3 185.7 268.3C215.3 253.3 248.6
+                            247.8 281.4 252.3L281.4 342.2C266.4 337.5 250.3 337.6 235.4 342.6C220.5 347.6 207.5
+                            357.2 198.4 369.9C189.3 382.6 184.4 398 184.5 413.8C184.6 429.6 189.7 444.8 199 457.5C208.3
+                            470.2 221.4 479.6 236.4 484.4C251.4 489.2 267.5 489.2 282.4 484.3C297.3 479.4 310.4 469.9
+                            319.6 457.2C328.8 444.5 333.8 429.1 333.8 413.4L333.8 64L421.8 64C421.7 71.4 422.4 78.9
+                            423.7 86.2C426.8 102.5 433.1 118.1 442.4 131.9C451.7 145.7 463.7 157.5 477.6 166.5C497.5
+                            179.6 520.8 186.6 544.6 186.6L544.6 274z" />
+                        </svg>
+                    </a>
+                </li>
+                <li class="footer_platfom--item">
+                    <a target="_blank" href="https://www.facebook.com/HoaXinhStore" class="footer_platfom--link">
+                        <svg id="facebook" class="logo_svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                            <path d="M240 363.3L240 576L356 576L356 363.3L442.5 363.3L460.5 265.5L356 265.5L356
+                            230.9C356 179.2 376.3 159.4 428.7 159.4C445 159.4 458.1 159.8 465.7 160.6L465.7
+                            71.9C451.4 68 416.4 64 396.2 64C289.3 64 240 114.5 240 223.4L240 265.5L174 265.5L174
+                            363.3L240 363.3z" />
+                        </svg>
+                    </a>
+                </li>
+                <li class="footer_platfom--item">
+                    <a target="_blank" href="https://shopee.vn/hoaxinhstore.vn?" class="footer_platfom--link">
+                        <img src="https://cdn-0863.cafe24img.com/hoaxinhstore/img/icon_shopee.png" alt="" class="icon_platfom">
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </footer>
+    <!-- End footer -->
+
+    <!-- Form popup đặt hàng -->
+    <div class="order" id="order">
+        <div class="order__overlay"></div>
+        <div class="order__modal">
+            <button class="order__close">×</button>
+            <h2 class="order__title">Đặt hàng</h2>
+            <form class="order__form" id="orderForm">
+                <!-- customer info -->
+                <div class="order__customer">
+                    <input type="text"
+                           name="name"
+                           class="order__input"
+                           id="customerName"
+                           placeholder="Họ và tên"
+                           required>
+                    <input type="email"
+                           name="email"
+                           class="order__input"
+                           id="customerEmail"
+                           placeholder="Email"
+                           required>
+                    <input type="text"
+                           name="phone"
+                           class="order__input"
+                           id="customerPhone"
+                           placeholder="Số điện thoại"
+                           required>
+                    <input type="text"
+                           name="address"
+                           class="order__input"
+                           id="customerAddress"
+                           placeholder="Địa chỉ"
+                           required>
+                </div>
+
+                <!-- product list -->
+                <div class="order__products" id="orderProducts"></div>
+                <button type="button" class="order__addProduct" id="addProduct">+ Thêm sản phẩm</button>
+
+                <!-- total -->
+                <div class="order__total">
+                    Tổng tiền:
+                    <span id="orderTotal">0</span>₫
+
+                </div>
+                <input type="hidden" name="total" id="orderTotalInput">
+                <div class="order__invoiceToggle">
+                    <label class="order__invoiceCheck">
+                        <input type="checkbox" id="invoiceToggle">
+                        <span>Xuất hóa đơn VAT</span>
+                    </label>
+                </div>
+                <div class="order__invoice" id="invoiceFields">
+                    <input type="text" name="companyName" class="order__input" id="companyName" placeholder="Tên công ty">
+                    <input type="text" name="companyTaxCode" class="order__input" id="companyTaxCode" placeholder="Mã số thuế">
+                    <input type="text" name="companyAddress" class="order__input" id="companyAddress" placeholder="Địa chỉ công ty">
+                    <input type="email" name="companyEmail" class="order__input" id="companyEmail" placeholder="Email nhận hóa đơn">
+                </div>
+                <div class="order__invoiceNote">
+                    <strong>Lưu ý:</strong>
+                    <ul class="order__invoiceNoteList">
+                        <li>Nếu muốn xuất hóa đơn VAT, vui lòng nhập đầy đủ và chính xác thông tin công ty.</li>
+                        <li>Nếu thông tin không chính xác, sau khi xuất hóa đơn sẽ không thể cấp lại.</li>
+                    </ul>
+                </div>
+                <!-- payment -->
+                <select class="order__payment" id="paymentMethod">
+                    <option value="cod">Thanh toán khi nhận hàng</option>
+                    <option value="qr">Thanh toán QR</option>
+                </select>
+
+                <div class="order__qr" id="qrBox">
+                    <img src="assets/img/QR_cty.jpg">
+                </div>
+
+                <button type="submit" id="orderSubmit" class="order__submit" disabled>Đặt hàng</button>
+            </form>
+        </div>
+    </div>
+    <!-- End form popup -->
+
+    <div class="popup_product" style="display: none;">
+        <div class="popup_product--overlay"></div>
+        <div class="popup_productWrap">
+            <div id="btn_closePopup" class="header_popup--btnClose">
+              <div>✕</div>  
+            </div>
+            <div class="popup_productTop">
+                <img src="https://hoaxinhstore.com/assets/img/mp_kemduongam.png" alt="Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml" class="popup_product--img">
+                <div class="popup_productMain">
+                    <h1 class="popup_product--title">Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml</h1>
+                    <h2 class="popup_product--price">420.000 đ</h2>
+                    <div class="popup_product--summary" style="display: none;"></div>
+                    <div class="popup_productAction">
+                        <div class="qty-wrapperProduct">
+                            <button type="button" class="qty-btn" id="popup-qty-minus">-</button>
+                            <input type="number" name="qty" id="qty" value="1" min="1" class="cart_qtyProduct"> 
+                            <button type="button" class="qty-btn" id="popup-qty-plus">+</button>
+                        </div>
+
+                        <button class="popup_product--buyBtn no-btn" type="button" data-name="Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml" data-price="420000">Đặt mua</button>
+                        <button class="popup_product--addCartBtn">
+                            <svg class="icon_addCartPopup" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                                <path d="M24 48C10.7 48 0 58.7 0 72C0 85.3 10.7 96 24 96L69.3 96C73.2 96 76.5 98.8 77.2 102.6L129.3 388.9C135.5 423.1 165.3 448 200.1 448L456 448C469.3 448 480 437.3 480 424C480 410.7 469.3 400 456 400L200.1 400C188.5 400 178.6 391.7 176.5 380.3L171.4 352L475 352C505.8 352 532.2 330.1 537.9 299.8L568.9 133.9C572.6 114.2 557.5 96 537.4 96L124.7 96L124.3 94C119.5 67.4 96.3 48 69.2 48L24 48zM208 576C234.5 576 256 554.5 256 528C256 501.5 234.5 480 208 480C181.5 480 160 501.5 160 528C160 554.5 181.5 576 208 576zM432 576C458.5 576 480 554.5 480 528C480 501.5 458.5 480 432 480C405.5 480 384 501.5 384 528C384 554.5 405.5 576 432 576z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="popup_productDescWrap">
+                <div class="popup_productSectionHead">
+                    <p class="popup_product--eyebrow">Thông tin chi tiết</p>
+                    <h3 class="popup_product--subTitle">Chi tiết sản phẩm</h3>
+                </div>
+                <div class="popup_product--desc"><ul class="popup_product--descList"><li>Chua co mo ta san pham.</li></ul></div>
+            </div>
+            <div class="popup_productSuggestWrap">
+                <div class="popup_productSectionHead">
+                    <p class="popup_product--eyebrow">Có thể bạn cũng thích</p>
+                    <h3 class="popup_product--subTitle">Sản phẩm gợi ý</h3>
+                </div>
+                <div class="popup_productSuggestSlider">
+                    <button type="button" class="popup_productSuggestNav popup_productSuggestNav--prev" aria-label="Sản phẩm trước" disabled="">
+                        ‹
+                    </button>
+                    <div class="popup_productSuggestViewport">
+                        <div class="popup_productSuggestList">
+            <article class="popup_productSuggestItem" data-product-index="1">
+                <img src="https://hoaxinhstore.com/assets/img/tbgd_xitphong.jpg" alt="Xịt phòng Shay">
+                <h4 class="popup_productSuggestTitle">Xịt phòng Shay</h4>
+                <p class="popup_productSuggestPrice">99.000 đ</p>
+            </article>
+        </div>
+    </div>
+                    <button type="button" class="popup_productSuggestNav popup_productSuggestNav--next" aria-label="Sản phẩm tiếp theo">
+                        ›
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificate -->
+    <div class="successPopup" id="successPopup">
+        <div class="successBox">
+            <p>
+                ✔ Đặt hàng thành công! <br>
+                Hoa Xinh cảm ơn bạn đã tin tưởng. <br>
+                Nhân viên sẽ liên hệ xác nhận đơn sớm nhất.
+            </p>
+            <button id="successOk">OK</button>
+        </div>
+    </div>
+    <!-- End notificate -->
+
+    <!-- Shopping cart -->
+    <div class="cart">
+        <div class="header_cart">
+            <div class="header_cart--title">Giỏ hàng</div>
+            <div id="btn_closeCart" class="header_cart-btnClose">✕</div>
+        </div>
+        <div class="main_cart">
+
+            <div class="main_cart--detail">
+                <div>Sản phẩm</div>
+                <span>Thành tiền</span>
+            </div>
+            <div class="main_cart--empty">
+                <svg class="main_cart--logo" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                    <circle cx="8" cy="21" r="1"></circle>
+                    <circle cx="19" cy="21" r="1"></circle>
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                </svg>
+                <h3 class="main_cart--text">Giỏ hàng trống</h3>
+            </div>
+
+            <div class="main_cart--wrap"></div>
+        </div>
+
+        <div class="end_cart">
+            <div class="end_cart--checkAll">
+                <input type="checkbox" name="checkAll" id="">
+                <div>Chọn tất cả</div>
+            </div>
+
+            
+            <div class="end_cart--total">
+                <div>Tổng tiền: </div>
+                <div id="total_cart">0đ</div>
+            </div>
+
+            <div class="btn_buyCart">Đặt mua</div>
+        </div>
+    </div>
+    <!-- End shopping cart -->
+
+    <!-- Icon zalo -->
+     <a href="https://zalo.me/3184879926849986015" target="_blank" rel="noopener noreferrer" class="icon_zalo">
+        <img src="assets/img/zalo-icon.png" alt="iconZalo">
+     </a>
+
+    <!-- lang_mobile -->
+    
+    <div class="language_top--mobile">
+        <!-- Wrapper ngôn ngữ -->
+        <div class="lang-switch notranslate">
+        <!-- Vị trí Google sẽ render select (ẩn đi) -->
+        <div id="google_translate_element" aria-hidden="true"></div>
+
+        <!-- Cụm nút flag -->
+        <div class="lang-flags_mobile" role="group" aria-label="Chọn ngôn ngữ">
+        <!-- Thêm/bớt nút tùy thị trường -->
+            <button type="button" class="lang-flag" data-lang="ko" title="한국어" aria-label="Korean">
+                <img src="assets/img/language/ko.png" class="flag_1" />
+            </button>
+            <button type="button" class="lang-flag" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">
+                <img src="assets/img/language/vietnam.png" class="flag_1" />
+            </button>
+            <button type="button" class="lang-flag" data-lang="en" title="English" aria-label="English">
+                <img src="assets/img/language/united-kingdom.png" class="flag_1" />
+            </button>
+            
+        </div>
+    </div>
+
+    <!-- End_lang-moblie -->
+
+    <!-- Script JS -->
+    <script>
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'vi',                         // Ngôn ngữ gốc trang
+                includedLanguages: 'vi,en,ja,ko,zh-CN', // Giới hạn ngôn ngữ (tùy chỉnh)
+                autoDisplay: false,
+                layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL
+            }, 'google_translate_element');
+        }
+    </script>
+    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script src="language.js"></script>
+    <script src="script.js"></script>
+    <script src="java_api.js"></script>
+
+</body>
+</html>

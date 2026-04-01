@@ -1,0 +1,10 @@
+﻿@{
+    ViewData["Title"] = "Dashboard";
+}
+<h2 class="mb-4">Dashboard</h2>
+<div class="row g-3">
+    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Sản phẩm</div><h4>@ViewBag.ProductCount</h4></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Danh mục</div><h4>@ViewBag.CategoryCount</h4></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Đơn hàng</div><h4>@ViewBag.OrderCount</h4></div></div></div>
+    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Chờ xác nhận</div><h4>@ViewBag.PendingOrderCount</h4></div></div></div>
+</div>

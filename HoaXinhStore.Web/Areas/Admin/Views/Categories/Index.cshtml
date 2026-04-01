@@ -1,0 +1,23 @@
+﻿@model List<HoaXinhStore.Web.Entities.Category>
+@{
+    ViewData["Title"] = "Categories";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Quản trị danh mục</h2>
+    <a class="btn btn-primary" asp-action="Create">Thêm danh mục</a>
+</div>
+<table class="table table-bordered table-striped bg-white">
+    <thead><tr><th>ID</th><th>Tên</th><th>Slug</th><th>Trạng thái</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var c in Model)
+    {
+        <tr>
+            <td>@c.Id</td>
+            <td>@c.Name</td>
+            <td>@c.Slug</td>
+            <td>@(c.IsActive ? "Active" : "Inactive")</td>
+            <td><a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-warning">Sửa</a></td>
+        </tr>
+    }
+    </tbody>
+</table>

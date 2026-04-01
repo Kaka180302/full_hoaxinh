@@ -1,0 +1,15 @@
+﻿@model HoaXinhStore.Web.ViewModels.Admin.CategoryEditViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Edit Category" : "Create Category";
+}
+<h2>@ViewData["Title"]</h2>
+<form method="post" asp-action="Save" class="bg-white p-3 border rounded">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <div class="mb-3"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /></div>
+    <div class="mb-3"><label asp-for="Slug" class="form-label"></label><input asp-for="Slug" class="form-control" /></div>
+    <div class="mb-3 form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label"></label></div>
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <button class="btn btn-primary" type="submit">Lưu</button>
+    <a class="btn btn-secondary" asp-action="Index">Quay lại</a>
+</form>

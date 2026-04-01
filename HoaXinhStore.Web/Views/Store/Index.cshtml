@@ -1,0 +1,374 @@
+﻿@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
+@{ Layout = null; }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="~/assets/style.css">
+    <link rel="shortcut icon" type="image/png" href="~/assets/img/hoa_xinh_group_fav.png" />
+    <script src="https://kit.fontawesome.com/98bc3ef128.js" crossorigin="anonymous"></script>
+
+    <title>HoaXinh - Store | Tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam</title>
+    <meta name="description" content="Với hơn 15 năm kinh nghiệm trong lĩnh vực thương mại và dịch vụ, Hoa Xinh Group tự hào là một trong những đơn vị tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam.">
+    <meta name="keywords" content="">
+    <meta name="author" content="HoaXinh - Store | Tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="HoaXinh - Store | Tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam">
+    <meta property="og:description" content="Với hơn 15 năm kinh nghiệm trong lĩnh vực thương mại và dịch vụ, Hoa Xinh Group tự hào là một trong những đơn vị tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam.">
+    <meta property="og:image" content="/assets/img/banner_Artboard.jpg">
+    <meta property="og:url" content="https://hoaxinhstore.com/">
+    <meta property="og:site_name" content="HoaXinh - Store">
+</head>
+<body>
+    <partial name="Partials/_Header" model="Model" />
+
+    <div class="main">
+        <section id="Products" class="products">
+            <div class="products_container">
+                <h1 class="products_title">Sản Phẩm</h1>
+                <hr>
+
+                <div class="product_nav">
+                    <div class="product_navList">
+                        <div class="product_nav--item active" data-filter="all">Tất cả</div>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <div class="product_nav--item" data-filter="@category.Slug">@category.Name</div>
+                        }
+                    </div>
+                </div>
+
+                <div class="product_list">
+                    <div class="product_track">
+                        @if (!Model.Products.Any())
+                        {
+                            <p class="google-sheet-status">Chưa có sản phẩm.</p>
+                        }
+                        else
+                        {
+                            @foreach (var product in Model.Products)
+                            {
+                                var image = string.IsNullOrWhiteSpace(product.ImageUrl) ? "https://placehold.co/600x400?text=No+Image" : product.ImageUrl;
+                                <div class="product_listItem" data-category="@product.CategorySlug">
+                                    <div class="product_imgWrap">
+                                        <img src="@image" alt="@product.Name" class="product_listItem--img">
+                                    </div>
+                                    <h3 class="product_listItem--title">@product.Name</h3>
+                                    <div class="product_listItem--cost">@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", product.Price)</div>
+                                    <button type="button" class="product_hoverBtn" data-name="@product.Name" data-price="@product.Price">
+                                        <svg class="icon_addCart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                                            <path d="M24 48C10.7 48 0 58.7 0 72C0 85.3 10.7 96 24 96L69.3 96C73.2 96 76.5 98.8 77.2 102.6L129.3 388.9C135.5 423.1 165.3 448 200.1 448L456 448C469.3 448 480 437.3 480 424C480 410.7 469.3 400 456 400L200.1 400C188.5 400 178.6 391.7 176.5 380.3L171.4 352L475 352C505.8 352 532.2 330.1 537.9 299.8L568.9 133.9C572.6 114.2 557.5 96 537.4 96L124.7 96L124.3 94C119.5 67.4 96.3 48 69.2 48L24 48zM208 576C234.5 576 256 554.5 256 528C256 501.5 234.5 480 208 480C181.5 480 160 501.5 160 528C160 554.5 181.5 576 208 576zM432 576C458.5 576 480 554.5 480 528C480 501.5 458.5 480 432 480C405.5 480 384 501.5 384 528C384 554.5 405.5 576 432 576z" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="Abouts" class="abouts">
+            <h1 class="abouts_title">PEOPLE x HAPPINESS</h1>
+            <hr>
+            <div class="abouts_main">
+                <div class="abouts_contents">
+                    <p class="abouts_contens--main">
+                        Với hơn 15 năm kinh nghiệm trong lĩnh vực thương mại và dịch vụ, <b>Hoa Xinh Group</b> tự hào là một trong những đơn
+                        vị tiên phong trong hoạt động xuất nhập khẩu và phân phối hàng hóa quốc tế tại thị trường Việt Nam.
+                    </p>
+                    <p>
+                        <b>Hoa Xinh</b> đang từng bước xây dựng hệ thống vận hành chuyên nghiệp, hợp tác với nhiều thương hiệu quốc tế trong
+                        lĩnh vực mỹ phẩm, thực phẩm và thiết bị gia dụng.
+                    </p>
+                </div>
+                <div class="abouts_logoBrand">
+                    <div class="abouts_wrap">
+                        <div class="center">
+                            <img src="~/assets/img/logoHX.png">
+                        </div>
+                        <div class="orbit_container">
+                            <div class="orbit"><img src="~/assets/img/logoazian.png"></div>
+                            <div class="orbit"><img src="~/assets/img/logoCocoon.png"></div>
+                            <div class="orbit"><img src="~/assets/img/logocooku.png"></div>
+                            <div class="orbit"><img src="~/assets/img/logocoway.png"></div>
+                            <div class="orbit"><img src="~/assets/img/logo-happys1.png"></div>
+                            <div class="orbit"><img src="~/assets/img/logonano365_.png"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="Certificate" class="certificate">
+            <h1 class="certificate_title">Chứng nhận</h1>
+            <img class="certificate_img" src="~/assets/img/certificate.png" alt="img_certificate">
+            <h2 class="certificate_subTitle">
+                Giấy chứng nhận đăng ký kinh doanh
+            </h2>
+        </section>
+    </div>
+
+    <partial name="Partials/_Footer" />
+
+    <!-- Form popup đặt hàng -->
+
+<!-- Form popup đặt hàng -->
+    <div class="order" id="order">
+        <div class="order__overlay"></div>
+        <div class="order__modal">
+            <button class="order__close">×</button>
+            <h2 class="order__title">Đặt hàng</h2>
+            <form class="order__form" id="orderForm">
+                <!-- customer info -->
+                <div class="order__customer">
+                    <input type="text"
+                           name="name"
+                           class="order__input"
+                           id="customerName"
+                           placeholder="Họ và tên"
+                           required>
+                    <input type="email"
+                           name="email"
+                           class="order__input"
+                           id="customerEmail"
+                           placeholder="Email"
+                           required>
+                    <input type="text"
+                           name="phone"
+                           class="order__input"
+                           id="customerPhone"
+                           placeholder="Số điện thoại"
+                           required>
+                    <input type="text"
+                           name="address"
+                           class="order__input"
+                           id="customerAddress"
+                           placeholder="Địa chỉ"
+                           required>
+                </div>
+
+                <!-- product list -->
+                <div class="order__products" id="orderProducts"></div>
+                <button type="button" class="order__addProduct" id="addProduct">+ Thêm sản phẩm</button>
+
+                <!-- total -->
+                <div class="order__total">
+                    Tổng tiền:
+                    <span id="orderTotal">0</span>₫
+
+                </div>
+                <input type="hidden" name="total" id="orderTotalInput">
+                <div class="order__invoiceToggle">
+                    <label class="order__invoiceCheck">
+                        <input type="checkbox" id="invoiceToggle">
+                        <span>Xuất hóa đơn VAT</span>
+                    </label>
+                </div>
+                <div class="order__invoice" id="invoiceFields">
+                    <input type="text" name="companyName" class="order__input" id="companyName" placeholder="Tên công ty">
+                    <input type="text" name="companyTaxCode" class="order__input" id="companyTaxCode" placeholder="Mã số thuế">
+                    <input type="text" name="companyAddress" class="order__input" id="companyAddress" placeholder="Địa chỉ công ty">
+                    <input type="email" name="companyEmail" class="order__input" id="companyEmail" placeholder="Email nhận hóa đơn">
+                </div>
+                <div class="order__invoiceNote">
+                    <strong>Lưu ý:</strong>
+                    <ul class="order__invoiceNoteList">
+                        <li>Nếu muốn xuất hóa đơn VAT, vui lòng nhập đầy đủ và chính xác thông tin công ty.</li>
+                        <li>Nếu thông tin không chính xác, sau khi xuất hóa đơn sẽ không thể cấp lại.</li>
+                    </ul>
+                </div>
+                <!-- payment -->
+                <select class="order__payment" id="paymentMethod">
+                    <option value="cod">Thanh toán khi nhận hàng</option>
+                    <option value="qr">Thanh toán QR</option>
+                </select>
+
+                <div class="order__qr" id="qrBox">
+                    <img src="~/assets/img/QR_cty.jpg">
+                </div>
+
+                <button type="submit" id="orderSubmit" class="order__submit" disabled>Đặt hàng</button>
+            </form>
+        </div>
+    </div>
+    <!-- End form popup -->
+
+    <div class="popup_product" style="display: none;">
+        <div class="popup_product--overlay"></div>
+        <div class="popup_productWrap">
+            <div id="btn_closePopup" class="header_popup--btnClose">
+              <div>✕</div>  
+            </div>
+            <div class="popup_productTop">
+                <img src="~/assets/img/mp_kemduongam.png" alt="Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml" class="popup_product--img">
+                <div class="popup_productMain">
+                    <h1 class="popup_product--title">Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml</h1>
+                    <h2 class="popup_product--price">420.000 đ</h2>
+                    <div class="popup_product--summary" style="display: none;"></div>
+                    <div class="popup_productAction">
+                        <div class="qty-wrapperProduct">
+                            <button type="button" class="qty-btn" id="popup-qty-minus">-</button>
+                            <input type="number" name="qty" id="qty" value="1" min="1" class="cart_qtyProduct"> 
+                            <button type="button" class="qty-btn" id="popup-qty-plus">+</button>
+                        </div>
+
+                        <button class="popup_product--buyBtn no-btn" type="button" data-name="Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml" data-price="420000">Đặt mua</button>
+                        <button class="popup_product--addCartBtn">
+                            <svg class="icon_addCartPopup" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                                <path d="M24 48C10.7 48 0 58.7 0 72C0 85.3 10.7 96 24 96L69.3 96C73.2 96 76.5 98.8 77.2 102.6L129.3 388.9C135.5 423.1 165.3 448 200.1 448L456 448C469.3 448 480 437.3 480 424C480 410.7 469.3 400 456 400L200.1 400C188.5 400 178.6 391.7 176.5 380.3L171.4 352L475 352C505.8 352 532.2 330.1 537.9 299.8L568.9 133.9C572.6 114.2 557.5 96 537.4 96L124.7 96L124.3 94C119.5 67.4 96.3 48 69.2 48L24 48zM208 576C234.5 576 256 554.5 256 528C256 501.5 234.5 480 208 480C181.5 480 160 501.5 160 528C160 554.5 181.5 576 208 576zM432 576C458.5 576 480 554.5 480 528C480 501.5 458.5 480 432 480C405.5 480 384 501.5 384 528C384 554.5 405.5 576 432 576z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="popup_productDescWrap">
+                <div class="popup_productSectionHead">
+                    <p class="popup_product--eyebrow">Thông tin chi tiết</p>
+                    <h3 class="popup_product--subTitle">Chi tiết sản phẩm</h3>
+                </div>
+                <div class="popup_product--desc"><ul class="popup_product--descList"><li>Chua co mo ta san pham.</li></ul></div>
+            </div>
+            <div class="popup_productSuggestWrap">
+                <div class="popup_productSectionHead">
+                    <p class="popup_product--eyebrow">Có thể bạn cũng thích</p>
+                    <h3 class="popup_product--subTitle">Sản phẩm gợi ý</h3>
+                </div>
+                <div class="popup_productSuggestSlider">
+                    <button type="button" class="popup_productSuggestNav popup_productSuggestNav--prev" aria-label="Sản phẩm trước" disabled="">
+                        ‹
+                    </button>
+                    <div class="popup_productSuggestViewport">
+                        <div class="popup_productSuggestList">
+            <article class="popup_productSuggestItem" data-product-index="1">
+                <img src="~/assets/img/tbgd_xitphong.jpg" alt="Xịt phòng Shay">
+                <h4 class="popup_productSuggestTitle">Xịt phòng Shay</h4>
+                <p class="popup_productSuggestPrice">99.000 đ</p>
+            </article>
+        </div>
+    </div>
+                    <button type="button" class="popup_productSuggestNav popup_productSuggestNav--next" aria-label="Sản phẩm tiếp theo">
+                        ›
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificate -->
+    <div class="successPopup" id="successPopup">
+        <div class="successBox">
+            <p>
+                ✔ Đặt hàng thành công! <br>
+                Hoa Xinh cảm ơn bạn đã tin tưởng. <br>
+                Nhân viên sẽ liên hệ xác nhận đơn sớm nhất.
+            </p>
+            <button id="successOk">OK</button>
+        </div>
+    </div>
+    <!-- End notificate -->
+
+    <!-- Shopping cart -->
+    <div class="cart">
+        <div class="header_cart">
+            <div class="header_cart--title">Giỏ hàng</div>
+            <div id="btn_closeCart" class="header_cart-btnClose">✕</div>
+        </div>
+        <div class="main_cart">
+
+            <div class="main_cart--detail">
+                <div>Sản phẩm</div>
+                <span>Thành tiền</span>
+            </div>
+            <div class="main_cart--empty">
+                <svg class="main_cart--logo" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                     stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                    <circle cx="8" cy="21" r="1"></circle>
+                    <circle cx="19" cy="21" r="1"></circle>
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                </svg>
+                <h3 class="main_cart--text">Giỏ hàng trống</h3>
+            </div>
+
+            <div class="main_cart--wrap"></div>
+        </div>
+
+        <div class="end_cart">
+            <div class="end_cart--checkAll">
+                <input type="checkbox" name="checkAll" id="">
+                <div>Chọn tất cả</div>
+            </div>
+
+            
+            <div class="end_cart--total">
+                <div>Tổng tiền: </div>
+                <div id="total_cart">0đ</div>
+            </div>
+
+            <div class="btn_buyCart">Đặt mua</div>
+        </div>
+    </div>
+    <!-- End shopping cart -->
+
+    <!-- Icon zalo -->
+     <a href="https://zalo.me/3184879926849986015" target="_blank" rel="noopener noreferrer" class="icon_zalo">
+        <img src="~/assets/img/zalo-icon.png" alt="iconZalo">
+     </a>
+
+    <!-- lang_mobile -->
+    
+    <div class="language_top--mobile">
+        <!-- Wrapper ngôn ngữ -->
+        <div class="lang-switch notranslate">
+        <!-- Vị trí Google sẽ render select (ẩn đi) -->
+        <div id="google_translate_element" aria-hidden="true"></div>
+
+        <!-- Cụm nút flag -->
+        <div class="lang-flags_mobile" role="group" aria-label="Chọn ngôn ngữ">
+        <!-- Thêm/bớt nút tùy thị trường -->
+            <button type="button" class="lang-flag" data-lang="ko" title="한국어" aria-label="Korean">
+                <img src="~/assets/img/language/ko.png" class="flag_1" />
+            </button>
+            <button type="button" class="lang-flag" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">
+                <img src="~/assets/img/language/vietnam.png" class="flag_1" />
+            </button>
+            <button type="button" class="lang-flag" data-lang="en" title="English" aria-label="English">
+                <img src="~/assets/img/language/united-kingdom.png" class="flag_1" />
+            </button>
+            
+        </div>
+    </div>
+
+    <!-- End_lang-moblie -->
+
+    <!-- Script JS -->
+    <script>
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({
+                pageLanguage: 'vi',                         // Ngôn ngữ gốc trang
+                includedLanguages: 'vi,en,ja,ko,zh-CN', // Giới hạn ngôn ngữ (tùy chỉnh)
+                autoDisplay: false,
+                layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL
+            }, 'google_translate_element');
+        }
+    </script>
+    <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    <script src="~/language.js"></script>
+    <script src="~/script.js"></script>
+    
+
+    <script>
+        function filterProducts(filter) {
+            document.querySelectorAll(".product_track .product_listItem").forEach((item) => {
+                const itemCategory = item.getAttribute("data-category");
+                item.style.display = (filter === "all" || itemCategory === filter) ? "" : "none";
+            });
+        }
+    </script>
+</body>
+</html>
+
+
+
+

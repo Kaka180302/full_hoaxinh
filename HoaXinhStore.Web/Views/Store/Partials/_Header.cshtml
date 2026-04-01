@@ -1,0 +1,122 @@
+﻿@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
+
+<header class="header">
+    <div id="no_show" class="header_mobile">
+        <a href="#" class="header_logoLink no_link">
+            <img class="header_logo" src="~/assets/img/logo_HX.png">
+        </a>
+
+        <div class="header_mobileWrap">
+            <div title="Giỏ hàng" class="icon_cartWrap">
+                <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                    <circle cx="8" cy="21" r="1"></circle>
+                    <circle cx="19" cy="21" r="1"></circle>
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                </svg>
+
+                <span id="cart_count" class="cart_count">0</span>
+            </div>
+
+            <button class="menu_toggle" id="menuToggle">
+                <svg class="icon_mobile" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
+                    <path d="M96 160C96 142.3 110.3 128 128 128L512 128C529.7 128 544 142.3 544 160C544 177.7 529.7 192 512 192L128 192C110.3 192 96 177.7 96 160zM96 320C96 302.3 110.3 288 128 288L512 288C529.7 288 544 302.3 544 320C544 337.7 529.7 352 512 352L128 352C110.3 352 96 337.7 96 320zM544 480C544 497.7 529.7 512 512 512L128 512C110.3 512 96 497.7 96 480C96 462.3 110.3 448 128 448L512 448C529.7 448 544 462.3 544 480z" />
+                </svg>
+            </button>
+        </div>
+    </div>
+    <div class="slider">
+
+        <div class="menu_nav">
+            <div class="menu_nav--btnClose">
+                <button id="btn_close" class="menu_nav--close">✕</button>
+            </div>
+
+            <div class="header_nav">
+                <ul class="header_navList no_list">
+                    <li class="header_navList--item">
+                        <a href="#Abouts" class="header_navList--link no_link">Giới thiệu</a>
+                    </li>
+                    <li class="header_navList--item">
+                        <a href="#Products" class="header_navList--link no_link">Sản phẩm</a>
+                    </li>
+                    <li class="header_navList--item">
+                        <a href="#Certificate" class="header_navList--link no_link">Chứng nhận</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <div id="no_header" class="header_info">
+            <div class="header_wrap">
+                <a href="#" class="header_logoLink no_link">
+                    <img class="header_logo" src="~/assets/img/Logo_HX.png" alt="Logo_Hoa_Xinh">
+                </a>
+                <div class="header_nav">
+                    <ul class="header_navList no_list">
+                        <li class="header_navList--item">
+                            <a href="#Products" class="header_navList--link no_link">Sản phẩm</a>
+                            <div class="menu_product">
+                                <a href="#Products" class="menu_product--item" data-filter="all">Tất cả sản phẩm</a>
+                                @foreach (var category in Model.Categories)
+                                {
+                                    <a href="#Products" class="menu_product--item" data-filter="@category.Slug">@category.Name</a>
+                                }
+                            </div>
+                        </li>
+
+                        <li class="header_navList--item">
+                            <a href="#Abouts" class="header_navList--link no_link">Giới thiệu</a>
+                        </li>
+                        <li class="header_navList--item">
+                            <a href="#Certificate" class="header_navList--link no_link">Chứng nhận</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+            <div class="language_top">
+                <div class="lang-switch notranslate">
+                    <div id="google_translate_element" aria-hidden="true"></div>
+                    <div class="lang-flags" role="group" aria-label="Chọn ngôn ngữ">
+                        <button class="lang-flag" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">
+                            <img src="~/assets/img/language/vietnam.png" class="flag_1" />
+                        </button>
+                        <button class="lang-flag" data-lang="en" title="English" aria-label="English">
+                            <img src="~/assets/img/language/united-kingdom.png" class="flag_1" />
+                        </button>
+                        <button class="lang-flag" data-lang="ko" title="한국어" aria-label="Korean">
+                            <img src="~/assets/img/language/ko.png" class="flag_1" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div title="Giỏ hàng" class="icon_cartWrap">
+                <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                    <circle cx="8" cy="21" r="1"></circle>
+                    <circle cx="19" cy="21" r="1"></circle>
+                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                </svg>
+
+                <span id="cart_count" class="cart_count">0</span>
+            </div>
+        </div>
+
+        <input type="radio" name="slider_check" id="s1" checked>
+        <input type="radio" name="slider_check" id="s2">
+        <input type="radio" name="slider_check" id="s3">
+        <input type="radio" name="slider_check" id="s4">
+        <div class="slider_item">
+            <img src="~/assets/img/banner_Artboard.jpg" alt="img_slide4">
+            <img src="~/assets/img/banner_Artboard.jpg" alt="img_slide1">
+            <img src="~/assets/img/banner_Artboard.jpg">
+            <img src="~/assets/img/banner_Artboard.jpg">
+            <img src="~/assets/img/banner_Artboard.jpg">
+            <img src="~/assets/img/banner_Artboard.jpg">
+        </div>
+        <div class="slider_navigation">
+            <label for="s1"></label>
+            <label for="s2"></label>
+            <label for="s3"></label>
+            <label for="s4"></label>
+        </div>
+    </div>
+</header>

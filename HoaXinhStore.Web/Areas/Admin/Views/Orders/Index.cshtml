@@ -1,0 +1,33 @@
+﻿@model List<HoaXinhStore.Web.Entities.Order>
+@{
+    ViewData["Title"] = "Orders";
+    var page = (int)ViewBag.Page;
+    var totalPages = (int)ViewBag.TotalPages;
+}
+<h2 class="mb-3">Quản trị đơn hàng</h2>
+<table class="table table-bordered table-striped bg-white">
+    <thead><tr><th>ID</th><th>Mã đơn</th><th>Khách</th><th>SĐT</th><th>Trạng thái đơn</th><th>Thanh toán</th><th>Tổng tiền</th><th>Ngày tạo</th></tr></thead>
+    <tbody>
+    @foreach (var o in Model)
+    {
+        <tr>
+            <td>@o.Id</td>
+            <td>@o.OrderNo</td>
+            <td>@o.Customer?.FullName</td>
+            <td>@o.Customer?.Phone</td>
+            <td>@o.OrderStatus</td>
+            <td>@o.PaymentStatus</td>
+            <td>@o.TotalAmount.ToString("N0")</td>
+            <td>@o.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+        </tr>
+    }
+    </tbody>
+</table>
+<nav>
+    <ul class="pagination">
+        @for (int i = 1; i <= totalPages; i++)
+        {
+            <li class="page-item @(i == page ? "active" : "")"><a class="page-link" asp-action="Index" asp-route-page="@i">@i</a></li>
+        }
+    </ul>
+</nav>
