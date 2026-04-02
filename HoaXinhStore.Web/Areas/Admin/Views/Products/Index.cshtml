@@ -1,7 +1,7 @@
 ﻿@model List<HoaXinhStore.Web.Entities.Product>
 @using Microsoft.AspNetCore.Mvc.Rendering
 @{
-    ViewData["Title"] = "Products";
+    ViewData["Title"] = "Sản phẩm";
     var categories = ViewBag.Categories as List<SelectListItem> ?? new List<SelectListItem>();
     var page = (int)ViewBag.Page;
     var totalPages = (int)ViewBag.TotalPages;
@@ -45,8 +45,9 @@
             <td>@p.Category?.Name</td>
             <td>@p.Price.ToString("N0")</td>
             <td>@p.StockQuantity</td>
-            <td>@(p.IsActive ? "Active" : "Inactive")</td>
+            <td>@(p.IsActive ? "Đang bán" : "Ngừng bán")</td>
             <td class="text-nowrap">
+                <a class="btn btn-sm btn-info text-white" asp-action="Details" asp-route-id="@p.Id">Xem chi tiết</a>
                 <a class="btn btn-sm btn-warning" asp-action="Edit" asp-route-id="@p.Id">Sửa</a>
                 <form method="post" asp-action="ToggleActive" asp-route-id="@p.Id" class="d-inline">
                     @Html.AntiForgeryToken()

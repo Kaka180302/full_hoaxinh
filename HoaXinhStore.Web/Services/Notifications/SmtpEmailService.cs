@@ -24,13 +24,13 @@ public class SmtpEmailService(IOptions<SmtpOptions> options, ILogger<SmtpEmailSe
         var sb = new StringBuilder();
 
         sb.AppendLine("<div style='font-family:Arial,sans-serif;line-height:1.6'>");
-        sb.AppendLine("<h2>HoaXinh Store - Xác nh?n thanh toán thành công</h2>");
-        sb.AppendLine($"<p>Xin chào <b>{WebUtility.HtmlEncode(order.Customer.FullName)}</b>,</p>");
-        sb.AppendLine("<p>HoaXinh c?m on b?n dã d?t hàng. Ðon hàng c?a b?n dã du?c thanh toán thành công.</p>");
-        sb.AppendLine($"<p><b>Mã don:</b> {WebUtility.HtmlEncode(order.OrderNo)}</p>");
-        sb.AppendLine($"<p><b>Khách hàng:</b> {WebUtility.HtmlEncode(order.Customer.FullName)} - {WebUtility.HtmlEncode(order.Customer.Phone)} - {WebUtility.HtmlEncode(order.Customer.Email)}</p>");
+        sb.AppendLine("<h2>HoaXinh Store - Xï¿½c nh?n thanh toï¿½n thï¿½nh cï¿½ng</h2>");
+        sb.AppendLine($"<p>Xin chï¿½o <b>{WebUtility.HtmlEncode(order.Customer.FullName)}</b>,</p>");
+        sb.AppendLine("<p>HoaXinh c?m on b?n dï¿½ d?t hï¿½ng. ï¿½on hï¿½ng c?a b?n dï¿½ du?c thanh toï¿½n thï¿½nh cï¿½ng.</p>");
+        sb.AppendLine($"<p><b>Mï¿½ don:</b> {WebUtility.HtmlEncode(order.OrderNo)}</p>");
+        sb.AppendLine($"<p><b>Khï¿½ch hï¿½ng:</b> {WebUtility.HtmlEncode(order.Customer.FullName)} - {WebUtility.HtmlEncode(order.Customer.Phone)} - {WebUtility.HtmlEncode(order.Customer.Email)}</p>");
         sb.AppendLine("<table border='1' cellpadding='8' cellspacing='0' style='border-collapse:collapse;width:100%'>");
-        sb.AppendLine("<thead><tr><th>S?n ph?m</th><th>SL</th><th>Ðon giá</th><th>Thành ti?n</th></tr></thead><tbody>");
+        sb.AppendLine("<thead><tr><th>S?n ph?m</th><th>SL</th><th>ï¿½on giï¿½</th><th>Thï¿½nh ti?n</th></tr></thead><tbody>");
 
         foreach (var item in order.Items)
         {
@@ -39,13 +39,13 @@ public class SmtpEmailService(IOptions<SmtpOptions> options, ILogger<SmtpEmailSe
 
         sb.AppendLine("</tbody></table>");
         sb.AppendLine($"<p><b>T?ng ti?n:</b> {order.TotalAmount.ToString("N0", vi)} d</p>");
-        sb.AppendLine("<p>HoaXinh Store trân tr?ng c?m on b?n dã tin tu?ng và d?ng hành.</p>");
+        sb.AppendLine("<p>HoaXinh Store trï¿½n tr?ng c?m on b?n dï¿½ tin tu?ng vï¿½ d?ng hï¿½nh.</p>");
         sb.AppendLine("</div>");
 
         using var mail = new MailMessage
         {
             From = new MailAddress(_smtp.FromEmail, _smtp.FromName),
-            Subject = $"[HoaXinh] Xác nh?n thanh toán thành công - {order.OrderNo}",
+            Subject = $"[HoaXinh] Xï¿½c nh?n thanh toï¿½n thï¿½nh cï¿½ng - {order.OrderNo}",
             Body = sb.ToString(),
             IsBodyHtml = true
         };

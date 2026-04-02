@@ -82,6 +82,18 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         return View(vm);
     }
 
+    [HttpGet]
+    public async Task<IActionResult> Details(int id)
+    {
+        var entity = await db.Products
+            .AsNoTracking()
+            .Include(p => p.Category)
+            .FirstOrDefaultAsync(p => p.Id == id);
+
+        if (entity is null) return NotFound();
+        return View(entity);
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(AdminProductEditViewModel vm)

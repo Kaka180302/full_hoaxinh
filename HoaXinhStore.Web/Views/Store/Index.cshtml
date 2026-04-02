@@ -195,20 +195,8 @@
                         <span>Thanh toán COD</span>
                     </label>
                     <label class="order__paymentCard">
-                        <input type="radio" name="PaymentMethod" value="VNPAY_BANK">
-                        <span>Thanh toán qua ngân hàng</span>
-                    </label>
-                    <label class="order__paymentCard">
-                        <input type="radio" name="PaymentMethod" value="VNPAY_QR">
-                        <span>Thanh toán QR Pay</span>
-                    </label>
-                    <label class="order__paymentCard">
-                        <input type="radio" name="PaymentMethod" value="VNPAY_ATM">
-                        <span>Thanh toán ATM iBanking</span>
-                    </label>
-                    <label class="order__paymentCard">
-                        <input type="radio" name="PaymentMethod" value="VNPAY_INTL">
-                        <span>Credit card; Debit card</span>
+                        <input type="radio" name="PaymentMethod" value="VNPAY">
+                        <span>Thanh toán Online</span>
                     </label>
                 </div>
 
@@ -216,8 +204,8 @@
                     <div class="order__invoiceNote">
                         <strong>Thanh toán VNPAY:</strong>
                         <ul class="order__invoiceNoteList">
-                            <li>Sau khi bấm Đặt hàng, hệ thống chuyển sang trang thanh toán VNPAY có QR + danh sách ngân hàng.</li>
-                            <li>Khi khách quét QR hoặc chọn ngân hàng, VNPAY sẽ mở app/ngân hàng tương ứng để thanh toán.</li>
+                            <li>Sau khi bấm Đặt hàng, hệ thống chuyển sang trang VNPAY.</li>
+                            <li>Khách sẽ chọn 1 trong 3 cách thanh toán: ngân hàng nội địa, QR Pay, hoặc thẻ quốc tế.</li>
                             <li>Nội dung chuyển khoản sẽ tự động mang theo mã đơn hàng và thông tin đơn theo chuẩn VNPAY.</li>
                         </ul>
                     </div>
@@ -398,8 +386,8 @@
     @if (TempData["CheckoutMessage"] is string checkoutMessage)
     {
         <script>
-            window.__checkoutMessage = "@checkoutMessage";
-            window.__checkoutStatus = "@(TempData["CheckoutStatus"] ?? "")";
+            window.__checkoutMessage = @Html.Raw(JsonSerializer.Serialize(checkoutMessage));
+            window.__checkoutStatus = @Html.Raw(JsonSerializer.Serialize((TempData["CheckoutStatus"] ?? "").ToString()));
         </script>
     }
     

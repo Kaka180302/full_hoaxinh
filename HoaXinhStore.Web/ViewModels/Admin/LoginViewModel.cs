@@ -4,10 +4,12 @@ namespace HoaXinhStore.Web.ViewModels.Admin;
 
 public class LoginViewModel
 {
-    [Required]
+    [Display(Name = "Tài khoản")]
+    [Required(ErrorMessage = "Vui lòng nhập tài khoản hoặc email.")]
     public string UsernameOrEmail { get; set; } = string.Empty;
 
-    [Required, DataType(DataType.Password)]
+    [Display(Name = "Mật khẩu")]
+    [Required(ErrorMessage = "Vui lòng nhập mật khẩu."), DataType(DataType.Password)]
     public string Password { get; set; } = string.Empty;
 
     public bool RememberMe { get; set; }

@@ -3,11 +3,11 @@
     Layout = null;
 }
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Admin Login</title>
+    <title>Đăng nhập quản trị</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -36,25 +36,25 @@
     <div class="bg-shape shape-right"></div>
 
     <div class="login-card">
-        <h1 class="title">Login</h1>
+        <h1 class="title">Đăng nhập</h1>
 
         <form method="post">
             @Html.AntiForgeryToken()
             <input asp-for="ReturnUrl" type="hidden" />
 
             <div class="field">
-                <label asp-for="UsernameOrEmail">Username</label>
+                <label asp-for="UsernameOrEmail">Tài khoản</label>
                 <div class="input-wrap">
                     <span class="icon">&#128100;</span>
-                    <input asp-for="UsernameOrEmail" placeholder="Type your username or email" autocomplete="username" />
+                    <input asp-for="UsernameOrEmail" placeholder="Nhập tên đăng nhập hoặc email" autocomplete="username" />
                 </div>
             </div>
 
             <div class="field">
-                <label asp-for="Password">Password</label>
+                <label asp-for="Password">Mật khẩu</label>
                 <div class="input-wrap">
                     <span class="icon">&#128274;</span>
-                    <input asp-for="Password" type="password" placeholder="Type your password" autocomplete="current-password" />
+                    <input asp-for="Password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password" />
                 </div>
             </div>
 
@@ -77,7 +77,7 @@
                 }
             </div>
 
-            <button class="btn-login" type="submit">LOGIN</button>
+            <button class="btn-login" type="submit">ĐĂNG NHẬP</button>
         </form>
     </div>
 </body>

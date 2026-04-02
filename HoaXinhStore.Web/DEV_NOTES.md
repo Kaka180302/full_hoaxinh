@@ -293,3 +293,33 @@
   - `Views/Store/Partials/_Footer.cshtml`
   - `wwwroot/assets/style.css`
   - `wwwroot/script.js`
+## 2026-04-02 - VNPAY flow hardening + admin localization + payment UX simplification
+- Reviewed VNPAY sandbox Pay documentation and aligned payment URL generation in `Services/Payments/VnpayService.cs`:
+  - keep gateway url `https://sandbox.vnpayment.vn/paymentv2/vpcpay.html`
+  - preserve HMAC SHA512 signing and ordered query construction
+  - sanitize `vnp_OrderInfo` to stable ASCII format for gateway compatibility
+- Stabilized payment return flow in `Controllers/StoreController.cs`:
+  - `returnUrl` generated from current request host/scheme for active environment
+  - callback always redirects to homepage with checkout status message
+- Fixed checkout message transport in `Views/Store/Index.cshtml`:
+  - serialize `window.__checkoutMessage` / `window.__checkoutStatus` via JSON to avoid JS break on special chars.
+- Updated customer-facing checkout messages in `StoreController` to full Vietnamese with dấu.
+- Admin improvements:
+  - Added product detail page:
+    - controller action `Areas/Admin/Controllers/ProductsController.cs::Details`
+    - view `Areas/Admin/Views/Products/Details.cshtml`
+    - `Xem chi tiết` button on product list
+  - Localized admin pages to Vietnamese:
+    - login page labels/buttons
+    - dashboard/order/category/product/policy view titles and status labels
+    - admin layout `<html lang="vi">` and title suffix
+  - Added Vietnamese display names and validation messages in admin viewmodels:
+    - `ViewModels/Admin/AdminProductEditViewModel.cs`
+    - `ViewModels/Admin/CategoryEditViewModel.cs`
+    - `ViewModels/Admin/LoginViewModel.cs`
+- Payment option UX simplified in storefront order popup (`Views/Store/Index.cshtml`):
+  - reduced to 2 options: `COD` and `Thanh toán Online`
+  - removed separate ATM iBanking card from popup UI
+  - online method now routes to VNPAY page where user selects bank / QR / international card
+- Updated redirect loading text in `wwwroot/script.js` to Vietnamese with dấu:
+  - `Đang chuyển hướng...`

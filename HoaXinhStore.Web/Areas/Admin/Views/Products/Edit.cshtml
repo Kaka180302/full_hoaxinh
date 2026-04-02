@@ -1,6 +1,6 @@
 ﻿@model HoaXinhStore.Web.ViewModels.Admin.AdminProductEditViewModel
 @{
-    ViewData["Title"] = Model.Id.HasValue ? "Edit Product" : "Create Product";
+    ViewData["Title"] = Model.Id.HasValue ? "Sửa sản phẩm" : "Thêm sản phẩm";
 }
 <h2>@ViewData["Title"]</h2>
 <form method="post" asp-action="Save" enctype="multipart/form-data" class="bg-white p-3 border rounded">

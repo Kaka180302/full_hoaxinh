@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Net;
+using System.Text.RegularExpressions;
 using HoaXinhStore.Web.Entities;
 using HoaXinhStore.Web.Options;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,7 @@ public class VnpayService(IOptions<VnpayOptions> options) : IVnpayService
         var now = DateTime.UtcNow.AddHours(7);
         var txnRef = order.OrderNo;
         var amount = (long)Math.Round(order.TotalAmount * 100m, MidpointRounding.AwayFromZero);
+        var orderInfo = BuildOrderInfo(order.OrderNo);
 
         var inputData = new SortedDictionary<string, string>
         {
@@ -28,7 +30,7 @@ public class VnpayService(IOptions<VnpayOptions> options) : IVnpayService
             ["vnp_CurrCode"] = "VND",
             ["vnp_IpAddr"] = string.IsNullOrWhiteSpace(clientIp) ? "127.0.0.1" : clientIp,
             ["vnp_Locale"] = "vn",
-            ["vnp_OrderInfo"] = $"Thanh toan don hang {order.OrderNo}",
+            ["vnp_OrderInfo"] = orderInfo,
             ["vnp_OrderType"] = "other",
             ["vnp_ReturnUrl"] = string.IsNullOrWhiteSpace(returnUrlOverride) ? _options.ReturnUrl : returnUrlOverride,
             ["vnp_TxnRef"] = txnRef,
@@ -77,5 +79,11 @@ public class VnpayService(IOptions<VnpayOptions> options) : IVnpayService
     private static string VnpUrlEncode(string value)
     {
         return WebUtility.UrlEncode(value ?? string.Empty);
+    }
+
+    private static string BuildOrderInfo(string orderNo)
+    {
+        var normalized = $"Thanh toan don hang {orderNo}".Trim();
+        return Regex.Replace(normalized, @"[^a-zA-Z0-9\s\-\.]", string.Empty);
     }
 }

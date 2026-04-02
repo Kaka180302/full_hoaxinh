@@ -852,7 +852,7 @@ form.addEventListener("submit", function(e){
   qrBox.style.display = getSelectedPaymentMethod() === "COD" ? "none" : "block"
 
   submitBtn.classList.add("loading")
-  submitBtn.textContent = "Dang chuyen huong..."
+  submitBtn.textContent = "Đang chuyển hướng..."
 })
 // ******************Menu mobile**************************
 

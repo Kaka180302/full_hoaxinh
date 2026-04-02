@@ -62,7 +62,7 @@ public class StoreController(
     {
         if (request.Items.Count == 0)
         {
-            TempData["CheckoutMessage"] = "Vui long chon it nhat 1 san pham.";
+            TempData["CheckoutMessage"] = "Vui lòng chọn ít nhất 1 sản phẩm.";
             TempData["CheckoutStatus"] = "error";
             return RedirectToAction(nameof(Index));
         }
@@ -74,7 +74,7 @@ public class StoreController(
 
         if (products.Count != productIds.Count)
         {
-            TempData["CheckoutMessage"] = "Co san pham khong hop le hoac da ngung ban.";
+            TempData["CheckoutMessage"] = "Có sản phẩm không hợp lệ hoặc đã ngừng bán.";
             TempData["CheckoutStatus"] = "error";
             return RedirectToAction(nameof(Index));
         }
@@ -83,12 +83,7 @@ public class StoreController(
         var paymentMethod = normalizedMethod == "COD" ? PaymentMethod.COD : PaymentMethod.VNPAY;
         var vnpBankCode = normalizedMethod switch
         {
-            // Some sandbox terminals do not have direct VNPAYQR channel enabled.
-            // Keep empty so user can still choose supported QR/bank options on VNPay page.
-            "VNPAY_QR" => string.Empty,
-            "VNPAY_BANK" => "VNBANK",
-            "VNPAY_ATM" => "VNBANK",
-            "VNPAY_INTL" => "INTCARD",
+            "VNPAY" => string.Empty,
             _ => string.Empty
         };
 
@@ -97,7 +92,7 @@ public class StoreController(
             var qty = Math.Max(1, item.Quantity);
             if (!products.TryGetValue(item.ProductId, out var product) || product.StockQuantity < qty)
             {
-                TempData["CheckoutMessage"] = $"San pham '{product?.Name ?? "Khong xac dinh"}' khong du ton kho.";
+                TempData["CheckoutMessage"] = $"Sản phẩm '{product?.Name ?? "Không xác định"}' không đủ tồn kho.";
                 TempData["CheckoutStatus"] = "error";
                 return RedirectToAction(nameof(Index));
             }
@@ -183,12 +178,18 @@ public class StoreController(
                 await db.SaveChangesAsync();
             }
 
-            var returnUrl = Url.Action(nameof(PaymentReturn), "Store", null, Request.Scheme);
+            var returnUrl = Url.Action(
+                nameof(PaymentReturn),
+                "Store",
+                values: null,
+                protocol: Request.Scheme,
+                host: Request.Host.Value);
+
             var payUrl = vnpayService.BuildPaymentUrl(order, clientIp, vnpBankCode, returnUrl);
             return Redirect(payUrl);
         }
 
-        TempData["CheckoutMessage"] = "Dat hang thanh cong! Hoa Xinh se lien he xac nhan don som nhat.";
+        TempData["CheckoutMessage"] = "Đặt hàng thành công! Hoa Xinh sẽ liên hệ xác nhận đơn sớm nhất.";
         TempData["CheckoutStatus"] = "success";
         return RedirectToAction(nameof(Index));
     }
@@ -203,7 +204,7 @@ public class StoreController(
 
         if (string.IsNullOrWhiteSpace(txnRef))
         {
-            TempData["CheckoutMessage"] = "Khong tim thay ma giao dich VNPAY.";
+            TempData["CheckoutMessage"] = "Không tìm thấy mã giao dịch VNPAY.";
             TempData["CheckoutStatus"] = "error";
             return RedirectToAction(nameof(Index));
         }
@@ -216,7 +217,7 @@ public class StoreController(
 
         if (order is null)
         {
-            TempData["CheckoutMessage"] = "Don hang khong ton tai.";
+            TempData["CheckoutMessage"] = "Đơn hàng không tồn tại.";
             TempData["CheckoutStatus"] = "error";
             return RedirectToAction(nameof(Index));
         }
@@ -224,7 +225,7 @@ public class StoreController(
         var payment = order.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
         if (payment is null)
         {
-            TempData["CheckoutMessage"] = "Khong tim thay ban ghi thanh toan.";
+            TempData["CheckoutMessage"] = "Không tìm thấy bản ghi thanh toán.";
             TempData["CheckoutStatus"] = "error";
             return RedirectToAction(nameof(Index));
         }
@@ -245,7 +246,7 @@ public class StoreController(
             payment.PaymentMethod = PaymentMethod.VNPAY.ToString();
             payment.TransactionRef = txnRef;
             payment.PaidAtUtc ??= DateTime.UtcNow;
-            TempData["CheckoutMessage"] = "Thanh toan thanh cong. Cam on ban da dat hang tai HoaXinh Store.";
+            TempData["CheckoutMessage"] = "Thanh toán thành công. Cảm ơn bạn đã đặt hàng tại HoaXinh Store.";
             TempData["CheckoutStatus"] = "success";
 
             if (!wasPaid)
@@ -270,21 +271,21 @@ public class StoreController(
     {
         if (!validSignature)
         {
-            return "Ket qua thanh toan khong hop le (sai chu ky). Vui long lien he ho tro.";
+            return "Kết quả thanh toán không hợp lệ (sai chữ ký). Vui lòng liên hệ hỗ trợ.";
         }
 
         if (!amountValid)
         {
-            return "So tien thanh toan khong khop don hang. Vui long lien he ho tro.";
+            return "Số tiền thanh toán không khớp đơn hàng. Vui lòng liên hệ hỗ trợ.";
         }
 
         return responseCode switch
         {
-            "24" => "Ban da huy giao dich thanh toan.",
-            "51" => "Tai khoan khong du so du de thanh toan.",
-            "65" => "Tai khoan vuot qua han muc giao dich trong ngay.",
-            "75" => "Ngan hang dang bao tri. Vui long thu lai sau.",
-            _ => $"Thanh toan that bai (ma loi: {responseCode})."
+            "24" => "Bạn đã hủy giao dịch thanh toán.",
+            "51" => "Tài khoản không đủ số dư để thanh toán.",
+            "65" => "Tài khoản vượt quá hạn mức giao dịch trong ngày.",
+            "75" => "Ngân hàng đang bảo trì. Vui lòng thử lại sau.",
+            _ => $"Thanh toán thất bại (mã lỗi: {responseCode})."
         };
     }
 }

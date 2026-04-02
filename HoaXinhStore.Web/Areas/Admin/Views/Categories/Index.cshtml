@@ -1,6 +1,6 @@
 ﻿@model List<HoaXinhStore.Web.Entities.Category>
 @{
-    ViewData["Title"] = "Categories";
+    ViewData["Title"] = "Danh mục";
 }
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Quản trị danh mục</h2>
@@ -15,7 +15,7 @@
             <td>@c.Id</td>
             <td>@c.Name</td>
             <td>@c.Slug</td>
-            <td>@(c.IsActive ? "Active" : "Inactive")</td>
+            <td>@(c.IsActive ? "Hiển thị" : "Ẩn")</td>
             <td><a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-warning">Sửa</a></td>
         </tr>
     }
