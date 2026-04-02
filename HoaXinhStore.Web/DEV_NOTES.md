@@ -268,3 +268,28 @@
 - Added `body.modal-lock` style in `wwwroot/assets/style.css`:
   - `overflow: hidden;`
   - `height: 100vh;`
+
+## 2026-04-02 - Policy text cleanup + scroll lock stabilization
+- Policy popup text normalization improved in `wwwroot/script.js`:
+  - Convert legacy html snippets (`<br>`, `<p>`, `<li>`) to plain text lines.
+  - Decode html entities and collapse excessive blank lines/spacing.
+  - Remove noisy empty rows so policy content is readable in popup.
+- Scroll lock behavior stabilized:
+  - Preserve current page position when opening/closing popup (no jump to top).
+  - Lock/unlock on both `html` and `body` class `modal-lock`.
+  - Cart drawer lock behavior:
+    - mobile: lock outside scroll
+    - desktop: allow normal page scroll
+
+## 2026-04-02 - Mobile footer accordion redesign
+- Added dedicated mobile footer layout (desktop footer unchanged):
+  - Contact card with logo, hotline, address, email.
+  - Accordion sections: `Hỗ trợ`, `Dịch vụ`, `Trang website`, `Giờ làm việc`.
+  - Tap to expand/collapse each section.
+- Added policy shortcut buttons in accordion panels, reusing existing policy popup flow.
+- Added icons for address/email on mobile contact card (reused existing desktop svg icons).
+- Replaced accordion chevron with provided SVG arrow and rotate animation on expand.
+- Files touched:
+  - `Views/Store/Partials/_Footer.cshtml`
+  - `wwwroot/assets/style.css`
+  - `wwwroot/script.js`

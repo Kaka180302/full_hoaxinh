@@ -85,17 +85,70 @@ const invoiceFields = document.getElementById("invoiceFields")
 const invoiceInputs = document.querySelectorAll("#companyName,#companyTaxCode,#companyAddress,#companyEmail")
 
 let products = []
+let isBodyScrollLocked = false
+let lockedScrollY = 0
+
+function lockBodyScroll() {
+  if (isBodyScrollLocked) return
+  lockedScrollY = window.scrollY || window.pageYOffset || 0
+  document.documentElement.classList.add("modal-lock")
+  document.body.classList.add("modal-lock")
+  document.body.style.top = `-${lockedScrollY}px`
+  isBodyScrollLocked = true
+}
+
+function unlockBodyScroll() {
+  if (!isBodyScrollLocked) return
+  document.documentElement.classList.remove("modal-lock")
+  document.body.classList.remove("modal-lock")
+  document.body.style.top = ""
+  window.scrollTo(0, lockedScrollY)
+  isBodyScrollLocked = false
+}
 
 function syncGlobalScrollLock() {
   const popupDetail = document.querySelector(".popup_product")
   const popupDetailOpen = !!popupDetail && popupDetail.style.display !== "none" && popupDetail.style.display !== ""
+  const cartOpen = !!document.querySelector(".cart.active_cart")
+  const shouldLockForCart = cartOpen && window.innerWidth <= 768
   const hasOverlayOpen =
     !!document.querySelector(".order.active") ||
     !!document.querySelector(".policy_popup.active") ||
-    !!document.querySelector(".cart.active_cart") ||
+    shouldLockForCart ||
     popupDetailOpen
 
-  document.body.classList.toggle("modal-lock", hasOverlayOpen)
+  if (hasOverlayOpen) {
+    lockBodyScroll()
+  } else {
+    unlockBodyScroll()
+  }
+}
+
+function normalizePolicyText(rawContent) {
+  if (rawContent === null || rawContent === undefined) return ""
+  let text = String(rawContent)
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<li>/gi, "- ")
+    .replace(/<\/li>/gi, "\n")
+    .replace(/<[^>]*>/g, "")
+
+  const decodeEl = document.createElement("textarea")
+  decodeEl.innerHTML = text
+  text = decodeEl.value
+
+  text = text
+    .replace(/\r\n/g, "\n")
+    .replace(/\u00a0/g, " ")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/\n +/g, "\n")
+    .replace(/[ \t]+\n/g, "\n")
+
+  return text.trim()
 }
 
 function getSheetProductsForOrder() {
@@ -1248,7 +1301,7 @@ function openPolicyPopup(policyKey) {
   const policy = policyData[policyKey]
   if (!policy || !policyPopup || !policyPopupTitle || !policyPopupBody) return
   policyPopupTitle.textContent = policy.title || policy.Title || ""
-  policyPopupBody.textContent = policy.content || policy.Content || ""
+  policyPopupBody.textContent = normalizePolicyText(policy.content || policy.Content || "")
   if (policyPopupSource) {
     policyPopupSource.href = policy.source || policy.Source || "#"
   }
@@ -1268,6 +1321,18 @@ if (policyPopupOverlay) {
 if (policyPopupClose) {
   policyPopupClose.addEventListener("click", closePolicyPopup)
 }
+
+// **********mobile footer accordion********************
+const footerAccButtons = document.querySelectorAll(".footer_accBtn")
+footerAccButtons.forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const item = btn.closest(".footer_accItem")
+    if (!item) return
+    item.classList.toggle("active")
+  })
+})
+
+window.addEventListener("resize", syncGlobalScrollLock)
 
 });
 
