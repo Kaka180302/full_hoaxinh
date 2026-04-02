@@ -31,6 +31,11 @@ html, body{
     font-family: 'Montserrat', sans-serif;
 }
 
+body.modal-lock{
+    overflow: hidden;
+    height: 100vh;
+}
+
 .no_list{
     list-style: none;
     padding: 0;
@@ -1224,6 +1229,31 @@ html, body {
     color: #f6c96b;
 }
 
+.footer_policy--content{
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.footer_policy--link{
+    border: none;
+    background: transparent;
+    color: white;
+    text-align: left;
+    font: inherit;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1.7;
+}
+
+.footer_policy--link:hover{
+    color: #f6c96b;
+}
+
+.footer_policy--linkStrong{
+    font-weight: 700;
+}
+
 .footer_logoWrap{
     width: 300px;
     height: 300px;
@@ -1287,6 +1317,86 @@ html, body {
     justify-content: flex-start;
     align-items: center;
     gap: 4px;
+}
+
+.policy_popup{
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+
+.policy_popup.active{
+    display: flex;
+}
+
+.policy_popup--overlay{
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+}
+
+.policy_popup--dialog{
+    position: relative;
+    z-index: 1;
+    width: min(760px, calc(100% - 32px));
+    max-height: min(82vh, 900px);
+    overflow: auto;
+    background: #fff;
+    color: #2a1d0f;
+    border-radius: 16px;
+    padding: 24px 24px 20px;
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28);
+}
+
+.policy_popup--close{
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    border: none;
+    background: #f3f3f3;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.policy_popup--title{
+    margin: 0 0 12px;
+    padding-right: 40px;
+    color: #6e3922;
+    font-size: 1.35rem;
+}
+
+.policy_popup--body{
+    line-height: 1.75;
+    font-size: 1rem;
+    color: #403022;
+    max-height: min(56vh, 560px);
+    overflow-y: auto;
+    padding-right: 8px;
+    white-space: pre-line;
+}
+
+.policy_popup--body p{
+    margin-bottom: 10px;
+}
+
+.policy_popup--body ul,
+.policy_popup--body ol{
+    padding-left: 18px;
+    margin: 8px 0 12px;
+}
+
+.policy_popup--source{
+    display: inline-block;
+    margin-top: 16px;
+    color: var(--gold);
+    font-weight: 600;
 }
 /* End footer */
 
@@ -2644,6 +2754,9 @@ input{
 .footer_info{
     width: 100%;
 }
+.footer_policy{
+    width: 100%;
+}
 .footer_end{
     flex-direction: column;
     padding: 2% 10%;
@@ -2939,4 +3052,88 @@ input{
     .product_listItem--title {
         font-size: 0.8rem;
     }
+}
+/* Checkout payment cards + responsive modal */
+.order__modal {
+  width: min(92vw, 760px);
+  max-height: 92vh;
+}
+
+.order__paymentGroup {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.order__paymentCard {
+  border: 1px solid #d8d8d8;
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  min-height: 52px;
+}
+
+.order__paymentCard input {
+  margin-right: 8px;
+}
+
+.order__paymentCard:has(input:checked) {
+  border-color: #b07f45;
+  background: #fff7ec;
+  box-shadow: inset 0 0 0 1px #b07f45;
+}
+
+.order__qr {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .order__modal {
+    width: calc(100vw - 18px);
+    max-height: 94vh;
+    padding: 16px 12px;
+  }
+
+  .order__paymentGroup {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modern status popup */
+.successPopup {
+  backdrop-filter: blur(3px);
+}
+
+.successBox {
+  width: min(92vw, 420px);
+  border-radius: 16px;
+  border: 1px solid #f0e1cf;
+  box-shadow: 0 16px 40px rgba(0,0,0,.18);
+  background: linear-gradient(145deg, #fffaf4, #ffffff);
+  padding: 22px;
+}
+
+.successBox p {
+  white-space: pre-line;
+  color: #3d2c17;
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+.successPopup.is-error .successBox {
+  border-color: #f2c2c2;
+  background: linear-gradient(145deg, #fff6f6, #ffffff);
+}
+
+.successPopup.is-error .successBox p {
+  color: #7c2020;
+}
+
+.successBox button {
+  border-radius: 10px;
+  font-weight: 700;
 }

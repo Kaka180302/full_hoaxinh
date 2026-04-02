@@ -1,4 +1,5 @@
-﻿@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
+﻿@using System.Text.Json
+@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
 @{ Layout = null; }
 <!DOCTYPE html>
 <html lang="en">
@@ -50,13 +51,20 @@
                             @foreach (var product in Model.Products)
                             {
                                 var image = string.IsNullOrWhiteSpace(product.ImageUrl) ? "https://placehold.co/600x400?text=No+Image" : product.ImageUrl;
-                                <div class="product_listItem" data-category="@product.CategorySlug">
+                                <div class="product_listItem"
+                                     data-category="@product.CategorySlug"
+                                     data-product-id="@product.Id"
+                                     data-product-name="@product.Name"
+                                     data-product-price="@product.Price"
+                                     data-product-image="@image"
+                                     data-product-summary="@product.Summary"
+                                     data-product-description="@product.Description">
                                     <div class="product_imgWrap">
-                                        <img src="@image" alt="@product.Name" class="product_listItem--img">
+                                        <img src="@image" alt="@product.Name" class="product_listItem--img product_detailImage">
                                     </div>
-                                    <h3 class="product_listItem--title">@product.Name</h3>
+                                    <h3 class="product_listItem--title product_detailTrigger">@product.Name</h3>
                                     <div class="product_listItem--cost">@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", product.Price)</div>
-                                    <button type="button" class="product_hoverBtn" data-name="@product.Name" data-price="@product.Price">
+                                    <button type="button" class="product_hoverBtn" data-id="@product.Id" data-name="@product.Name" data-price="@product.Price">
                                         <svg class="icon_addCart" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
                                             <path d="M24 48C10.7 48 0 58.7 0 72C0 85.3 10.7 96 24 96L69.3 96C73.2 96 76.5 98.8 77.2 102.6L129.3 388.9C135.5 423.1 165.3 448 200.1 448L456 448C469.3 448 480 437.3 480 424C480 410.7 469.3 400 456 400L200.1 400C188.5 400 178.6 391.7 176.5 380.3L171.4 352L475 352C505.8 352 532.2 330.1 537.9 299.8L568.9 133.9C572.6 114.2 557.5 96 537.4 96L124.7 96L124.3 94C119.5 67.4 96.3 48 69.2 48L24 48zM208 576C234.5 576 256 554.5 256 528C256 501.5 234.5 480 208 480C181.5 480 160 501.5 160 528C160 554.5 181.5 576 208 576zM432 576C458.5 576 480 554.5 480 528C480 501.5 458.5 480 432 480C405.5 480 384 501.5 384 528C384 554.5 405.5 576 432 576z" />
                                         </svg>
@@ -120,29 +128,30 @@
         <div class="order__modal">
             <button class="order__close">×</button>
             <h2 class="order__title">Đặt hàng</h2>
-            <form class="order__form" id="orderForm">
+            <form class="order__form" id="orderForm" method="post" asp-controller="Store" asp-action="Checkout">
+                @Html.AntiForgeryToken()
                 <!-- customer info -->
                 <div class="order__customer">
                     <input type="text"
-                           name="name"
+                           name="CustomerName"
                            class="order__input"
                            id="customerName"
                            placeholder="Họ và tên"
                            required>
                     <input type="email"
-                           name="email"
+                           name="Email"
                            class="order__input"
                            id="customerEmail"
                            placeholder="Email"
                            required>
                     <input type="text"
-                           name="phone"
+                           name="PhoneNumber"
                            class="order__input"
                            id="customerPhone"
                            placeholder="Số điện thoại"
                            required>
                     <input type="text"
-                           name="address"
+                           name="Address"
                            class="order__input"
                            id="customerAddress"
                            placeholder="Địa chỉ"
@@ -167,10 +176,10 @@
                     </label>
                 </div>
                 <div class="order__invoice" id="invoiceFields">
-                    <input type="text" name="companyName" class="order__input" id="companyName" placeholder="Tên công ty">
-                    <input type="text" name="companyTaxCode" class="order__input" id="companyTaxCode" placeholder="Mã số thuế">
-                    <input type="text" name="companyAddress" class="order__input" id="companyAddress" placeholder="Địa chỉ công ty">
-                    <input type="email" name="companyEmail" class="order__input" id="companyEmail" placeholder="Email nhận hóa đơn">
+                    <input type="text" name="VatCompanyName" class="order__input" id="companyName" placeholder="Tên công ty">
+                    <input type="text" name="VatTaxCode" class="order__input" id="companyTaxCode" placeholder="Mã số thuế">
+                    <input type="text" name="VatCompanyAddress" class="order__input" id="companyAddress" placeholder="Địa chỉ công ty">
+                    <input type="email" name="VatEmail" class="order__input" id="companyEmail" placeholder="Email nhận hóa đơn">
                 </div>
                 <div class="order__invoiceNote">
                     <strong>Lưu ý:</strong>
@@ -180,14 +189,41 @@
                     </ul>
                 </div>
                 <!-- payment -->
-                <select class="order__payment" id="paymentMethod">
-                    <option value="cod">Thanh toán khi nhận hàng</option>
-                    <option value="qr">Thanh toán QR</option>
-                </select>
+                <div class="order__paymentGroup">
+                    <label class="order__paymentCard">
+                        <input type="radio" name="PaymentMethod" value="COD" checked>
+                        <span>Thanh toán COD</span>
+                    </label>
+                    <label class="order__paymentCard">
+                        <input type="radio" name="PaymentMethod" value="VNPAY_BANK">
+                        <span>Thanh toán qua ngân hàng</span>
+                    </label>
+                    <label class="order__paymentCard">
+                        <input type="radio" name="PaymentMethod" value="VNPAY_QR">
+                        <span>Thanh toán QR Pay</span>
+                    </label>
+                    <label class="order__paymentCard">
+                        <input type="radio" name="PaymentMethod" value="VNPAY_ATM">
+                        <span>Thanh toán ATM iBanking</span>
+                    </label>
+                    <label class="order__paymentCard">
+                        <input type="radio" name="PaymentMethod" value="VNPAY_INTL">
+                        <span>Credit card; Debit card</span>
+                    </label>
+                </div>
 
                 <div class="order__qr" id="qrBox">
-                    <img src="~/assets/img/QR_cty.jpg">
+                    <div class="order__invoiceNote">
+                        <strong>Thanh toán VNPAY:</strong>
+                        <ul class="order__invoiceNoteList">
+                            <li>Sau khi bấm Đặt hàng, hệ thống chuyển sang trang thanh toán VNPAY có QR + danh sách ngân hàng.</li>
+                            <li>Khi khách quét QR hoặc chọn ngân hàng, VNPAY sẽ mở app/ngân hàng tương ứng để thanh toán.</li>
+                            <li>Nội dung chuyển khoản sẽ tự động mang theo mã đơn hàng và thông tin đơn theo chuẩn VNPAY.</li>
+                        </ul>
+                    </div>
                 </div>
+                <input type="hidden" id="isExportInvoiceInput" name="IsExportInvoice" value="false" />
+                <div id="orderItemsHidden"></div>
 
                 <button type="submit" id="orderSubmit" class="order__submit" disabled>Đặt hàng</button>
             </form>
@@ -214,7 +250,7 @@
                             <button type="button" class="qty-btn" id="popup-qty-plus">+</button>
                         </div>
 
-                        <button class="popup_product--buyBtn no-btn" type="button" data-name="Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml" data-price="420000">Đặt mua</button>
+                        <button class="popup_product--buyBtn no-btn" type="button" data-id="0" data-name="Kem Dưỡng Ẩm, Kem Lót Dầu Cừu Vitamin KICHO Sheep oil cream Lanolin &amp; Berry 65ml" data-price="420000">Đặt mua</button>
                         <button class="popup_product--addCartBtn">
                             <svg class="icon_addCartPopup" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
                                 <path d="M24 48C10.7 48 0 58.7 0 72C0 85.3 10.7 96 24 96L69.3 96C73.2 96 76.5 98.8 77.2 102.6L129.3 388.9C135.5 423.1 165.3 448 200.1 448L456 448C469.3 448 480 437.3 480 424C480 410.7 469.3 400 456 400L200.1 400C188.5 400 178.6 391.7 176.5 380.3L171.4 352L475 352C505.8 352 532.2 330.1 537.9 299.8L568.9 133.9C572.6 114.2 557.5 96 537.4 96L124.7 96L124.3 94C119.5 67.4 96.3 48 69.2 48L24 48zM208 576C234.5 576 256 554.5 256 528C256 501.5 234.5 480 208 480C181.5 480 160 501.5 160 528C160 554.5 181.5 576 208 576zM432 576C458.5 576 480 554.5 480 528C480 501.5 458.5 480 432 480C405.5 480 384 501.5 384 528C384 554.5 405.5 576 432 576z" />
@@ -355,7 +391,17 @@
     </script>
     <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
     <script src="~/language.js"></script>
+    <script>
+        window.__policyData = @Html.Raw(JsonSerializer.Serialize(Model.PolicyData));
+    </script>
     <script src="~/script.js"></script>
+    @if (TempData["CheckoutMessage"] is string checkoutMessage)
+    {
+        <script>
+            window.__checkoutMessage = "@checkoutMessage";
+            window.__checkoutStatus = "@(TempData["CheckoutStatus"] ?? "")";
+        </script>
+    }
     
 
     <script>
@@ -368,6 +414,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 

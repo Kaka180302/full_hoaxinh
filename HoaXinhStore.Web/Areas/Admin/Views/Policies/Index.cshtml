@@ -1,0 +1,45 @@
+@model HoaXinhStore.Web.ViewModels.Admin.PolicyManagementViewModel
+@{
+    ViewData["Title"] = "Policies";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Quản trị chính sách footer</h2>
+</div>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-success">@Model.Message</div>
+}
+
+<form asp-action="Save" method="post">
+    @Html.AntiForgeryToken()
+
+    @for (var i = 0; i < Model.Items.Count; i++)
+    {
+        <div class="card mb-4">
+            <div class="card-header fw-semibold">@Model.Items[i].Key</div>
+            <div class="card-body">
+                <input type="hidden" asp-for="Items[i].Key" />
+
+                <div class="mb-3">
+                    <label class="form-label" asp-for="Items[i].Title">Tiêu đề</label>
+                    <input class="form-control" asp-for="Items[i].Title" />
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label" asp-for="Items[i].Source">Nguồn</label>
+                    <input class="form-control" asp-for="Items[i].Source" />
+                </div>
+
+                <div class="mb-1">
+                    <label class="form-label" asp-for="Items[i].Content">Nội dung</label>
+                    <textarea class="form-control" asp-for="Items[i].Content" rows="12"></textarea>
+                </div>
+                <div class="form-text">Nhập nội dung thuần, không cần HTML. Xuống dòng sẽ hiển thị đúng trong popup.</div>
+            </div>
+        </div>
+    }
+
+    <button type="submit" class="btn btn-primary">Lưu chính sách</button>
+</form>

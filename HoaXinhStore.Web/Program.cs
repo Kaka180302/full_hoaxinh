@@ -1,6 +1,10 @@
-﻿using HoaXinhStore.Web.Data;
+using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities.Identity;
+using HoaXinhStore.Web.Options;
 using HoaXinhStore.Web.Services.Identity;
+using HoaXinhStore.Web.Services.Notifications;
+using HoaXinhStore.Web.Services.Payments;
+using HoaXinhStore.Web.Services.Policies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,6 +15,11 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.Configure<AdminAccountOptions>(builder.Configuration.GetSection("AdminAccount"));
+builder.Services.Configure<VnpayOptions>(builder.Configuration.GetSection("Vnpay"));
+builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
+builder.Services.AddScoped<IVnpayService, VnpayService>();
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddSingleton<IPolicyContentService, JsonPolicyContentService>();
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
