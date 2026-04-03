@@ -1,0 +1,213 @@
+@model HoaXinhStore.Web.Entities.Order
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng";
+    var shippingAddress = Model.Customer?.Addresses?.FirstOrDefault(a => a.IsDefault)?.AddressLine
+                          ?? Model.Customer?.Addresses?.FirstOrDefault()?.AddressLine
+                          ?? "Chưa có địa chỉ";
+    static string ToOrderStatusVi(string? status) => (status ?? string.Empty) switch
+    {
+        "PendingConfirm" => "Chờ xác nhận",
+        "Confirmed" => "Đã xác nhận",
+        "Shipping" => "Đang giao hàng",
+        "Completed" => "Hoàn tất",
+        "Cancelled" => "Đã hủy",
+        _ => status ?? "-"
+    };
+    static string ToPaymentStatusVi(string? status) => (status ?? string.Empty) switch
+    {
+        "Pending" => "Chưa thanh toán",
+        "AwaitingGateway" => "Chờ cổng thanh toán",
+        "Paid" => "Đã thanh toán",
+        "Failed" => "Thanh toán thất bại",
+        "Cancelled" => "Đã hủy thanh toán",
+        _ => status ?? "-"
+    };
+    static string ToPaymentMethodVi(string? method) => (method ?? string.Empty).ToUpperInvariant() switch
+    {
+        "COD" => "Thanh toán khi nhận hàng (COD)",
+        "VNPAY" => "Thanh toán online (VNPAY)",
+        _ => method ?? "-"
+    };
+    var statusOptions = ViewBag.OrderStatusOptions as List<(string Value, string Label)> ?? [];
+
+    string trackingCode = string.Empty;
+    string shippingCarrier = string.Empty;
+    string shippingNote = string.Empty;
+    if (!string.IsNullOrWhiteSpace(Model.Note))
+    {
+        var lines = Model.Note.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("Đơn vị vận chuyển:", StringComparison.OrdinalIgnoreCase))
+            {
+                shippingCarrier = line.Replace("Đơn vị vận chuyển:", "", StringComparison.OrdinalIgnoreCase).Trim();
+            }
+            else if (line.StartsWith("Mã vận đơn:", StringComparison.OrdinalIgnoreCase))
+            {
+                trackingCode = line.Replace("Mã vận đơn:", "", StringComparison.OrdinalIgnoreCase).Trim();
+            }
+            else if (line.StartsWith("Ghi chú:", StringComparison.OrdinalIgnoreCase))
+            {
+                shippingNote = line.Replace("Ghi chú:", "", StringComparison.OrdinalIgnoreCase).Trim();
+            }
+        }
+    }
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Chi tiết đơn hàng</h2>
+    <a class="btn btn-secondary" asp-action="Index">Quay lại</a>
+</div>
+
+@if (TempData["OrderAdminMessage"] is string orderAdminMessage)
+{
+    <div class="alert @(string.Equals((TempData["OrderAdminStatus"] ?? "").ToString(), "success", StringComparison.OrdinalIgnoreCase) ? "alert-success" : "alert-danger")">
+        @orderAdminMessage
+    </div>
+}
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-6"><strong>Mã đơn:</strong> @Model.OrderNo</div>
+            <div class="col-md-6"><strong>Ngày tạo:</strong> @Model.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</div>
+            <div class="col-md-6"><strong>Trạng thái đơn:</strong> @ToOrderStatusVi(Model.OrderStatus)</div>
+            <div class="col-md-6"><strong>Trạng thái thanh toán:</strong> @ToPaymentStatusVi(Model.PaymentStatus)</div>
+            <div class="col-md-6"><strong>Phương thức thanh toán:</strong> @ToPaymentMethodVi(Model.PaymentMethod.ToString())</div>
+            <div class="col-md-6"><strong>Tổng tiền:</strong> @Model.TotalAmount.ToString("N0") đ</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Cập nhật xử lý đơn hàng</div>
+    <div class="card-body">
+        <form method="post" asp-action="UpdateStatus">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="id" value="@Model.Id" />
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Trạng thái đơn</label>
+                    <select class="form-select" name="orderStatus" required>
+                        @foreach (var opt in statusOptions)
+                        {
+                            if (string.Equals(opt.Value, Model.OrderStatus, StringComparison.OrdinalIgnoreCase))
+                            {
+                                <option value="@opt.Value" selected>@opt.Label</option>
+                            }
+                            else
+                            {
+                                <option value="@opt.Value">@opt.Label</option>
+                            }
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Đơn vị vận chuyển</label>
+                    <input class="form-control" name="shippingCarrier" value="@shippingCarrier" placeholder="Ví dụ: Giao Hàng Nhanh" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Mã vận đơn</label>
+                    <input class="form-control" name="trackingCode" value="@trackingCode" placeholder="Mã tracking của đơn vị vận chuyển" />
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Ghi chú xử lý</label>
+                    <textarea class="form-control" name="note" rows="2" placeholder="Ghi chú thêm cho đơn hàng">@shippingNote</textarea>
+                </div>
+                <div class="col-12">
+                    <button class="btn btn-primary" type="submit">Lưu cập nhật</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Thông tin khách hàng</div>
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-6"><strong>Họ tên:</strong> @Model.Customer?.FullName</div>
+            <div class="col-md-6"><strong>Số điện thoại:</strong> @Model.Customer?.Phone</div>
+            <div class="col-md-6"><strong>Email:</strong> @Model.Customer?.Email</div>
+            <div class="col-md-12"><strong>Địa chỉ giao hàng:</strong> @shippingAddress</div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Thông tin hóa đơn VAT</div>
+    <div class="card-body">
+        <div class="mb-2"><strong>Xuất hóa đơn VAT:</strong> @(Model.IsExportInvoice ? "Có" : "Không")</div>
+        @if (Model.IsExportInvoice)
+        {
+            <div class="row g-2">
+                <div class="col-md-6"><strong>Tên công ty:</strong> @Model.VatCompanyName</div>
+                <div class="col-md-6"><strong>Mã số thuế:</strong> @Model.VatTaxCode</div>
+                <div class="col-md-12"><strong>Địa chỉ công ty:</strong> @Model.VatCompanyAddress</div>
+                <div class="col-md-6"><strong>Email nhận hóa đơn:</strong> @Model.VatEmail</div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header fw-semibold">Danh sách sản phẩm</div>
+    <div class="card-body p-0">
+        <table class="table table-bordered table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Sản phẩm</th>
+                    <th>SKU</th>
+                    <th>SL</th>
+                    <th>Đơn giá</th>
+                    <th>Thành tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var item in Model.Items)
+            {
+                <tr>
+                    <td>@item.ProductNameSnapshot</td>
+                    <td>@item.SkuSnapshot</td>
+                    <td>@item.Quantity</td>
+                    <td>@item.UnitPrice.ToString("N0") đ</td>
+                    <td>@item.LineTotal.ToString("N0") đ</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header fw-semibold">Lịch sử thanh toán</div>
+    <div class="card-body p-0">
+        <table class="table table-bordered table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Provider</th>
+                    <th>Method</th>
+                    <th>Trạng thái</th>
+                    <th>Số tiền</th>
+                    <th>Transaction Ref</th>
+                    <th>Paid At</th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var payment in Model.Payments.OrderByDescending(p => p.Id))
+            {
+                <tr>
+                    <td>@payment.Id</td>
+                    <td>@ToPaymentMethodVi(payment.Provider)</td>
+                    <td>@ToPaymentMethodVi(payment.PaymentMethod)</td>
+                    <td>@ToPaymentStatusVi(payment.Status)</td>
+                    <td>@payment.Amount.ToString("N0") đ</td>
+                    <td>@payment.TransactionRef</td>
+                    <td>@(payment.PaidAtUtc.HasValue ? payment.PaidAtUtc.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : "-")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

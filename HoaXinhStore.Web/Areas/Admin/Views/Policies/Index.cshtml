@@ -15,31 +15,60 @@
 <form asp-action="Save" method="post">
     @Html.AntiForgeryToken()
 
-    @for (var i = 0; i < Model.Items.Count; i++)
-    {
-        <div class="card mb-4">
-            <div class="card-header fw-semibold">@Model.Items[i].Key</div>
-            <div class="card-body">
-                <input type="hidden" asp-for="Items[i].Key" />
+    <ul class="nav nav-tabs mb-3" id="policyTabs" role="tablist">
+        @for (var i = 0; i < Model.Items.Count; i++)
+        {
+            var isActive = i == 0;
+            var item = Model.Items[i];
+            var tabId = $"policy-tab-{i}";
+            var paneId = $"policy-pane-{i}";
+            <li class="nav-item" role="presentation">
+                <button class="nav-link @(isActive ? "active" : string.Empty)"
+                        id="@tabId"
+                        data-bs-toggle="tab"
+                        data-bs-target="#@paneId"
+                        type="button"
+                        role="tab"
+                        aria-controls="@paneId"
+                        aria-selected="@(isActive ? "true" : "false")">
+                    @item.Title
+                </button>
+            </li>
+        }
+    </ul>
 
-                <div class="mb-3">
-                    <label class="form-label" asp-for="Items[i].Title">Tiêu đề</label>
-                    <input class="form-control" asp-for="Items[i].Title" />
-                </div>
+    <div class="tab-content" id="policyTabsContent">
+        @for (var i = 0; i < Model.Items.Count; i++)
+        {
+            var isActive = i == 0;
+            var item = Model.Items[i];
+            var paneId = $"policy-pane-{i}";
+            <div class="tab-pane fade @(isActive ? "show active" : string.Empty)" id="@paneId" role="tabpanel">
+                <div class="card mb-4">
+                    <div class="card-header fw-semibold">@item.Key</div>
+                    <div class="card-body">
+                        <input type="hidden" asp-for="Items[i].Key" />
 
-                <div class="mb-3">
-                    <label class="form-label" asp-for="Items[i].Source">Nguồn</label>
-                    <input class="form-control" asp-for="Items[i].Source" />
-                </div>
+                        <div class="mb-3">
+                            <label class="form-label" asp-for="Items[i].Title">Tiêu đề</label>
+                            <input class="form-control" asp-for="Items[i].Title" />
+                        </div>
 
-                <div class="mb-1">
-                    <label class="form-label" asp-for="Items[i].Content">Nội dung</label>
-                    <textarea class="form-control" asp-for="Items[i].Content" rows="12"></textarea>
+                        <div class="mb-3">
+                            <label class="form-label" asp-for="Items[i].Source">Nguồn</label>
+                            <input class="form-control" asp-for="Items[i].Source" />
+                        </div>
+
+                        <div class="mb-1">
+                            <label class="form-label" asp-for="Items[i].Content">Nội dung</label>
+                            <textarea class="form-control" asp-for="Items[i].Content" rows="12"></textarea>
+                        </div>
+                        <div class="form-text">Nhập nội dung thuần, không cần HTML. Xuống dòng sẽ hiển thị đúng trong popup.</div>
+                    </div>
                 </div>
-                <div class="form-text">Nhập nội dung thuần, không cần HTML. Xuống dòng sẽ hiển thị đúng trong popup.</div>
             </div>
-        </div>
-    }
+        }
+    </div>
 
     <button type="submit" class="btn btn-primary">Lưu chính sách</button>
 </form>

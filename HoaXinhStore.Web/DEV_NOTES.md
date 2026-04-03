@@ -323,3 +323,80 @@
   - online method now routes to VNPAY page where user selects bank / QR / international card
 - Updated redirect loading text in `wwwroot/script.js` to Vietnamese with dấu:
   - `Đang chuyển hướng...`
+## 2026-04-03 - Theo doi don hang + quan tri don hang nang cao + webhook van chuyen
+- Bo sung trang tra cuu don hang cho khach: `GET/POST /Store/TrackOrder`.
+  - Khach nhap `Ma don` + `So dien thoai` de xem ngay trang thai don, thanh toan, van don, don vi van chuyen.
+  - Ho tro deep-link truc tiep: `/Store/TrackOrder?orderNo=...&phoneNumber=...`.
+- Cap nhat mail cam on/xac nhan thanh toan gui khach:
+  - Them dong `Theo doi don hang` kem link track rieng theo tung don.
+  - Link duoc tao dong tu host hien tai trong `StoreController` va `Api/PaymentController`.
+- Nang cap trang Admin Don hang:
+  - Tach 2 tab: `Chua hoan thanh` va `Da hoan thanh`.
+  - Them bo loc/tim kiem theo: tu khoa (ma don/ten/sdt/email), trang thai don, trang thai thanh toan.
+  - Them nut `Xem chi tiet` va man hinh chi tiet don de cap nhat trang thai nhanh.
+- Bo sung cap nhat van chuyen qua API webhook:
+  - Endpoint: `POST /api/shipping/webhook`.
+  - Header bao mat: `X-Shipping-Key` (doi chieu voi `ShippingIntegration:WebhookKey`).
+  - Body mau:
+    {
+      "orderNo": "HX...",
+      "carrier": "GHN",
+      "trackingCode": "ABC123",
+      "status": "shipping",
+      "note": "Dang tren duong giao"
+    }
+  - Mapping trang thai webhook -> he thong:
+    - `pending` -> `Confirmed`
+    - `picked` -> `Preparing`
+    - `shipping`/`in_transit` -> `Shipping`
+    - `delivered` -> `Completed`
+    - `failed` -> `DeliveryFailed`
+    - `cancelled` -> `Cancelled`
+    - `returned` -> `Returned`
+- Da them cau hinh webhook trong `appsettings.json`:
+  - `ShippingIntegration:WebhookKey`
+
+### Luu y van hanh
+- Can doi `ShippingIntegration:WebhookKey` sang key thuc te truoc khi public.
+- Link track chua duoc ma hoa token, hien dang dung cap `orderNo + phone` de khop don.
+- Nen gioi han IP/ky chu ky phia webhook neu dau noi don vi van chuyen thuc te.
+## 2026-04-03 - Mail 2 chieu cho COD va Online + mau webhook don vi van chuyen
+- Bo sung gui mail ngay khi bam Dat mua (ca COD va Online):
+  - Khach nhan mail `Da tiep nhan don hang` + link theo doi don rieng.
+  - Cong ty nhan mail `Don hang moi` cung thong tin day du.
+- Luong Online van giu mail `Xac nhan thanh toan thanh cong` khi VNPAY tra ket qua thanh cong.
+- Cap nhat service email:
+  - Interface: `IEmailService.SendOrderPlacedAsync(...)`
+  - Implementation: `SmtpEmailService` them template mail tiep nhan don.
+- Them tai lieu mau payload dau noi webhook van chuyen:
+  - `Docs/ShippingWebhookSamples.md`
+  - Co san mau cho GHN, GHTK, Ahamove va lenh test curl.
+## 2026-04-03 - Bao mat phien admin + lich su dang nhap
+- Bo sung bang `AdminLoginSessions` de luu lich su dang nhap admin:
+  - UserId, UserName, IP, UserAgent, CreatedAtUtc, LastSeenAtUtc, RevokedAtUtc.
+- App startup tu dong tao bang neu chua ton tai (IF OBJECT_ID ... CREATE TABLE) de khong can migration thu cong.
+- Login admin:
+  - Khong dung sign-in truc tiep nua; xac thuc mat khau -> tao session row -> sign-in kem claim `admin_session_id`.
+- Cookie validation:
+  - Moi request admin se doi chieu `admin_session_id` voi DB.
+  - Neu session bi revoke/khong ton tai => reject principal + signout ngay.
+- Bo sung trang quan ly phien dang nhap:
+  - URL: `/Admin/Account/Sessions`
+  - Xem lich su dang nhap theo thoi gian.
+  - Nut `Dang xuat phien nay`.
+  - Nut `Dang xuat tat ca phien khac`.
+- Them menu `Lich su dang nhap` tren navbar admin.
+## 2026-04-03 - Hoan thien quan tri don hang, email va bao mat dang nhap admin
+- Quan tri don hang:
+  - Them phan trang server-side cho 2 tab `Chua hoan thanh` / `Da hoan thanh`.
+  - Giu nguyen bo loc/tim kiem khi chuyen trang.
+  - Fix loi EF LINQ khong translate duoc ham custom `IsCompletedStatus` trong query (doi sang dieu kien truc tiep `OrderStatus ==/!= "Completed"`).
+- Email thong bao don moi cho cong ty:
+  - Them dong `Phuong thuc thanh toan` de ke toan de doi soat (COD/VNPAY).
+- Bao mat dang nhap admin:
+  - Bo sung checkbox `Ghi nho dang nhap tren thiet bi nay` o form login.
+  - Bo sung lich su dang nhap + quan ly session admin:
+    - Xem danh sach phien dang nhap (`/Admin/Account/Sessions`).
+    - Dang xuat tung phien hoac dang xuat tat ca phien khac.
+    - Moi request doi chieu session voi DB; session bi revoke se bi buoc dang xuat.
+  - Chuyen trang Sessions vao layout admin (`_AdminLayout`) de dong bo giao dien quan tri.

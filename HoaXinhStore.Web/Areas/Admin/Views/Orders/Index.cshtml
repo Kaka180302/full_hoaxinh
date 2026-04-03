@@ -1,33 +1,251 @@
-﻿@model List<HoaXinhStore.Web.Entities.Order>
+@model List<HoaXinhStore.Web.Entities.Order>
 @{
     ViewData["Title"] = "Đơn hàng";
-    var page = (int)ViewBag.Page;
-    var totalPages = (int)ViewBag.TotalPages;
-}
-<h2 class="mb-3">Quản trị đơn hàng</h2>
-<table class="table table-bordered table-striped bg-white">
-    <thead><tr><th>ID</th><th>Mã đơn</th><th>Khách</th><th>SĐT</th><th>Trạng thái đơn</th><th>Thanh toán</th><th>Tổng tiền</th><th>Ngày tạo</th></tr></thead>
-    <tbody>
-    @foreach (var o in Model)
+    var pendingOrders = ViewBag.PendingOrders as List<HoaXinhStore.Web.Entities.Order> ?? [];
+    var completedOrders = ViewBag.CompletedOrders as List<HoaXinhStore.Web.Entities.Order> ?? [];
+    var pendingTotal = (int?)ViewBag.PendingTotal ?? pendingOrders.Count;
+    var completedTotal = (int?)ViewBag.CompletedTotal ?? completedOrders.Count;
+    var pendingPage = (int?)ViewBag.PendingPage ?? 1;
+    var completedPage = (int?)ViewBag.CompletedPage ?? 1;
+    var pendingTotalPages = (int?)ViewBag.PendingTotalPages ?? 1;
+    var completedTotalPages = (int?)ViewBag.CompletedTotalPages ?? 1;
+    var activeTab = (ViewBag.ActiveTab as string) ?? "pending";
+    var keyword = (ViewBag.Query as string) ?? string.Empty;
+    var selectedOrderStatus = (ViewBag.SelectedOrderStatus as string) ?? string.Empty;
+    var selectedPaymentStatus = (ViewBag.SelectedPaymentStatus as string) ?? string.Empty;
+    var orderStatusOptions = ViewBag.OrderStatusOptions as List<(string Value, string Label)> ?? [];
+    var paymentStatusOptions = ViewBag.PaymentStatusOptions as List<(string Value, string Label)> ?? [];
+
+    static string ToOrderStatusVi(string? status) => (status ?? string.Empty) switch
     {
-        <tr>
-            <td>@o.Id</td>
-            <td>@o.OrderNo</td>
-            <td>@o.Customer?.FullName</td>
-            <td>@o.Customer?.Phone</td>
-            <td>@o.OrderStatus</td>
-            <td>@o.PaymentStatus</td>
-            <td>@o.TotalAmount.ToString("N0")</td>
-            <td>@o.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-        </tr>
-    }
-    </tbody>
-</table>
-<nav>
-    <ul class="pagination">
-        @for (int i = 1; i <= totalPages; i++)
+        "PendingConfirm" => "Chờ xác nhận",
+        "Confirmed" => "Đã xác nhận",
+        "Preparing" => "Đang chuẩn bị hàng",
+        "Shipping" => "Đang giao hàng",
+        "Completed" => "Hoàn thành",
+        "Cancelled" => "Đã hủy",
+        "DeliveryFailed" => "Giao thất bại",
+        "Returned" => "Hoàn hàng",
+        _ => status ?? "-"
+    };
+
+    static string ToPaymentStatusVi(string? status) => (status ?? string.Empty) switch
+    {
+        "Pending" => "Chưa thanh toán",
+        "AwaitingGateway" => "Chờ cổng thanh toán",
+        "Paid" => "Đã thanh toán",
+        "Failed" => "Thanh toán thất bại",
+        "Cancelled" => "Đã hủy thanh toán",
+        _ => status ?? "-"
+    };
+}
+
+<h2 class="mb-3">Quản trị đơn hàng</h2>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-2">
+            <div class="col-md-4">
+                <input class="form-control" type="text" name="q" value="@keyword" placeholder="Tìm theo mã đơn, tên khách, SĐT, email" />
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="orderStatus">
+                    <option value="">-- Tất cả trạng thái đơn --</option>
+                    @foreach (var opt in orderStatusOptions)
+                    {
+                        if (selectedOrderStatus == opt.Value)
+                        {
+                            <option value="@opt.Value" selected>@opt.Label</option>
+                        }
+                        else
+                        {
+                            <option value="@opt.Value">@opt.Label</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select class="form-select" name="paymentStatus">
+                    <option value="">-- Tất cả trạng thái thanh toán --</option>
+                    @foreach (var opt in paymentStatusOptions)
+                    {
+                        if (selectedPaymentStatus == opt.Value)
+                        {
+                            <option value="@opt.Value" selected>@opt.Label</option>
+                        }
+                        else
+                        {
+                            <option value="@opt.Value">@opt.Label</option>
+                        }
+                    }
+                </select>
+            </div>
+            <div class="col-md-2 d-grid">
+                <button class="btn btn-primary" type="submit">Lọc / Tìm kiếm</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<ul class="nav nav-tabs mb-3" id="orderTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(activeTab == "pending" ? "active" : string.Empty)" id="pending-tab" data-bs-toggle="tab" data-bs-target="#pending-pane" type="button" role="tab" aria-controls="pending-pane" aria-selected="@(activeTab == "pending" ? "true" : "false")">
+            Chưa hoàn thành (@pendingTotal)
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link @(activeTab == "completed" ? "active" : string.Empty)" id="completed-tab" data-bs-toggle="tab" data-bs-target="#completed-pane" type="button" role="tab" aria-controls="completed-pane" aria-selected="@(activeTab == "completed" ? "true" : "false")">
+            Đã hoàn thành (@completedTotal)
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="orderTabsContent">
+    <div class="tab-pane fade @(activeTab == "pending" ? "show active" : string.Empty)" id="pending-pane" role="tabpanel" aria-labelledby="pending-tab">
+        <div class="card mb-3">
+            <div class="card-body p-0">
+                <table class="table table-bordered table-striped bg-white mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Mã đơn</th>
+                            <th>Khách</th>
+                            <th>SĐT</th>
+                            <th>Trạng thái đơn</th>
+                            <th>Thanh toán</th>
+                            <th>Tổng tiền</th>
+                            <th>Ngày tạo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!pendingOrders.Any())
+                    {
+                        <tr><td colspan="9" class="text-center text-muted">Không có đơn hàng chưa hoàn thành.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var o in pendingOrders)
+                        {
+                            <tr>
+                                <td>@o.Id</td>
+                                <td>@o.OrderNo</td>
+                                <td>@o.Customer?.FullName</td>
+                                <td>@o.Customer?.Phone</td>
+                                <td>@ToOrderStatusVi(o.OrderStatus)</td>
+                                <td>@ToPaymentStatusVi(o.PaymentStatus)</td>
+                                <td>@o.TotalAmount.ToString("N0")</td>
+                                <td>@o.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="text-nowrap">
+                                    <a class="btn btn-sm btn-info text-white" asp-action="Details" asp-route-id="@o.Id">Xem chi tiết</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (pendingTotalPages > 1)
         {
-            <li class="page-item @(i == page ? "active" : "")"><a class="page-link" asp-action="Index" asp-route-page="@i">@i</a></li>
+            <nav aria-label="Phân trang đơn chưa hoàn thành">
+                <ul class="pagination">
+                    @for (var p = 1; p <= pendingTotalPages; p++)
+                    {
+                        <li class="page-item @(p == pendingPage ? "active" : string.Empty)">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-q="@keyword"
+                               asp-route-orderStatus="@selectedOrderStatus"
+                               asp-route-paymentStatus="@selectedPaymentStatus"
+                               asp-route-pendingPage="@p"
+                               asp-route-completedPage="@completedPage"
+                               asp-route-activeTab="pending">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
         }
-    </ul>
-</nav>
+    </div>
+
+    <div class="tab-pane fade @(activeTab == "completed" ? "show active" : string.Empty)" id="completed-pane" role="tabpanel" aria-labelledby="completed-tab">
+        <div class="card mb-3">
+            <div class="card-body p-0">
+                <table class="table table-bordered table-striped bg-white mb-0">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Mã đơn</th>
+                            <th>Khách</th>
+                            <th>SĐT</th>
+                            <th>Trạng thái đơn</th>
+                            <th>Thanh toán</th>
+                            <th>Tổng tiền</th>
+                            <th>Ngày tạo</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @if (!completedOrders.Any())
+                    {
+                        <tr><td colspan="9" class="text-center text-muted">Chưa có đơn hàng hoàn thành.</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var o in completedOrders)
+                        {
+                            <tr>
+                                <td>@o.Id</td>
+                                <td>@o.OrderNo</td>
+                                <td>@o.Customer?.FullName</td>
+                                <td>@o.Customer?.Phone</td>
+                                <td>@ToOrderStatusVi(o.OrderStatus)</td>
+                                <td>@ToPaymentStatusVi(o.PaymentStatus)</td>
+                                <td>@o.TotalAmount.ToString("N0")</td>
+                                <td>@o.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+                                <td class="text-nowrap">
+                                    <a class="btn btn-sm btn-info text-white" asp-action="Details" asp-route-id="@o.Id">Xem chi tiết</a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @if (completedTotalPages > 1)
+        {
+            <nav aria-label="Phân trang đơn đã hoàn thành">
+                <ul class="pagination">
+                    @for (var p = 1; p <= completedTotalPages; p++)
+                    {
+                        <li class="page-item @(p == completedPage ? "active" : string.Empty)">
+                            <a class="page-link"
+                               asp-action="Index"
+                               asp-route-q="@keyword"
+                               asp-route-orderStatus="@selectedOrderStatus"
+                               asp-route-paymentStatus="@selectedPaymentStatus"
+                               asp-route-pendingPage="@pendingPage"
+                               asp-route-completedPage="@p"
+                               asp-route-activeTab="completed">@p</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+    </div>
+</div>
+
+<script>
+    (() => {
+        const params = new URLSearchParams(window.location.search);
+        if (!params.has('activeTab')) return;
+        const activeTab = params.get('activeTab');
+        if (activeTab === 'completed') {
+            const trigger = document.getElementById('completed-tab');
+            if (trigger && window.bootstrap?.Tab) {
+                bootstrap.Tab.getOrCreateInstance(trigger).show();
+            }
+        }
+    })();
+</script>

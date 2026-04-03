@@ -29,6 +29,7 @@ public class PaymentController(
 
         var order = await db.Orders
             .Include(o => o.Customer)
+                .ThenInclude(c => c.Addresses)
             .Include(o => o.Items)
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.OrderNo == txnRef);
@@ -65,7 +66,13 @@ public class PaymentController(
 
             if (!wasPaid)
             {
-                await emailService.SendOrderPaymentSuccessAsync(order);
+                var trackUrl = Url.Action(
+                    "TrackOrder",
+                    "Store",
+                    new { orderNo = order.OrderNo, phoneNumber = order.Customer?.Phone ?? string.Empty },
+                    Request.Scheme,
+                    Request.Host.Value);
+                await emailService.SendOrderPaymentSuccessAsync(order, trackUrl);
             }
         }
         else

@@ -19,6 +19,7 @@
                 <a class="text-white text-decoration-none" asp-area="Admin" asp-controller="Categories" asp-action="Index">Danh mục</a>
                 <a class="text-white text-decoration-none" asp-area="Admin" asp-controller="Orders" asp-action="Index">Đơn hàng</a>
                 <a class="text-white text-decoration-none" asp-area="Admin" asp-controller="Policies" asp-action="Index">Chính sách</a>
+                <a class="text-white text-decoration-none" asp-area="Admin" asp-controller="Account" asp-action="Sessions">Lịch sử đăng nhập</a>
                 <form asp-area="Admin" asp-controller="Account" asp-action="Logout" method="post">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-outline-light">Đăng xuất</button>
@@ -30,5 +31,6 @@
     <main class="container py-4">
         @RenderBody()
     </main>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

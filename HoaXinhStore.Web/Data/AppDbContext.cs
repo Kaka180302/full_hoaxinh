@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<AdminLoginSession> AdminLoginSessions => Set<AdminLoginSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,5 +63,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
             .WithMany(c => c.Addresses)
             .HasForeignKey(a => a.CustomerId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<AdminLoginSession>()
+            .HasKey(s => s.Id);
+
+        modelBuilder.Entity<AdminLoginSession>()
+            .HasIndex(s => s.UserId);
+
+        modelBuilder.Entity<AdminLoginSession>()
+            .HasIndex(s => s.CreatedAtUtc);
     }
 }

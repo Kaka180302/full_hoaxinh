@@ -9,4 +9,5 @@ public class SmtpOptions
     public bool EnableSsl { get; set; } = true;
     public string FromEmail { get; set; } = string.Empty;
     public string FromName { get; set; } = "HoaXinh Store";
+    public string CompanyNotificationEmail { get; set; } = "Infor@hoaxinhgroup.vn";
 }

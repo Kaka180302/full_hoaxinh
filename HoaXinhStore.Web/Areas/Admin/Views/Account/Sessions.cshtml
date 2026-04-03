@@ -1,0 +1,75 @@
+@model List<HoaXinhStore.Web.Entities.Identity.AdminLoginSession>
+@{
+    ViewData["Title"] = "Phiên đăng nhập";
+    var currentSessionId = (ViewBag.CurrentSessionId as string) ?? string.Empty;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Lịch sử đăng nhập quản trị</h2>
+    <form method="post" asp-action="LogoutOtherSessions">
+        @Html.AntiForgeryToken()
+        <button type="submit" class="btn btn-warning">Đăng xuất tất cả phiên khác</button>
+    </form>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-bordered table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Thiết bị / Trình duyệt</th>
+                    <th>IP</th>
+                    <th>Đăng nhập lúc</th>
+                    <th>Hoạt động gần nhất</th>
+                    <th>Trạng thái</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @if (!Model.Any())
+            {
+                <tr>
+                    <td colspan="6" class="text-center text-muted">Chưa có lịch sử đăng nhập.</td>
+                </tr>
+            }
+            else
+            {
+                foreach (var s in Model)
+                {
+                    var isCurrent = string.Equals(currentSessionId, s.Id.ToString(), StringComparison.OrdinalIgnoreCase);
+                    var isActive = s.RevokedAtUtc is null;
+                    <tr>
+                        <td style="max-width:480px;word-break:break-word;">@s.UserAgent</td>
+                        <td>@s.IpAddress</td>
+                        <td>@s.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@(s.LastSeenAtUtc?.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") ?? "-")</td>
+                        <td>
+                            @if (isActive)
+                            {
+                                <span class="badge bg-success">Đang hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Đã đăng xuất</span>
+                            }
+                            @if (isCurrent)
+                            {
+                                <span class="badge bg-primary ms-1">Phiên hiện tại</span>
+                            }
+                        </td>
+                        <td>
+                            @if (isActive)
+                            {
+                                <form method="post" asp-action="LogoutSession" asp-route-id="@s.Id">
+                                    @Html.AntiForgeryToken()
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Đăng xuất phiên này</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

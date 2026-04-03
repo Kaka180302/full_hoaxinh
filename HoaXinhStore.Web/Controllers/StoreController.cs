@@ -15,6 +15,81 @@ public class StoreController(
     IEmailService emailService,
     IPolicyContentService policyContentService) : Controller
 {
+    [HttpGet]
+    public async Task<IActionResult> TrackOrder(string? orderNo = null, string? phoneNumber = null)
+    {
+        var model = new OrderTrackingViewModel
+        {
+            OrderNo = orderNo ?? string.Empty,
+            PhoneNumber = phoneNumber ?? string.Empty
+        };
+
+        if (string.IsNullOrWhiteSpace(orderNo) || string.IsNullOrWhiteSpace(phoneNumber))
+        {
+            return View(model);
+        }
+
+        return View(await BuildTrackOrderResultAsync(model));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> TrackOrder(OrderTrackingViewModel model)
+    {
+        return View(await BuildTrackOrderResultAsync(model));
+    }
+
+    private async Task<OrderTrackingViewModel> BuildTrackOrderResultAsync(OrderTrackingViewModel model)
+    {
+        model.HasSearched = true;
+
+        var orderNo = (model.OrderNo ?? string.Empty).Trim();
+        var phone = (model.PhoneNumber ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(orderNo) || string.IsNullOrWhiteSpace(phone))
+        {
+            model.Found = false;
+            model.Message = "Vui lòng nhập đầy đủ mã đơn và số điện thoại.";
+            return model;
+        }
+
+        var order = await db.Orders
+            .AsNoTracking()
+            .Include(o => o.Customer)
+                .ThenInclude(c => c.Addresses)
+            .FirstOrDefaultAsync(o => o.OrderNo == orderNo && o.Customer != null && o.Customer.Phone == phone);
+
+        if (order is null)
+        {
+            model.Found = false;
+            model.Message = "Không tìm thấy đơn hàng phù hợp. Vui lòng kiểm tra lại thông tin.";
+            return model;
+        }
+
+        ParseShippingNote(order.Note, out var carrier, out var trackingCode, out var shippingNote);
+        var shippingAddress = order.Customer?.Addresses?.FirstOrDefault(a => a.IsDefault)?.AddressLine
+                              ?? order.Customer?.Addresses?.FirstOrDefault()?.AddressLine
+                              ?? "Chưa có địa chỉ";
+
+        model.Found = true;
+        model.Order = new OrderTrackingResult
+        {
+            OrderNo = order.OrderNo,
+            CustomerName = order.Customer?.FullName ?? string.Empty,
+            PhoneNumber = order.Customer?.Phone ?? string.Empty,
+            ShippingAddress = shippingAddress,
+            OrderStatus = ToOrderStatusVi(order.OrderStatus),
+            PaymentStatus = ToPaymentStatusVi(order.PaymentStatus),
+            PaymentMethod = ToPaymentMethodVi(order.PaymentMethod.ToString()),
+            TotalAmount = order.TotalAmount,
+            CreatedAtUtc = order.CreatedAtUtc,
+            TrackingCode = trackingCode,
+            ShippingCarrier = carrier,
+            ShippingNote = shippingNote
+        };
+
+        return model;
+    }
+
     public async Task<IActionResult> Index()
     {
         var categories = await db.Categories
@@ -116,6 +191,34 @@ public class StoreController(
             await db.SaveChangesAsync();
         }
 
+        var shippingAddress = (request.Address ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(shippingAddress))
+        {
+            var defaultAddress = await db.CustomerAddresses
+                .FirstOrDefaultAsync(a => a.CustomerId == customer.Id && a.IsDefault);
+
+            if (defaultAddress is null)
+            {
+                db.CustomerAddresses.Add(new CustomerAddress
+                {
+                    CustomerId = customer.Id,
+                    ReceiverName = request.CustomerName,
+                    Phone = request.PhoneNumber,
+                    AddressLine = shippingAddress,
+                    Ward = string.Empty,
+                    District = string.Empty,
+                    Province = string.Empty,
+                    IsDefault = true
+                });
+            }
+            else
+            {
+                defaultAddress.ReceiverName = request.CustomerName;
+                defaultAddress.Phone = request.PhoneNumber;
+                defaultAddress.AddressLine = shippingAddress;
+            }
+        }
+
         var orderItems = request.Items.Select(i =>
         {
             var qty = Math.Max(1, i.Quantity);
@@ -168,6 +271,24 @@ public class StoreController(
         await db.SaveChangesAsync();
         await tx.CommitAsync();
 
+        var orderForMail = await db.Orders
+            .AsNoTracking()
+            .Include(o => o.Customer)
+                .ThenInclude(c => c.Addresses)
+            .Include(o => o.Items)
+            .FirstOrDefaultAsync(o => o.Id == order.Id);
+
+        if (orderForMail is not null)
+        {
+            var trackUrl = Url.Action(
+                nameof(TrackOrder),
+                "Store",
+                new { orderNo = orderForMail.OrderNo, phoneNumber = orderForMail.Customer?.Phone ?? string.Empty },
+                Request.Scheme,
+                Request.Host.Value);
+            await emailService.SendOrderPlacedAsync(orderForMail, trackUrl);
+        }
+
         if (paymentMethod == PaymentMethod.VNPAY)
         {
             var clientIp = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
@@ -211,6 +332,7 @@ public class StoreController(
 
         var order = await db.Orders
             .Include(o => o.Customer)
+                .ThenInclude(c => c.Addresses)
             .Include(o => o.Items)
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.OrderNo == txnRef);
@@ -251,7 +373,13 @@ public class StoreController(
 
             if (!wasPaid)
             {
-                await emailService.SendOrderPaymentSuccessAsync(order);
+                var trackUrl = Url.Action(
+                    nameof(TrackOrder),
+                    "Store",
+                    new { orderNo = order.OrderNo, phoneNumber = order.Customer?.Phone ?? string.Empty },
+                    Request.Scheme,
+                    Request.Host.Value);
+                await emailService.SendOrderPaymentSuccessAsync(order, trackUrl);
             }
         }
         else
@@ -288,4 +416,59 @@ public class StoreController(
             _ => $"Thanh toán thất bại (mã lỗi: {responseCode})."
         };
     }
+
+    private static void ParseShippingNote(string? rawNote, out string carrier, out string trackingCode, out string note)
+    {
+        carrier = string.Empty;
+        trackingCode = string.Empty;
+        note = string.Empty;
+        if (string.IsNullOrWhiteSpace(rawNote)) return;
+
+        var lines = rawNote.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        foreach (var line in lines)
+        {
+            if (line.StartsWith("Đơn vị vận chuyển:", StringComparison.OrdinalIgnoreCase))
+            {
+                carrier = line.Replace("Đơn vị vận chuyển:", "", StringComparison.OrdinalIgnoreCase).Trim();
+            }
+            else if (line.StartsWith("Mã vận đơn:", StringComparison.OrdinalIgnoreCase))
+            {
+                trackingCode = line.Replace("Mã vận đơn:", "", StringComparison.OrdinalIgnoreCase).Trim();
+            }
+            else if (line.StartsWith("Ghi chú:", StringComparison.OrdinalIgnoreCase))
+            {
+                note = line.Replace("Ghi chú:", "", StringComparison.OrdinalIgnoreCase).Trim();
+            }
+        }
+    }
+
+    private static string ToOrderStatusVi(string? status) => (status ?? string.Empty) switch
+    {
+        "PendingConfirm" => "Chờ xác nhận",
+        "Confirmed" => "Đã xác nhận",
+        "Preparing" => "Đang chuẩn bị hàng",
+        "Shipping" => "Đang giao hàng",
+        "Completed" => "Hoàn thành",
+        "Cancelled" => "Đã hủy",
+        "DeliveryFailed" => "Giao thất bại",
+        "Returned" => "Hoàn hàng",
+        _ => status ?? "-"
+    };
+
+    private static string ToPaymentStatusVi(string? status) => (status ?? string.Empty) switch
+    {
+        "Pending" => "Chưa thanh toán",
+        "AwaitingGateway" => "Chờ cổng thanh toán",
+        "Paid" => "Đã thanh toán",
+        "Failed" => "Thanh toán thất bại",
+        "Cancelled" => "Đã hủy thanh toán",
+        _ => status ?? "-"
+    };
+
+    private static string ToPaymentMethodVi(string? method) => (method ?? string.Empty).ToUpperInvariant() switch
+    {
+        "COD" => "Thanh toán khi nhận hàng (COD)",
+        "VNPAY" => "Thanh toán online (VNPAY)",
+        _ => method ?? "-"
+    };
 }

@@ -4,5 +4,6 @@ namespace HoaXinhStore.Web.Services.Notifications;
 
 public interface IEmailService
 {
-    Task SendOrderPaymentSuccessAsync(Order order);
+    Task SendOrderPlacedAsync(Order order, string? trackingUrl = null);
+    Task SendOrderPaymentSuccessAsync(Order order, string? trackingUrl = null);
 }
