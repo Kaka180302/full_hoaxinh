@@ -31,5 +31,8 @@ public class CheckoutFormViewModel
 public class CheckoutItemInput
 {
     public int ProductId { get; set; }
+    public int? VariantId { get; set; }
     public int Quantity { get; set; }
+    public int UnitFactor { get; set; } = 1;
+    public string UnitName { get; set; } = string.Empty;
 }

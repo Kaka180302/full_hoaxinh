@@ -7,7 +7,7 @@
     <a class="btn btn-primary" asp-action="Create">Thêm danh mục</a>
 </div>
 <table class="table table-bordered table-striped bg-white">
-    <thead><tr><th>ID</th><th>Tên</th><th>Slug</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th>ID</th><th>Tên</th><th>Slug</th><th>Mã SKU</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>
     @foreach (var c in Model)
     {
@@ -15,6 +15,7 @@
             <td>@c.Id</td>
             <td>@c.Name</td>
             <td>@c.Slug</td>
+            <td>@c.SkuPrefix</td>
             <td>@(c.IsActive ? "Hiển thị" : "Ẩn")</td>
             <td><a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-warning">Sửa</a></td>
         </tr>

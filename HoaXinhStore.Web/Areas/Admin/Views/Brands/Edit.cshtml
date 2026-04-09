@@ -1,0 +1,44 @@
+@model HoaXinhStore.Web.ViewModels.Admin.BrandEditViewModel
+@{
+    ViewData["Title"] = Model.Id.HasValue ? "Sửa thương hiệu" : "Thêm thương hiệu";
+}
+
+<h2>@ViewData["Title"]</h2>
+<form method="post" asp-action="Save" enctype="multipart/form-data" class="admin-card p-3">
+    @Html.AntiForgeryToken()
+    <input asp-for="Id" type="hidden" />
+    <input asp-for="ImageUrl" type="hidden" />
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="Name" class="form-label"></label>
+            <input asp-for="Name" class="form-control" />
+        </div>
+        <div class="col-md-6">
+            <label asp-for="CategoryId" class="form-label"></label>
+            <select asp-for="CategoryId" asp-items="Model.CategoryOptions" class="form-select"></select>
+        </div>
+        <div class="col-md-8">
+            <label asp-for="ImageFile" class="form-label"></label>
+            <input asp-for="ImageFile" type="file" class="form-control" />
+        </div>
+        <div class="col-md-4">
+            @{
+                var img = string.IsNullOrWhiteSpace(Model.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : Model.ImageUrl;
+            }
+            <label class="form-label">Ảnh hiện tại</label>
+            <div><img src="@img" alt="Brand" style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;" /></div>
+        </div>
+        <div class="col-12">
+            <div class="form-check">
+                <input asp-for="IsActive" class="form-check-input" />
+                <label asp-for="IsActive" class="form-check-label"></label>
+            </div>
+        </div>
+    </div>
+    <div asp-validation-summary="All" class="text-danger mt-2"></div>
+    <div class="mt-3 d-flex gap-2">
+        <button class="btn btn-primary" type="submit">Lưu</button>
+        <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
+    </div>
+</form>
+

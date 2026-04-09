@@ -39,10 +39,9 @@ public class OrdersController(AppDbContext db) : ControllerBase
 
         foreach (var item in request.Items)
         {
-            var qty = Math.Max(1, item.Quantity);
-            if (products[item.ProductId].StockQuantity < qty)
+            if (!products.ContainsKey(item.ProductId))
             {
-                return BadRequest($"Product '{products[item.ProductId].Name}' is out of stock.");
+                return BadRequest("One or more products are invalid.");
             }
         }
 
@@ -68,14 +67,17 @@ public class OrdersController(AppDbContext db) : ControllerBase
         {
             var qty = Math.Max(1, i.Quantity);
             var product = products[i.ProductId];
-            product.StockQuantity -= qty;
+            product.StockQuantity = Math.Max(0, product.StockQuantity - qty);
 
             return new OrderItem
             {
                 ProductId = product.Id,
+                VariantId = null,
                 ProductNameSnapshot = product.Name,
                 SkuSnapshot = product.Sku,
+                VariantNameSnapshot = string.Empty,
                 Quantity = qty,
+                IsPreOrder = product.StockQuantity == 0,
                 UnitPrice = product.Price,
                 LineTotal = product.Price * qty
             };
@@ -113,6 +115,13 @@ public class OrdersController(AppDbContext db) : ControllerBase
         };
 
         db.Orders.Add(order);
+        db.OrderTimelines.Add(new OrderTimeline
+        {
+            Order = order,
+            Action = "Created",
+            ToStatus = order.OrderStatus,
+            Note = "Tạo đơn từ API"
+        });
         await db.SaveChangesAsync();
         await tx.CommitAsync();
 

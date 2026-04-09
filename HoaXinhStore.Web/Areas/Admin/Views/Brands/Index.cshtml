@@ -1,0 +1,51 @@
+@model List<HoaXinhStore.Web.Entities.CategoryBrand>
+@{
+    ViewData["Title"] = "Quản lý thương hiệu";
+    var q = (string?)ViewBag.Query ?? string.Empty;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2 class="mb-0">Quản lý thương hiệu</h2>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Thêm thương hiệu</a>
+</div>
+
+<form method="get" class="admin-card p-3 mb-3">
+    <div class="row g-2">
+        <div class="col-md-4"><input type="text" name="q" class="form-control" value="@q" placeholder="Tìm thương hiệu..." /></div>
+        <div class="col-md-2"><button class="btn btn-outline-secondary w-100" type="submit">Lọc</button></div>
+    </div>
+</form>
+
+<div class="table-responsive admin-card p-2">
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Ảnh</th>
+                <th>Tên</th>
+                <th>Danh mục</th>
+                <th>Trạng thái</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach (var item in Model)
+        {
+            var img = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : item.ImageUrl;
+            <tr>
+                <td><img src="@img" alt="@item.Name" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" /></td>
+                <td>@item.Name</td>
+                <td>@item.Category?.Name</td>
+                <td>@(item.IsActive ? "Hiển thị" : "Ẩn")</td>
+                <td class="text-end">
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary">Sửa</a>
+                    <form asp-action="ToggleActive" asp-route-id="@item.Id" method="post" class="d-inline">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-warning" type="submit">@(item.IsActive ? "Ẩn" : "Hiện")</button>
+                    </form>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+</div>
+

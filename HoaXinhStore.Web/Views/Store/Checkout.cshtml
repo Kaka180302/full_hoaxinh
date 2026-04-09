@@ -1,0 +1,122 @@
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Thanh toán - HoaXinh Store</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/style.css" />
+    <link rel="stylesheet" href="~/storefront.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body class="nav-only-page">
+    <partial name="Partials/_HeaderNavOnly" model='new HoaXinhStore.Web.ViewModels.StoreIndexViewModel()' />
+
+    <main class="store-checkout-page">
+        <div class="container">
+            <div class="store-breadcrumb">
+                <a asp-controller="Store" asp-action="Index"><i class="fa-solid fa-house"></i> Trang chủ</a>
+                <span>›</span>
+                <a asp-controller="Store" asp-action="Cart"><i class="fa-solid fa-cart-shopping"></i> Giỏ hàng</a>
+                <span>›</span>
+                <strong><i class="fa-solid fa-credit-card"></i> Thanh toán</strong>
+            </div>
+            <h1 class="store-page-title">Thanh toán</h1>
+            <p class="store-page-subtitle">Hoàn tất thông tin để đặt hàng</p>
+
+            <form method="post" asp-controller="Store" asp-action="Checkout" id="checkoutPageForm" class="row g-3">
+                @Html.AntiForgeryToken()
+                <div class="col-lg-8">
+                    <section class="checkout-panel">
+                        <h3><i class="fa-solid fa-truck-fast"></i> Thông tin giao hàng</h3>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label>Họ tên</label>
+                                <input name="CustomerName" type="text" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label>Số điện thoại</label>
+                                <input name="PhoneNumber" type="text" class="form-control" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label>Email</label>
+                                <input name="Email" type="email" class="form-control" required />
+                            </div>
+                            <div class="col-md-12">
+                                <label>Địa chỉ</label>
+                                <input name="Address" type="text" class="form-control" required />
+                            </div>
+                            <div class="col-md-12">
+                                <label>Ghi chú</label>
+                                <textarea class="form-control" rows="4"></textarea>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="checkout-panel">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <h3 class="mb-0"><i class="fa-solid fa-file-invoice"></i> Hóa đơn (tùy chọn)</h3>
+                            <label class="mb-0 d-flex align-items-center gap-2">
+                                <input type="checkbox" name="IsExportInvoice" id="vatToggle" />
+                                <span>Xuất hóa đơn công ty</span>
+                            </label>
+                        </div>
+                        <div class="row g-3 mt-2 d-none" id="vatFields">
+                            <div class="col-md-6"><input name="VatCompanyName" type="text" class="form-control" placeholder="Tên công ty" /></div>
+                            <div class="col-md-6"><input name="VatTaxCode" type="text" class="form-control" placeholder="Mã số thuế" /></div>
+                            <div class="col-md-6"><input name="VatCompanyAddress" type="text" class="form-control" placeholder="Địa chỉ công ty" /></div>
+                            <div class="col-md-6"><input name="VatEmail" type="email" class="form-control" placeholder="Email nhận hóa đơn" /></div>
+                        </div>
+                    </section>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <section class="checkout-panel">
+                                <h3><i class="fa-solid fa-box"></i> Tùy chọn giao hàng</h3>
+                                <label class="payment-choice active">
+                                    <input type="radio" checked />
+                                    <span>Giao hàng tiêu chuẩn (2-4 ngày)</span>
+                                </label>
+                            </section>
+                        </div>
+                        <div class="col-md-6">
+                            <section class="checkout-panel">
+                                <h3><i class="fa-solid fa-wallet"></i> Tùy chọn thanh toán</h3>
+                                <label class="payment-choice active">
+                                    <input type="radio" name="PaymentMethod" value="COD" checked />
+                                    <span>Thanh toán khi nhận hàng (COD)</span>
+                                </label>
+                                <label class="payment-choice">
+                                    <input type="radio" name="PaymentMethod" value="VNPAY" />
+                                    <span>Thanh toán online (QR, ATM, Thẻ quốc tế, Ví điện tử)</span>
+                                </label>
+                            </section>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <aside class="checkout-summary">
+                        <h3><i class="fa-solid fa-clipboard-list"></i> Đơn hàng</h3>
+                        <div id="checkoutItems"></div>
+                        <div class="checkout-total-row"><span><i class="fa-solid fa-receipt"></i> Tạm tính</span><strong id="checkoutSubtotal">0 đ</strong></div>
+                        <div class="checkout-total-row"><span><i class="fa-solid fa-truck"></i> Phí vận chuyển</span><strong>0 đ</strong></div>
+                        <div class="checkout-total-row"><span><i class="fa-solid fa-ticket"></i> Giảm giá voucher</span><strong>0 đ</strong></div>
+                        <div class="checkout-grand"><span>Tổng cộng</span><strong id="checkoutGrandTotal">0 đ</strong></div>
+                        <div id="checkoutPageHiddenItems"></div>
+                        <button type="submit" class="btn-dark w-100">XÁC NHẬN ĐẶT HÀNG</button>
+                        <a asp-controller="Store" asp-action="Cart" class="btn-link-back">QUAY LẠI GIỎ HÀNG</a>
+                    </aside>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <partial name="Partials/_Footer" />
+    <script src="~/script.js"></script>
+    <script src="~/storefront.js"></script>
+</body>
+</html>

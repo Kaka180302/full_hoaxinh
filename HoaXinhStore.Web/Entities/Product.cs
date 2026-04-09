@@ -16,12 +16,19 @@ public class Product
     [Column(TypeName = "decimal(18,2)")]
     public decimal Price { get; set; }
 
+    [Column(TypeName = "decimal(18,2)")]
+    public decimal? SalePrice { get; set; }
+
     public bool IsActive { get; set; } = true;
+    public bool IsPreOrderEnabled { get; set; } = true;
 
     public int StockQuantity { get; set; }
 
     [MaxLength(500)]
     public string ImageUrl { get; set; } = string.Empty;
+
+    public int? BrandId { get; set; }
+    public CategoryBrand? Brand { get; set; }
 
     [MaxLength(1000)]
     public string Summary { get; set; } = string.Empty;
@@ -35,4 +42,5 @@ public class Product
     public byte[] RowVersion { get; set; } = [];
 
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
+    public ICollection<ProductVariant> Variants { get; set; } = new List<ProductVariant>();
 }

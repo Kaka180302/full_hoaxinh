@@ -1,0 +1,37 @@
+@using HoaXinhStore.Web.Entities
+@{
+    ViewData["Title"] = "Chọn danh mục và thương hiệu";
+    var categories = ViewBag.Categories as List<Category> ?? new();
+    var brands = ViewBag.Brands as List<CategoryBrand> ?? new();
+}
+<h2>Tạo mới sản phẩm</h2>
+<div class="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center" style="background: rgba(0,0,0,.35); z-index: 10;">
+    <form method="post" asp-action="BeginCreate" class="bg-white p-4 rounded shadow" style="min-width: 520px; max-width: 92vw;">
+        @Html.AntiForgeryToken()
+        <h4 class="mb-3">Chọn danh mục và thương hiệu</h4>
+        <div class="mb-3">
+            <label class="form-label">Danh mục</label>
+            <select id="categorySelect" name="categoryId" class="form-select" required>
+                <option value="">-- Chọn danh mục --</option>
+                @foreach (var c in categories)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Thương hiệu</label>
+            <select id="brandSelect" name="brandId" class="form-select">
+                <option value="">-- Chọn thương hiệu --</option>
+                @foreach (var b in brands)
+                {
+                    <option value="@b.Id" data-category="@b.CategoryId">@b.Name</option>
+                }
+            </select>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Tạo mới</button>
+            <a asp-action="Index" class="btn btn-secondary">Quay lại</a>
+        </div>
+    </form>
+</div>

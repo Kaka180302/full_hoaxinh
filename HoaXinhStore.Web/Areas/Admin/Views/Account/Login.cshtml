@@ -1,4 +1,4 @@
-﻿@model HoaXinhStore.Web.ViewModels.Admin.LoginViewModel
+@model HoaXinhStore.Web.ViewModels.Admin.LoginViewModel
 @{
     Layout = null;
 }
@@ -8,84 +8,240 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Đăng nhập quản trị</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
     <style>
         * { box-sizing: border-box; }
-        body { margin: 0; min-height: 100vh; font-family: 'Poppins', sans-serif; display: grid; place-items: center; background: linear-gradient(135deg, #55c8d8 0%, #7375e3 45%, #da2fd9 100%); position: relative; overflow: hidden; }
-        .bg-shape { position: absolute; border-radius: 28px; opacity: .16; background: #ffffff; transform: rotate(32deg); }
-        .shape-left { width: 360px; height: 360px; left: -120px; top: 80px; }
-        .shape-right { width: 420px; height: 420px; right: -140px; bottom: 120px; }
-        .login-card { width: min(92vw, 420px); background: #fff; border-radius: 12px; padding: 44px 40px 36px; box-shadow: 0 24px 50px rgba(36, 25, 79, 0.25); position: relative; z-index: 2; }
-        .title { margin: 0 0 26px; text-align: center; font-size: 46px; font-weight: 700; letter-spacing: .5px; color: #1f1f1f; }
-        .field { margin-bottom: 18px; }
-        .field label { display: block; margin: 0 0 8px; color: #666; font-size: 14px; }
-        .input-wrap { display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #d9d9d9; padding-bottom: 8px; }
-        .icon { width: 20px; color: #b2b2b2; font-size: 14px; text-align: center; }
-        .input-wrap input { border: 0; outline: none; width: 100%; font-size: 15px; padding: 6px 0; color: #2c2c2c; font-family: inherit; }
-        .input-wrap input::placeholder { color: #b3b3b3; }
-        .btn-login { width: 100%; border: 0; border-radius: 28px; padding: 13px 18px; font-weight: 600; color: #fff; cursor: pointer; letter-spacing: .6px; background: linear-gradient(90deg, #5fd2d9, #6f8de8, #e02ee0); box-shadow: 0 6px 16px rgba(117, 77, 227, 0.35); }
-        .errors { margin: 10px 0 14px; color: #d11a2a; font-size: 13px; min-height: 20px; }
-        .errors ul { margin: 0; padding-left: 18px; }
-        @@media (max-width: 480px) { .login-card { padding: 34px 24px 26px; } .title { font-size: 40px; } }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: "Roboto", sans-serif;
+            background: #f4f4f4;
+            color: #333;
+        }
+
+        .top-strip {
+            background: #a07847;
+            color: #fff;
+            min-height: 58px;
+            display: flex;
+            align-items: center;
+        }
+
+        .top-strip-inner {
+            width: min(1280px, calc(100% - 40px));
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .top-title {
+            font-size: 32px;
+            font-weight: 600;
+            letter-spacing: .2px;
+            margin: 0;
+        }
+
+        .back-link {
+            color: #fff;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .login-page {
+            min-height: calc(100vh - 58px);
+            display: grid;
+            place-items: center;
+            padding: 24px 16px;
+            background: radial-gradient(circle at top, #fafafa 0%, #f2f2f2 70%);
+        }
+
+        .login-card {
+            width: min(94vw, 430px);
+            background: #fff;
+            border: 1px solid #dedede;
+            border-radius: 4px;
+            padding: 26px 28px 24px;
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 20px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #ececec;
+        }
+
+        .brand img {
+            width: 56px;
+            height: 56px;
+            object-fit: contain;
+        }
+
+        .brand-name {
+            margin: 0;
+            color: #a07847;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .field {
+            margin-bottom: 14px;
+        }
+
+        .field label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 17px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        .field input[type="text"],
+        .field input[type="email"],
+        .field input[type="password"] {
+            width: 100%;
+            height: 44px;
+            border: 1px solid #cfcfcf;
+            border-radius: 2px;
+            padding: 0 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .field input:focus {
+            border-color: #b38753;
+            box-shadow: 0 0 0 2px rgba(179, 135, 83, 0.15);
+        }
+
+        .errors {
+            margin: 6px 0 12px;
+            color: #c62828;
+            font-size: 14px;
+            min-height: 18px;
+        }
+
+        .errors ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .login-actions {
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .remember-wrap {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #555;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .remember-wrap input {
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-login {
+            border: none;
+            height: 42px;
+            padding: 0 24px;
+            border-radius: 8px;
+            background: #a07847;
+            color: #fff;
+            font-size: 20px;
+            font-weight: 500;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .btn-login:hover {
+            background: #8f6c40;
+        }
+
+        @@media (max-width: 768px) {
+            .top-title {
+                font-size: 28px;
+            }
+
+            .btn-login {
+                width: 100%;
+                font-size: 26px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="bg-shape shape-left"></div>
-    <div class="bg-shape shape-right"></div>
+    <header class="top-strip">
+        <div class="top-strip-inner">
+            <h1 class="top-title">Đăng nhập hệ thống</h1>
+            <a asp-area="" asp-controller="Store" asp-action="Index" class="back-link">&lt; Quay về trang chủ</a>
+        </div>
+    </header>
 
-    <div class="login-card">
-        <h1 class="title">Đăng nhập</h1>
-
-        <form method="post">
-            @Html.AntiForgeryToken()
-            <input asp-for="ReturnUrl" type="hidden" />
-
-            <div class="field">
-                <label asp-for="UsernameOrEmail">Tài khoản</label>
-                <div class="input-wrap">
-                    <span class="icon">&#128100;</span>
-                    <input asp-for="UsernameOrEmail" placeholder="Nhập tên đăng nhập hoặc email" autocomplete="username" />
-                </div>
+    <main class="login-page">
+        <div class="login-card">
+            <div class="brand">
+                <img src="~/assets/img/logoHX.png" alt="Hoa Xinh Group" />
+                <p class="brand-name">Hoa Xinh Group</p>
             </div>
 
-            <div class="field">
-                <label asp-for="Password">Mật khẩu</label>
-                <div class="input-wrap">
-                    <span class="icon">&#128274;</span>
-                    <input asp-for="Password" type="password" placeholder="Nhập mật khẩu" autocomplete="current-password" />
-                </div>
-            </div>
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <input asp-for="ReturnUrl" type="hidden" />
 
-            <div class="errors">
-                @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-                {
-                    <div>@Model.ErrorMessage</div>
-                }
-                else if (!ViewData.ModelState.IsValid)
-                {
-                    <ul>
-                        @foreach (var state in ViewData.ModelState.Values)
-                        {
-                            foreach (var err in state.Errors)
+                <div class="field">
+                    <label asp-for="UsernameOrEmail">Tên đăng nhập</label>
+                    <input asp-for="UsernameOrEmail" autocomplete="username" />
+                </div>
+
+                <div class="field">
+                    <label asp-for="Password">Mật khẩu:</label>
+                    <input asp-for="Password" type="password" autocomplete="current-password" />
+                </div>
+
+                <div class="errors">
+                    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                    {
+                        <div>@Model.ErrorMessage</div>
+                    }
+                    else if (!ViewData.ModelState.IsValid)
+                    {
+                        <ul>
+                            @foreach (var state in ViewData.ModelState.Values)
                             {
-                                <li>@err.ErrorMessage</li>
+                                foreach (var err in state.Errors)
+                                {
+                                    <li>@err.ErrorMessage</li>
+                                }
                             }
-                        }
-                    </ul>
-                }
-            </div>
+                        </ul>
+                    }
+                </div>
 
-            <div class="field" style="margin-top:-4px;margin-bottom:16px;">
-                <label style="display:flex;align-items:center;gap:8px;color:#666;font-size:14px;cursor:pointer;">
-                    <input asp-for="RememberMe" type="checkbox" style="width:16px;height:16px;cursor:pointer;" />
-                    <span>Ghi nhớ đăng nhập trên thiết bị này</span>
-                </label>
-            </div>
-
-            <button class="btn-login" type="submit">ĐĂNG NHẬP</button>
-        </form>
-    </div>
+                <div class="login-actions">
+                    <label class="remember-wrap">
+                        <input asp-for="RememberMe" type="checkbox" />
+                        <span>Nhớ thông tin đăng nhập</span>
+                    </label>
+                    <button class="btn-login" type="submit">Đăng nhập</button>
+                </div>
+            </form>
+        </div>
+    </main>
 </body>
 </html>

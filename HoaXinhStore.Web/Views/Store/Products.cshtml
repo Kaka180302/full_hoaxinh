@@ -1,0 +1,191 @@
+@model HoaXinhStore.Web.ViewModels.ProductListPageViewModel
+@{
+    Layout = null;
+    var vi = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sản phẩm - HoaXinh Store</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/style.css" />
+    <link rel="stylesheet" href="~/storefront.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body class="nav-only-page">
+    <partial name="Partials/_HeaderNavOnly" model='new HoaXinhStore.Web.ViewModels.StoreIndexViewModel()' />
+
+    <main class="products-luxe-page @( (!string.IsNullOrWhiteSpace(Model.FilterLabel) || !string.IsNullOrWhiteSpace(Model.Query) || Model.Category != "all" || Model.MinPrice.HasValue || Model.MaxPrice.HasValue) ? "is-filtered" : "" )">
+        <div class="container py-3">
+            <h1 class="products-luxe-title">Sản phẩm</h1>
+            @if (!string.IsNullOrWhiteSpace(Model.FilterLabel) || !string.IsNullOrWhiteSpace(Model.Query) || Model.Category != "all" || Model.MinPrice.HasValue || Model.MaxPrice.HasValue)
+            {
+                <div class="products-filter-highlight">Đang lọc: @(!string.IsNullOrWhiteSpace(Model.FilterLabel) ? Model.FilterLabel : "Theo điều kiện đã chọn")</div>
+            }
+
+            <form method="get" class="products-luxe-toolbar">
+                <input type="hidden" name="filterLabel" value="@Model.FilterLabel" />
+                <div class="products-luxe-search">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" name="q" value="@Model.Query" placeholder="Tìm kiếm ..." />
+                </div>
+                <select name="category">
+                    <option value="all">Tất cả danh mục</option>
+                    @foreach (var cat in Model.Categories)
+                    {
+                        if (Model.Category == cat.Slug)
+                        {
+                            <option value="@cat.Slug" selected>@cat.Name</option>
+                        }
+                        else
+                        {
+                            <option value="@cat.Slug">@cat.Name</option>
+                        }
+                    }
+                </select>
+                <select name="brand">
+                    <option value="all">Tất cả thương hiệu</option>
+                    @foreach (var b in Model.Brands)
+                    {
+                        if (Model.Brand == b)
+                        {
+                            <option value="@b" selected>@b</option>
+                        }
+                        else
+                        {
+                            <option value="@b">@b</option>
+                        }
+                    }
+                </select>
+                <label class="d-flex align-items-center gap-2 px-2"><input type="checkbox" name="inStockOnly" value="true" @(Model.InStockOnly ? "checked" : "") /> Còn hàng</label>
+                <select name="sort">
+                    @if (Model.Sort == "newest") { <option value="newest" selected>Mới nhất</option> } else { <option value="newest">Mới nhất</option> }
+                    @if (Model.Sort == "price-asc") { <option value="price-asc" selected>Giá tăng dần</option> } else { <option value="price-asc">Giá tăng dần</option> }
+                    @if (Model.Sort == "price-desc") { <option value="price-desc" selected>Giá giảm dần</option> } else { <option value="price-desc">Giá giảm dần</option> }
+                    @if (Model.Sort == "name-asc") { <option value="name-asc" selected>Tên A-Z</option> } else { <option value="name-asc">Tên A-Z</option> }
+                    @if (Model.Sort == "name-desc") { <option value="name-desc" selected>Tên Z-A</option> } else { <option value="name-desc">Tên Z-A</option> }
+                </select>
+                <input type="number" step="1000" min="0" name="minPrice" value="@(Model.MinPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Giá từ" />
+                <input type="number" step="1000" min="0" name="maxPrice" value="@(Model.MaxPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Giá đến" />
+                <button type="submit">Lọc</button>
+            </form>
+
+            <div class="products-luxe-body">
+                <aside class="products-luxe-sidebar">
+                    <section class="sidebar-box">
+                        <h3>Danh mục</h3>
+                        <ul>
+                            @foreach (var cat in Model.Categories)
+                            {
+                                <li><a asp-controller="Store" asp-action="Products" asp-route-category="@cat.Slug" class="no_link">@cat.Name</a></li>
+                            }
+                        </ul>
+                    </section>
+                    <section class="sidebar-box">
+                        <h3>Khoảng giá</h3>
+                        <form method="get" class="d-grid gap-2">
+                            <input type="hidden" name="q" value="@Model.Query" />
+                            <input type="hidden" name="category" value="@Model.Category" />
+                            <input type="hidden" name="sort" value="@Model.Sort" />
+                            <input type="hidden" name="brand" value="@Model.Brand" />
+                            <input type="hidden" name="inStockOnly" value="@(Model.InStockOnly ? "true" : "false")" />
+                            <input type="hidden" name="filterLabel" value="@Model.FilterLabel" />
+                            <input class="form-control" type="number" min="0" step="1000" name="minPrice" value="@(Model.MinPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Từ giá" />
+                            <input class="form-control" type="number" min="0" step="1000" name="maxPrice" value="@(Model.MaxPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Đến giá" />
+                            <button class="apply-btn" type="submit">Áp dụng</button>
+                        </form>
+                    </section>
+                    <section class="sidebar-box">
+                        <h3>Thương hiệu</h3>
+                        <ul class="muted-list">
+                            @foreach (var b in Model.Brands.Take(8))
+                            {
+                                <li><a asp-controller="Store" asp-action="Products" asp-route-brand="@b" asp-route-category="@Model.Category" asp-route-q="@Model.Query">@b</a></li>
+                            }
+                        </ul>
+                    </section>
+                </aside>
+
+                <section class="products-luxe-content">
+
+                    <div class="products-luxe-grid">
+                        @if (!Model.Products.Any())
+                        {
+                            <p class="google-sheet-status">Không có sản phẩm phù hợp.</p>
+                        }
+                        else
+                        {
+                            foreach (var p in Model.Products)
+                            {
+                                var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
+                                var sale = p.SalePrice ?? p.Price;
+                                <article class="luxe-card" data-category="@p.CategorySlug">
+                                    <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.Id" class="luxe-card__img">
+                                        <img src="@image" alt="@p.Name" />
+                                    </a>
+                                    <button type="button" class="luxe-fav" aria-label="Yêu thích"><i class="fa-regular fa-heart"></i></button>
+                                    <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.Id" class="no_link">@p.Name</a></h3>
+                                    <div class="luxe-price">
+                                        <strong>@sale.ToString("N0", vi) đ</strong>
+                                        @if (p.SalePrice.HasValue && p.SalePrice.Value < p.Price)
+                                        {
+                                            <span>@p.Price.ToString("N0", vi) đ</span>
+                                        }
+                                    </div>
+                                    @if (p.StockQuantity <= 0)
+                                    {
+                                        <button type="button"
+                                                class="luxe-add luxe-add-preorder"
+                                                data-preorder-popup
+                                                data-id="@p.Id"
+                                                data-name="@p.Name">Đặt trước</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="luxe-add"
+                                                data-add-cart
+                                                data-id="@p.Id"
+                                                data-name="@p.Name"
+                                                data-price="@p.Price"
+                                                data-sale-price="@p.SalePrice"
+                                                data-stock="@Math.Max(0, p.StockQuantity)"
+                                                data-image="@image"><i class="fa-solid fa-cart-shopping"></i></button>
+                                    }
+                                </article>
+                            }
+                        }
+                    </div>
+                </section>
+            </div>
+        </div>
+    </main>
+
+    <partial name="Partials/_Footer" />
+    <script src="~/script.js"></script>
+    <script src="~/storefront.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const tabButtons = document.querySelectorAll(".products-luxe-tabs button[data-filter]");
+            const cards = document.querySelectorAll(".products-luxe-grid .luxe-card");
+            if (!tabButtons.length || !cards.length) return;
+
+            tabButtons.forEach(function (button) {
+                button.addEventListener("click", function () {
+                    const filter = button.getAttribute("data-filter");
+                    tabButtons.forEach(function (btn) { btn.classList.remove("active"); });
+                    button.classList.add("active");
+
+                    cards.forEach(function (card) {
+                        const category = card.getAttribute("data-category");
+                        const visible = filter === "all" || filter === category;
+                        card.style.display = visible ? "" : "none";
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>

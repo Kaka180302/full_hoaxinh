@@ -13,6 +13,13 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
     public DbSet<CustomerAddress> CustomerAddresses => Set<CustomerAddress>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<PreOrderRequest> PreOrderRequests => Set<PreOrderRequest>();
+    public DbSet<CategoryBrand> CategoryBrands => Set<CategoryBrand>();
+    public DbSet<ProductVariant> ProductVariants => Set<ProductVariant>();
+    public DbSet<VariantUnitPreset> VariantUnitPresets => Set<VariantUnitPreset>();
+    public DbSet<ProductAttribute> ProductAttributes => Set<ProductAttribute>();
+    public DbSet<ProductAttributeValue> ProductAttributeValues => Set<ProductAttributeValue>();
+    public DbSet<OrderTimeline> OrderTimelines => Set<OrderTimeline>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<AdminLoginSession> AdminLoginSessions => Set<AdminLoginSession>();
 
@@ -27,6 +34,9 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
         modelBuilder.Entity<Order>()
             .HasIndex(o => o.OrderNo)
             .IsUnique();
+
+        modelBuilder.Entity<PreOrderRequest>()
+            .HasIndex(x => x.CreatedAtUtc);
 
         modelBuilder.Entity<Order>()
             .HasOne(o => o.Customer)
@@ -46,6 +56,12 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
             .HasForeignKey(p => p.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        modelBuilder.Entity<Order>()
+            .HasMany(o => o.Timelines)
+            .WithOne(t => t.Order)
+            .HasForeignKey(t => t.OrderId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         modelBuilder.Entity<Product>()
             .HasOne(p => p.Category)
             .WithMany(c => c.Products)
@@ -56,6 +72,50 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : IdentityDbCo
             .HasOne(i => i.Product)
             .WithMany(p => p.OrderItems)
             .HasForeignKey(i => i.ProductId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<OrderItem>()
+            .HasOne<ProductVariant>()
+            .WithMany()
+            .HasForeignKey(i => i.VariantId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ProductVariant>()
+            .HasOne(v => v.Product)
+            .WithMany(p => p.Variants)
+            .HasForeignKey(v => v.ProductId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ProductVariant>()
+            .HasIndex(v => v.Sku)
+            .IsUnique();
+
+        modelBuilder.Entity<ProductAttribute>()
+            .HasIndex(a => a.Name)
+            .IsUnique();
+
+        modelBuilder.Entity<ProductAttributeValue>()
+            .HasOne(v => v.ProductAttribute)
+            .WithMany(a => a.Values)
+            .HasForeignKey(v => v.ProductAttributeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Product>()
+            .HasOne(p => p.Brand)
+            .WithMany()
+            .HasForeignKey(p => p.BrandId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CategoryBrand>()
+            .HasOne(b => b.Category)
+            .WithMany(c => c.Brands)
+            .HasForeignKey(b => b.CategoryId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<PreOrderRequest>()
+            .HasOne(x => x.Product)
+            .WithMany()
+            .HasForeignKey(x => x.ProductId)
             .OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<CustomerAddress>()

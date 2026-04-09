@@ -1,0 +1,595 @@
+@model HoaXinhStore.Web.ViewModels.ProductDetailPageViewModel
+@{
+    Layout = null;
+    var p = Model.Product;
+    var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
+    var sale = p.SalePrice ?? p.Price;
+    var vi = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+    var thumbs = new List<string> { image };
+    thumbs.AddRange((p.GalleryImages ?? []).Where(x => !string.IsNullOrWhiteSpace(x)));
+    thumbs = thumbs.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    var descHtml = string.IsNullOrWhiteSpace(p.Description) ? "<p>Chưa có mô tả</p>" : p.Description;
+    var guideHtml = string.IsNullOrWhiteSpace(p.UsageGuide)
+        ? (string.IsNullOrWhiteSpace(p.Summary) ? "Chưa có mô tả" : p.Summary)
+        : p.UsageGuide;
+    var unitOptionsJson = System.Text.Json.JsonSerializer.Serialize(
+        p.UnitOptions.Select(u => new { name = u.Name, factor = u.Factor }).ToList());
+    var variantsJson = System.Text.Json.JsonSerializer.Serialize(
+        p.Variants.Select(v => new { id = v.Id, name = v.Name, sku = v.Sku, price = v.Price, salePrice = v.SalePrice, stock = v.StockQuantity }).ToList());
+    var attributeCatalogJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.AttributeCatalog ?? new object());
+    var isOutOfStock = p.StockQuantity <= 0;
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@p.Name - HoaXinh Store</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/assets/style.css" />
+    <link rel="stylesheet" href="~/storefront.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+</head>
+<body class="nav-only-page">
+    <partial name="Partials/_HeaderNavOnly" model='new HoaXinhStore.Web.ViewModels.StoreIndexViewModel()' />
+    <main class="product-luxe-page">
+        <div class="container py-4 py-lg-5">
+            <div class="product-luxe-hero">
+                <section class="product-luxe-gallery">
+                    <div class="product-luxe-main-img">
+                        <img id="productMainImage" src="@image" alt="@p.Name" />
+                    </div>
+                    <div class="product-luxe-thumbs">
+                        @if (thumbs.Count > 4)
+                        {
+                            <button type="button" class="product-thumb-nav" id="thumbPrevBtn" aria-label="Ảnh trước"><i class="fa-solid fa-chevron-left"></i></button>
+                        }
+                        <div class="product-thumb-track" id="productThumbTrack">
+                            @for (var i = 0; i < thumbs.Count; i++)
+                            {
+                                var thumb = thumbs[i];
+                                <button type="button" class="@(i == 0 ? "active" : "")" data-image="@thumb"><img src="@thumb" alt="@p.Name" /></button>
+                            }
+                        </div>
+                        @if (thumbs.Count > 4)
+                        {
+                            <button type="button" class="product-thumb-nav" id="thumbNextBtn" aria-label="Ảnh sau"><i class="fa-solid fa-chevron-right"></i></button>
+                        }
+                    </div>
+                </section>
+
+                <section class="product-luxe-info">
+                    <h1>@p.Name</h1>
+
+                    <div class="product-luxe-price">
+                        <strong id="detailActivePrice">@sale.ToString("N0", vi) đ</strong>
+                        @if (p.SalePrice.HasValue && p.SalePrice.Value < p.Price)
+                        {
+                            <span class="old" id="detailOldPrice">@p.Price.ToString("N0", vi) đ</span>
+                        }
+                        else
+                        {
+                            <span class="old d-none" id="detailOldPrice"></span>
+                        }
+                    </div>
+
+                    <div class="product-luxe-stock-meta">
+                        <div>Số lượng còn lại: <strong>@Math.Max(0, p.StockQuantity)</strong></div>
+                        <div>
+                            Trạng thái:
+                            @if (isOutOfStock)
+                            {
+                                <span class="badge bg-secondary" id="detailStockBadge">Tạm hết hàng</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success" id="detailStockBadge">Còn hàng</span>
+                            }
+                        </div>
+                    </div>
+
+                    <ul class="product-luxe-highlights">
+                        <li>Hàng nhập khẩu chính hãng từ Hàn Quốc</li>
+                        <li>Cam kết bảo hành chính hãng 12 tháng</li>
+                        <li>Đổi trả dễ dàng trong 7 ngày miễn phí</li>
+                    </ul>
+
+                    <div class="product-luxe-qty">
+                        <label for="productQtyInput">Qty</label>
+                        <div class="qty-wrap">
+                            <button type="button" id="productQtyMinus">-</button>
+                            <input id="productQtyInput" type="number" min="1" value="1" />
+                            <button type="button" id="productQtyPlus">+</button>
+                        </div>
+                    </div>
+                    <div id="variantAttributeWrap" class="product-variant-attrs"></div>
+                    @if (p.UnitOptions.Any())
+                    {
+                        <div class="product-luxe-qty">
+                            <label for="productUnitSelect">Phân loại đơn vị</label>
+                            <select id="productUnitSelect" class="form-select">
+                                <option value="1" data-name="">Đơn vị lẻ</option>
+                                @foreach (var unit in p.UnitOptions)
+                                {
+                                    <option value="@unit.Factor" data-name="@unit.Name">@unit.Name (@unit.Factor sản phẩm)</option>
+                                }
+                            </select>
+                        </div>
+                    }
+
+                    <div class="product-luxe-actions">
+                        <button type="button"
+                                class="add"
+                                id="detailAddToCartBtn"
+                                data-id="@p.Id"
+                                data-name="@p.Name"
+                                data-price="@p.Price"
+                                data-sale-price="@p.SalePrice"
+                                data-unit-factor="1"
+                                data-unit-name=""
+                                data-unit-options='@unitOptionsJson'
+                                data-variants='@variantsJson'
+                                data-attribute-catalog='@attributeCatalogJson'
+                                data-stock="@Math.Max(0, p.StockQuantity)"
+                                data-image="@image">Thêm vào giỏ</button>
+                        @if (isOutOfStock)
+                        {
+                            <button type="button"
+                                    class="buy"
+                                    id="detailBuyNowBtn"
+                                    data-preorder-popup
+                                    data-id="@p.Id"
+                                    data-name="@p.Name">Đặt trước</button>
+                        }
+                        else
+                        {
+                            <button type="button" class="buy" id="detailBuyNowBtn">Mua ngay</button>
+                        }
+                    </div>
+
+                    <div class="product-luxe-guarantee">
+                        <div><i class="fa-regular fa-shield"></i> Hàng nhập khẩu chính hãng</div>
+                        <div><i class="fa-regular fa-circle-check"></i> Bảo hành chính hãng 12 tháng</div>
+                    </div>
+                </section>
+            </div>
+
+            <section class="product-luxe-tabs-wrap">
+                <div class="product-luxe-tabs">
+                    <button type="button" class="active" data-tab="desc">Mô tả sản phẩm</button>
+                    <button type="button" data-tab="spec">Thông số kỹ thuật</button>
+                    <button type="button" data-tab="guide">Hướng dẫn sử dụng</button>
+                </div>
+                <div class="product-luxe-tab-content active" data-pane="desc">
+                    <h2>Tính năng nổi bật</h2>
+                    <div>@Html.Raw(descHtml)</div>
+                </div>
+                <div class="product-luxe-tab-content" data-pane="spec">
+                    <h2>Thông số kỹ thuật</h2>
+                    @if (string.IsNullOrWhiteSpace(p.TechnicalSpecs))
+                    {
+                        <ul>
+                            <li>Danh mục: @p.CategoryName</li>
+                            <li>Tồn kho: @p.StockQuantity sản phẩm</li>
+                        </ul>
+                    }
+                    else
+                    {
+                        <div>@Html.Raw(p.TechnicalSpecs)</div>
+                    }
+                </div>
+                <div class="product-luxe-tab-content" data-pane="guide">
+                    <h2>Hướng dẫn sử dụng</h2>
+                    <div>@Html.Raw(guideHtml)</div>
+                </div>
+            </section>
+
+            @if (Model.RelatedProducts.Any())
+            {
+                <section class="product-luxe-related">
+                    <h2>Sản phẩm liên quan</h2>
+                    <div class="product-luxe-related-grid">
+                        @foreach (var item in Model.RelatedProducts)
+                        {
+                            var relatedImage = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : item.ImageUrl;
+                            var relatedSale = item.SalePrice ?? item.Price;
+                            var relatedUnitOptionsJson = System.Text.Json.JsonSerializer.Serialize(
+                                item.UnitOptions.Select(u => new { name = u.Name, factor = u.Factor }).ToList());
+                            <article class="luxe-card">
+                                <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@item.Id" class="luxe-card__img">
+                                    <img src="@relatedImage" alt="@item.Name" />
+                                </a>
+                                <button type="button" class="luxe-fav"><i class="fa-regular fa-heart"></i></button>
+                                <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@item.Id" class="no_link">@item.Name</a></h3>
+                                <div class="luxe-price">
+                                    <strong>@relatedSale.ToString("N0", vi) đ</strong>
+                                    @if (item.SalePrice.HasValue && item.SalePrice.Value < item.Price)
+                                    {
+                                        <span>@item.Price.ToString("N0", vi) đ</span>
+                                    }
+                                </div>
+                                @if (item.StockQuantity <= 0)
+                                {
+                                    <button type="button" class="luxe-add luxe-add-preorder" data-preorder-popup data-id="@item.Id" data-name="@item.Name">Đặt trước</button>
+                                }
+                                else
+                                {
+                                    <button type="button"
+                                            class="luxe-add"
+                                            data-add-cart
+                                            data-id="@item.Id"
+                                            data-name="@item.Name"
+                                            data-price="@item.Price"
+                                            data-sale-price="@item.SalePrice"
+                                            data-stock="@Math.Max(0, item.StockQuantity)"
+                                            data-unit-options='@relatedUnitOptionsJson'
+                                            data-image="@relatedImage"><i class="fa-solid fa-cart-shopping"></i></button>
+                                }
+                            </article>
+                        }
+                    </div>
+                </section>
+            }
+        </div>
+    </main>
+    <partial name="Partials/_Footer" />
+    <script src="~/script.js"></script>
+    <script src="~/storefront.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const mainImage = document.getElementById("productMainImage");
+            const thumbButtons = document.querySelectorAll(".product-luxe-thumbs button[data-image]");
+            const thumbTrack = document.getElementById("productThumbTrack");
+            const thumbPrevBtn = document.getElementById("thumbPrevBtn");
+            const thumbNextBtn = document.getElementById("thumbNextBtn");
+            let thumbStart = 0;
+            const visibleThumbs = 4;
+
+            const syncThumbWindow = function () {
+                if (!thumbTrack) return;
+                const btns = Array.from(thumbTrack.querySelectorAll("button[data-image]"));
+                btns.forEach(function (btn, idx) {
+                    btn.style.display = idx >= thumbStart && idx < (thumbStart + visibleThumbs) ? "" : "none";
+                });
+            };
+
+            thumbPrevBtn?.addEventListener("click", function () {
+                const count = thumbTrack ? thumbTrack.querySelectorAll("button[data-image]").length : 0;
+                if (count <= visibleThumbs) return;
+                thumbStart = Math.max(0, thumbStart - 1);
+                syncThumbWindow();
+            });
+
+            thumbNextBtn?.addEventListener("click", function () {
+                const count = thumbTrack ? thumbTrack.querySelectorAll("button[data-image]").length : 0;
+                if (count <= visibleThumbs) return;
+                thumbStart = Math.min(count - visibleThumbs, thumbStart + 1);
+                syncThumbWindow();
+            });
+            thumbButtons.forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    const img = btn.getAttribute("data-image");
+                    if (mainImage && img) mainImage.src = img;
+                    thumbButtons.forEach(function (item) { item.classList.remove("active"); });
+                    btn.classList.add("active");
+                });
+            });
+
+            const qtyInput = document.getElementById("productQtyInput");
+            const btnMinus = document.getElementById("productQtyMinus");
+            const btnPlus = document.getElementById("productQtyPlus");
+            const addBtn = document.getElementById("detailAddToCartBtn");
+            const buyBtn = document.getElementById("detailBuyNowBtn");
+            const unitSelect = document.getElementById("productUnitSelect");
+            const variantWrap = document.getElementById("variantAttributeWrap");
+            const priceBox = document.getElementById("detailActivePrice");
+            const oldPriceBox = document.getElementById("detailOldPrice");
+            const stockBox = document.querySelector(".product-luxe-stock-meta strong");
+            const stockBadge = document.getElementById("detailStockBadge");
+
+            const variants = (() => {
+                const raw = addBtn?.getAttribute("data-variants") || "[]";
+                try { return JSON.parse(raw); } catch { return []; }
+            })();
+            const attrCatalog = (() => {
+                const raw = addBtn?.getAttribute("data-attribute-catalog") || "[]";
+                try { return JSON.parse(raw); } catch { return []; }
+            })();
+            const valueToAttr = new Map();
+            attrCatalog.forEach(a => (a.values || []).forEach(v => valueToAttr.set(String(v).trim().toLowerCase(), String(a.name || "").trim())));
+            const variantExt = variants.map(v => {
+                const parts = String(v.name || "").split(" - ").map(x => x.trim()).filter(Boolean);
+                const attrs = {};
+                parts.forEach(part => {
+                    const attrName = valueToAttr.get(part.toLowerCase()) || "Thuộc tính";
+                    attrs[attrName] = part;
+                });
+                return { ...v, attrs };
+            });
+            const attributeGroups = (() => {
+                const map = new Map();
+                variantExt.forEach(v => {
+                    Object.entries(v.attrs || {}).forEach(([key, val]) => {
+                        if (!map.has(key)) map.set(key, new Set());
+                        map.get(key).add(val);
+                    });
+                });
+                return [...map.entries()].map(([name, values]) => ({ name, values: [...values] }));
+            })();
+            const selected = {};
+
+            const formatMoney = (value) => Number(value || 0).toLocaleString("vi-VN") + " đ";
+            const setCtaByStock = (stock) => {
+                const out = Number(stock || 0) <= 0;
+                if (stockBadge) {
+                    stockBadge.textContent = out ? "Tạm hết hàng" : "Còn hàng";
+                    stockBadge.className = out ? "badge bg-secondary" : "badge bg-success";
+                }
+                if (!addBtn || !buyBtn) return;
+                addBtn.disabled = out;
+                addBtn.classList.toggle("is-disabled", out);
+                if (out) {
+                    buyBtn.textContent = "Đặt trước";
+                    buyBtn.setAttribute("data-preorder-popup", "");
+                } else {
+                    buyBtn.textContent = "Mua ngay";
+                    buyBtn.removeAttribute("data-preorder-popup");
+                }
+            };
+            const findMatchingVariant = () => {
+                const keys = Object.keys(selected);
+                if (!keys.length) return variantExt[0] || null;
+                const match = variantExt.find(v => keys.every(k => (v.attrs?.[k] || "") === selected[k]));
+                return match || variantExt[0] || null;
+            };
+            const applyVariant = (variant) => {
+                if (!variant || !addBtn) return;
+                const variantId = Number(variant.id || 0);
+                const variantSku = String(variant.sku || "");
+                const variantName = String(variant.name || "");
+                const variantPrice = Number(variant.price || 0);
+                const variantSale = variant.salePrice != null && variant.salePrice !== "" ? Number(variant.salePrice) : null;
+                const variantStock = Math.max(0, Number(variant.stock || 0));
+                const activePrice = variantSale ?? variantPrice;
+                addBtn.setAttribute("data-variant-id", String(variantId));
+                addBtn.setAttribute("data-variant-sku", variantSku);
+                addBtn.setAttribute("data-variant-name", variantName);
+                addBtn.setAttribute("data-price", String(variantPrice));
+                addBtn.setAttribute("data-sale-price", variantSale != null ? String(variantSale) : "");
+                addBtn.setAttribute("data-stock", String(variantStock));
+                if (priceBox) priceBox.textContent = formatMoney(activePrice);
+                if (oldPriceBox) {
+                    if (variantSale != null && variantSale < variantPrice) {
+                        oldPriceBox.classList.remove("d-none");
+                        oldPriceBox.textContent = formatMoney(variantPrice);
+                    } else {
+                        oldPriceBox.classList.add("d-none");
+                        oldPriceBox.textContent = "";
+                    }
+                }
+                if (stockBox) stockBox.textContent = String(variantStock);
+                setCtaByStock(variantStock);
+            };
+            const renderAttributeGroups = () => {
+                if (!variantWrap) return;
+                if (!attributeGroups.length) {
+                    variantWrap.innerHTML = "";
+                    setCtaByStock(Number(addBtn?.getAttribute("data-stock") || 0));
+                    return;
+                }
+                variantWrap.innerHTML = attributeGroups.map(group => `
+                    <div class="product-variant-group" data-attr="${group.name}">
+                        <div class="product-variant-label">${group.name}</div>
+                        <div class="product-variant-values">
+                            ${group.values.map(val => `<button type="button" class="variant-chip" data-attr="${group.name}" data-value="${val}">${val}</button>`).join("")}
+                        </div>
+                    </div>
+                `).join("");
+                attributeGroups.forEach(g => { selected[g.name] = g.values[0]; });
+                Object.entries(selected).forEach(([k, v]) => {
+                    const chip = variantWrap.querySelector(`.variant-chip[data-attr="${k}"][data-value="${v}"]`);
+                    chip?.classList.add("active");
+                });
+                applyVariant(findMatchingVariant());
+            };
+
+            const syncUnitToButtons = function () {
+                if (!unitSelect || !addBtn) return;
+                const selected = unitSelect.options[unitSelect.selectedIndex];
+                const factor = selected ? Number(selected.value || 1) : 1;
+                const name = selected ? (selected.getAttribute("data-name") || "") : "";
+                addBtn.setAttribute("data-unit-factor", String(Math.max(1, factor)));
+                addBtn.setAttribute("data-unit-name", name);
+            };
+
+            setCtaByStock(Number(addBtn?.getAttribute("data-stock") || 0));
+
+            const getQty = function () {
+                if (!qtyInput) return 1;
+                return Math.max(1, Number(qtyInput.value || 1));
+            };
+
+            btnMinus?.addEventListener("click", function () {
+                qtyInput.value = Math.max(1, getQty() - 1);
+            });
+
+            btnPlus?.addEventListener("click", function () {
+                qtyInput.value = getQty() + 1;
+            });
+
+            unitSelect?.addEventListener("change", syncUnitToButtons);
+            syncUnitToButtons();
+
+            variantWrap?.addEventListener("click", function (e) {
+                const chip = e.target.closest(".variant-chip");
+                if (!chip) return;
+                const attr = chip.getAttribute("data-attr") || "";
+                const val = chip.getAttribute("data-value") || "";
+                if (!attr || !val) return;
+                selected[attr] = val;
+                variantWrap.querySelectorAll(`.variant-chip[data-attr="${attr}"]`).forEach(x => x.classList.remove("active"));
+                chip.classList.add("active");
+                applyVariant(findMatchingVariant());
+            });
+            renderAttributeGroups();
+
+            const addDetailProduct = function (qty) {
+                const cartKey = "cart";
+                const raw = localStorage.getItem(cartKey);
+                const cart = raw ? JSON.parse(raw) : [];
+                const productId = Number(addBtn?.getAttribute("data-id") || 0);
+                if (!productId) return;
+
+                const saleRaw = addBtn?.getAttribute("data-sale-price");
+                const salePrice = saleRaw ? Number(saleRaw) : null;
+                const price = Number(addBtn?.getAttribute("data-price") || 0);
+                const variantId = Number(addBtn?.getAttribute("data-variant-id") || 0);
+                const variantName = addBtn?.getAttribute("data-variant-name") || "";
+                const effectivePrice = salePrice ?? price;
+                const unitFactor = Math.max(1, Number(addBtn?.getAttribute("data-unit-factor") || 1));
+                const unitName = addBtn?.getAttribute("data-unit-name") || "";
+                const unitOptionsRaw = addBtn?.getAttribute("data-unit-options") || "[]";
+                let unitOptions = [];
+                try {
+                    unitOptions = JSON.parse(unitOptionsRaw);
+                } catch {
+                    unitOptions = [];
+                }
+
+                const maxStock = Math.max(0, Number(addBtn?.getAttribute("data-stock") || 0));
+                const existing = cart.find(function (x) { return Number(x.id) === productId && Number(x.variantId || 0) === variantId; });
+                const currentQty = existing ? Math.max(1, Number(existing.qty || 1)) : 0;
+                const nextQty = currentQty + Math.max(1, Number(qty || 1));
+                if (maxStock > 0 && nextQty > maxStock) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'hx-popup-backdrop';
+                    wrap.style.display = 'flex';
+                    wrap.innerHTML = `<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Thông báo</h4><p>Sản phẩm hiện chỉ còn ${maxStock} trong kho.</p><button type="button" class="mini-cart-view-btn">Đã hiểu</button></div></div>`;
+                    document.body.appendChild(wrap);
+                    const close = () => wrap.remove();
+                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
+                    wrap.querySelector('.mini-cart-view-btn')?.addEventListener('click', close);
+                    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
+                    return;
+                }
+
+                if (existing) {
+                    existing.qty = Math.max(1, Number(existing.qty || 1) + qty);
+                    existing.price = effectivePrice;
+                    existing.originalPrice = price;
+                    existing.salePrice = salePrice;
+                    existing.name = addBtn?.getAttribute("data-name") || existing.name || "";
+                    existing.image = addBtn?.getAttribute("data-image") || existing.image || "";
+                    existing.unitFactor = unitFactor;
+                    existing.unitName = unitName;
+                    existing.unitOptions = Array.isArray(unitOptions) ? unitOptions : [];
+                    existing.stock = maxStock;
+                    existing.variantId = variantId || null;
+                    existing.variantName = variantName;
+                } else {
+                    cart.push({
+                        id: productId,
+                        variantId: variantId || null,
+                        variantName: variantName,
+                        name: addBtn?.getAttribute("data-name") || "",
+                        qty: Math.max(1, qty),
+                        price: effectivePrice,
+                        originalPrice: price,
+                        salePrice: salePrice,
+                        image: addBtn?.getAttribute("data-image") || "",
+                        stock: maxStock,
+                        unitFactor: unitFactor,
+                        unitName: unitName,
+                        unitOptions: Array.isArray(unitOptions) ? unitOptions : [],
+                        checked: true
+                    });
+                }
+
+                localStorage.setItem(cartKey, JSON.stringify(cart));
+                const totalQty = cart.reduce(function (sum, item) { return sum + Number(item.qty || 0); }, 0);
+                document.querySelectorAll(".cart_count").forEach(function (el) {
+                    el.textContent = totalQty;
+                    el.style.display = totalQty > 0 ? "inline-flex" : "none";
+                });
+            };
+
+            addBtn?.addEventListener("click", function () {
+                addDetailProduct(getQty());
+            });
+
+            buyBtn?.addEventListener("click", function () {
+                if (buyBtn.hasAttribute("data-preorder-popup")) {
+                    const qty = getQty();
+                    const wrap = document.createElement('div');
+                    wrap.className = 'hx-popup-backdrop';
+                    wrap.style.display = 'flex';
+                    wrap.innerHTML = `<div class="hx-popup-card hx-preorder-popup"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Đặt trước sản phẩm</h4><p class="hx-preorder-title"><strong>@p.Name</strong></p><form id="hxDetailPreForm" class="hx-preorder-form"><input class="form-control" name="qty" type="number" min="1" value="${qty}" placeholder="Số lượng"><input class="form-control" name="customerName" placeholder="Họ tên" required><input class="form-control" name="phoneNumber" placeholder="Số điện thoại" required><input class="form-control" name="address" placeholder="Địa chỉ" required><input class="form-control" name="email" placeholder="Email (không bắt buộc)"><textarea class="form-control" name="note" rows="3" placeholder="Ghi chú"></textarea><button class="mini-cart-view-btn" type="submit">Gửi yêu cầu đặt trước</button></form><div id="hxDetailPreMsg" class="hx-preorder-msg"></div></div></div>`;
+                    document.body.appendChild(wrap);
+                    const close = () => wrap.remove();
+                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
+                    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
+                    const form = wrap.querySelector('#hxDetailPreForm');
+                    const msg = wrap.querySelector('#hxDetailPreMsg');
+                    form?.addEventListener('submit', async (ev) => {
+                        ev.preventDefault();
+                        const fd = new FormData(form);
+                        const payload = { productId: @p.Id, quantity: Number(fd.get('qty') || 1), customerName: String(fd.get('customerName') || ''), phoneNumber: String(fd.get('phoneNumber') || ''), email: String(fd.get('email') || ''), address: String(fd.get('address') || ''), note: String(fd.get('note') || '') };
+                        const res = await fetch('/Store/SubmitPreOrderPopup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                        const data = await res.json();
+                        if (msg) msg.textContent = data.message || '';
+                        if (data.ok) setTimeout(close, 900);
+                    });
+                    return;
+                }
+                const qty = getQty();
+                const unitFactor = Math.max(1, Number(addBtn?.getAttribute("data-unit-factor") || 1));
+                const unitName = addBtn?.getAttribute("data-unit-name") || "";
+                const stock = Math.max(0, Number(addBtn?.getAttribute("data-stock") || 0));
+                if (stock > 0 && qty > stock) {
+                    const wrap = document.createElement('div');
+                    wrap.className = 'hx-popup-backdrop';
+                    wrap.style.display = 'flex';
+                    wrap.innerHTML = `<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Thông báo</h4><p>Sản phẩm hiện chỉ còn ${stock} trong kho.</p><button type="button" class="mini-cart-view-btn">Đã hiểu</button></div></div>`;
+                    document.body.appendChild(wrap);
+                    const close = () => wrap.remove();
+                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
+                    wrap.querySelector('.mini-cart-view-btn')?.addEventListener('click', close);
+                    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
+                    return;
+                }
+                const payload = {
+                    id: Number(addBtn?.getAttribute("data-id") || 0),
+                    variantId: Number(addBtn?.getAttribute("data-variant-id") || 0) || null,
+                    variantName: addBtn?.getAttribute("data-variant-name") || "",
+                    name: addBtn?.getAttribute("data-name") || "",
+                    qty: Math.max(1, qty),
+                    price: Number(addBtn?.getAttribute("data-sale-price") || addBtn?.getAttribute("data-price") || 0),
+                    originalPrice: Number(addBtn?.getAttribute("data-price") || 0),
+                    salePrice: addBtn?.getAttribute("data-sale-price") ? Number(addBtn?.getAttribute("data-sale-price")) : null,
+                    image: addBtn?.getAttribute("data-image") || "",
+                    unitFactor: unitFactor,
+                    unitName: unitName,
+                    checked: true
+                };
+                sessionStorage.setItem("hx_buy_now_item", JSON.stringify(payload));
+                window.location.href = "/Store/Checkout?mode=buy-now";
+            });
+
+            const tabs = document.querySelectorAll(".product-luxe-tabs button[data-tab]");
+            const panes = document.querySelectorAll(".product-luxe-tab-content[data-pane]");
+            tabs.forEach(function (tab) {
+                tab.addEventListener("click", function () {
+                    const name = tab.getAttribute("data-tab");
+                    tabs.forEach(function (t) { t.classList.remove("active"); });
+                    panes.forEach(function (pane) {
+                        pane.classList.toggle("active", pane.getAttribute("data-pane") === name);
+                    });
+                    tab.classList.add("active");
+                });
+            });
+
+            syncThumbWindow();
+        });
+    </script>
+</body>
+</html>

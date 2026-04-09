@@ -61,7 +61,7 @@
 
                         <div class="mb-1">
                             <label class="form-label" asp-for="Items[i].Content">Nội dung</label>
-                            <textarea class="form-control" asp-for="Items[i].Content" rows="12"></textarea>
+                            <textarea class="form-control js-ckeditor" asp-for="Items[i].Content" rows="12"></textarea>
                         </div>
                         <div class="form-text">Nhập nội dung thuần, không cần HTML. Xuống dòng sẽ hiển thị đúng trong popup.</div>
                     </div>
@@ -72,3 +72,10 @@
 
     <button type="submit" class="btn btn-primary">Lưu chính sách</button>
 </form>
+
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script>
+    document.querySelectorAll('.js-ckeditor').forEach((el) => {
+        ClassicEditor.create(el).catch(() => {});
+    });
+</script>

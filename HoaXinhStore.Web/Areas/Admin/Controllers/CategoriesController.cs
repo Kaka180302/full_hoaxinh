@@ -1,4 +1,4 @@
-﻿using HoaXinhStore.Web.Data;
+using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities;
 using HoaXinhStore.Web.ViewModels.Admin;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +13,10 @@ public class CategoriesController(AppDbContext db) : Controller
 {
     public async Task<IActionResult> Index()
     {
-        var items = await db.Categories.AsNoTracking().OrderBy(c => c.Id).ToListAsync();
+        var items = await db.Categories
+            .AsNoTracking()
+            .OrderBy(c => c.Id)
+            .ToListAsync();
         return View(items);
     }
 
@@ -23,7 +26,9 @@ public class CategoriesController(AppDbContext db) : Controller
     [HttpGet]
     public async Task<IActionResult> Edit(int id)
     {
-        var entity = await db.Categories.FindAsync(id);
+        var entity = await db.Categories
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
         if (entity is null) return NotFound();
 
         return View(new CategoryEditViewModel
@@ -31,6 +36,7 @@ public class CategoriesController(AppDbContext db) : Controller
             Id = entity.Id,
             Name = entity.Name,
             Slug = entity.Slug,
+            SkuPrefix = entity.SkuPrefix,
             IsActive = entity.IsActive
         });
     }
@@ -44,26 +50,23 @@ public class CategoriesController(AppDbContext db) : Controller
             return View("Edit", vm);
         }
 
+        Category entity;
         if (vm.Id is null)
         {
-            db.Categories.Add(new Category
-            {
-                Name = vm.Name,
-                Slug = vm.Slug,
-                IsActive = vm.IsActive
-            });
+            entity = new Category();
+            db.Categories.Add(entity);
         }
         else
         {
-            var entity = await db.Categories.FindAsync(vm.Id.Value);
-            if (entity is null) return NotFound();
-
-            entity.Name = vm.Name;
-            entity.Slug = vm.Slug;
-            entity.IsActive = vm.IsActive;
+            entity = await db.Categories.FirstOrDefaultAsync(c => c.Id == vm.Id.Value) ?? throw new InvalidOperationException("Category not found");
         }
 
+        entity.Name = vm.Name.Trim();
+        entity.Slug = vm.Slug.Trim();
+        entity.SkuPrefix = (vm.SkuPrefix ?? string.Empty).Trim().ToUpperInvariant();
+        entity.IsActive = vm.IsActive;
         await db.SaveChangesAsync();
+
         return RedirectToAction(nameof(Index));
     }
 }

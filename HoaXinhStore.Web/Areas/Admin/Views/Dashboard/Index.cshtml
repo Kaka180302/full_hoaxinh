@@ -1,5 +1,6 @@
-﻿@{
+@{
     ViewData["Title"] = "Tổng quan";
+    var lowStockProducts = ViewBag.LowStockProducts as List<HoaXinhStore.Web.Entities.Product> ?? new();
 }
 <h2 class="mb-4">Tổng quan</h2>
 <div class="row g-3">
@@ -7,4 +8,57 @@
     <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Danh mục</div><h4>@ViewBag.CategoryCount</h4></div></div></div>
     <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Đơn hàng</div><h4>@ViewBag.OrderCount</h4></div></div></div>
     <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Chờ xác nhận</div><h4>@ViewBag.PendingOrderCount</h4></div></div></div>
+    <div class="col-md-3"><div class="card border-warning"><div class="card-body"><div class="text-muted">Tồn kho thấp (&lt;10)</div><h4 class="text-warning">@ViewBag.LowStockCount</h4></div></div></div>
+    <div class="col-md-3"><div class="card border-success"><div class="card-body"><div class="text-muted">Doanh thu 30 ngày</div><h4 class="text-success">@(((decimal)ViewBag.Revenue30Days).ToString("N0")) đ</h4></div></div></div>
+    <div class="col-md-3"><div class="card border-info"><div class="card-body"><div class="text-muted">Đơn hoàn thành 30 ngày</div><h4 class="text-info">@ViewBag.Completed30Days</h4></div></div></div>
+    <div class="col-md-3"><div class="card border-primary"><div class="card-body"><div class="text-muted">AOV 30 ngày</div><h4 class="text-primary">@(((decimal)ViewBag.Aov30Days).ToString("N0")) đ</h4></div></div></div>
 </div>
+
+@if (lowStockProducts.Any())
+{
+    <div class="card mt-4">
+        <div class="card-header fw-semibold">Sản phẩm sắp hết hàng</div>
+        <div class="card-body p-0">
+            <table class="table table-striped table-bordered mb-0">
+                <thead><tr><th>SKU</th><th>Tên</th><th>Danh mục</th><th>Tồn kho</th><th></th></tr></thead>
+                <tbody>
+                @foreach (var p in lowStockProducts)
+                {
+                    <tr>
+                        <td>@p.Sku</td>
+                        <td>@p.Name</td>
+                        <td>@p.Category?.Name</td>
+                        <td class="text-danger fw-bold">@p.StockQuantity</td>
+                        <td><a asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-warning">Sửa</a></td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@{
+    var topProducts = ViewBag.TopProducts as IEnumerable<dynamic> ?? [];
+}
+@if (topProducts.Any())
+{
+    <div class="card mt-4">
+        <div class="card-header fw-semibold">Top sản phẩm 30 ngày</div>
+        <div class="card-body p-0">
+            <table class="table table-striped table-bordered mb-0">
+                <thead><tr><th>Tên</th><th>SL bán</th><th>Doanh thu</th></tr></thead>
+                <tbody>
+                @foreach (var p in topProducts)
+                {
+                    <tr>
+                        <td>@p.ProductNameSnapshot</td>
+                        <td>@p.Qty</td>
+                        <td>@(((decimal)p.Revenue).ToString("N0")) đ</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

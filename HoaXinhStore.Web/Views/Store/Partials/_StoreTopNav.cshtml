@@ -1,0 +1,43 @@
+<header class="store-topnav border-bottom bg-white sticky-top">
+    <div class="container store-topnav-inner">
+        <a asp-controller="Store" asp-action="Index" class="store-brand-link">
+            <img src="~/assets/img/Logo_HX.png" alt="HoaXinh Store" class="store-brand-logo" />
+        </a>
+        <div class="store-mobile-actions">
+            <a asp-controller="Store" asp-action="Cart" class="store-cart-link store-mobile-cart-icon" aria-label="Giỏ hàng">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span class="cart_count store-cart-badge">0</span>
+            </a>
+            <button type="button" class="store-mobile-menu-btn" id="storeMobileMenuBtn" aria-label="Mở menu" aria-expanded="false">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+        </div>
+        <nav class="store-topnav-links">
+            <a asp-controller="Store" asp-action="Products" class="store-topnav-link">Sản phẩm</a>
+            <a asp-controller="Store" asp-action="Index" asp-fragment="Abouts" class="store-topnav-link">Giới thiệu</a>
+            <a asp-controller="Store" asp-action="Index" asp-fragment="Certificate" class="store-topnav-link">Chứng nhận</a>
+            <div class="cart-hover-wrap">
+                <a asp-controller="Store" asp-action="Cart" class="store-cart-link">
+                    <i class="fa-solid fa-cart-shopping"></i>
+                    <span class="cart_count store-cart-badge">0</span>
+                </a>
+                <div id="miniCartPreview" class="mini-cart-preview">
+                    <div id="miniCartContent" class="mini-cart-content"></div>
+                </div>
+            </div>
+        </nav>
+    </div>
+    <div class="store-mobile-menu-overlay" id="storeMobileMenuOverlay"></div>
+    <div class="store-mobile-menu" id="storeMobileMenu">
+        <a asp-controller="Store" asp-action="Products" class="store-topnav-link">Sản phẩm</a>
+        <a asp-controller="Store" asp-action="Index" asp-fragment="Abouts" class="store-topnav-link">Giới thiệu</a>
+        <a asp-controller="Store" asp-action="Index" asp-fragment="Certificate" class="store-topnav-link">Chứng nhận</a>
+        <a asp-controller="Store" asp-action="Cart" class="store-mobile-cart-link">
+            <span class="store-mobile-cart-left">
+                <i class="fa-solid fa-cart-shopping"></i>
+                <span>Giỏ hàng</span>
+            </span>
+            <span class="cart_count store-cart-badge">0</span>
+        </a>
+    </div>
+</header>

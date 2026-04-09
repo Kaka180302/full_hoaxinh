@@ -14,6 +14,10 @@ public class CategoryEditViewModel
     [Required(ErrorMessage = "Vui lòng nhập slug."), StringLength(120)]
     public string Slug { get; set; } = string.Empty;
 
+    [Display(Name = "Mã SKU danh mục")]
+    [StringLength(30)]
+    public string SkuPrefix { get; set; } = string.Empty;
+
     [Display(Name = "Hiển thị danh mục")]
     public bool IsActive { get; set; } = true;
 }

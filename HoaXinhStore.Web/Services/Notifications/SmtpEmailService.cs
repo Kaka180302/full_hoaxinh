@@ -81,6 +81,38 @@ public class SmtpEmailService(IOptions<SmtpOptions> options, ILogger<SmtpEmailSe
         }
     }
 
+    public async Task SendPreOrderRequestAsync(string productName, string sku, int requestedQty, string customerName, string phone, string email, string address, string note = "")
+    {
+        if (string.IsNullOrWhiteSpace(_smtp.Host) || string.IsNullOrWhiteSpace(_smtp.FromEmail))
+        {
+            return;
+        }
+
+        var companyEmail = string.IsNullOrWhiteSpace(_smtp.CompanyNotificationEmail)
+            ? "Infor@hoaxinhgroup.vn"
+            : _smtp.CompanyNotificationEmail.Trim();
+        if (string.IsNullOrWhiteSpace(companyEmail))
+        {
+            return;
+        }
+
+        var subject = $"[HoaXinh Store] Yêu cầu đặt trước - {sku}";
+        var body = $"""
+<div style='font-family:Arial,sans-serif;line-height:1.6'>
+  <h2>Yêu cầu đặt trước mới</h2>
+  <p><b>Sản phẩm:</b> {WebUtility.HtmlEncode(productName)}</p>
+  <p><b>SKU:</b> {WebUtility.HtmlEncode(sku)}</p>
+  <p><b>Số lượng khách yêu cầu:</b> {requestedQty}</p>
+  <p><b>Khách hàng:</b> {WebUtility.HtmlEncode(customerName)}</p>
+  <p><b>SĐT:</b> {WebUtility.HtmlEncode(phone)}</p>
+  <p><b>Email:</b> {WebUtility.HtmlEncode(email)}</p>
+  <p><b>Địa chỉ:</b> {WebUtility.HtmlEncode(address)}</p>
+  <p><b>Ghi chú:</b> {WebUtility.HtmlEncode(note)}</p>
+</div>
+""";
+        await SendEmailAsync(companyEmail, subject, body, sku);
+    }
+
     private static string BuildOrderPlacedCustomerMailBody(
         Order order,
         string customerName,

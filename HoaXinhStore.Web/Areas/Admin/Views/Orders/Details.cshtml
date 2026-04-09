@@ -157,7 +157,9 @@
             <thead>
                 <tr>
                     <th>Sản phẩm</th>
+                    <th>Biến thể</th>
                     <th>SKU</th>
+                    <th>Đơn vị</th>
                     <th>SL</th>
                     <th>Đơn giá</th>
                     <th>Thành tiền</th>
@@ -168,8 +170,10 @@
             {
                 <tr>
                     <td>@item.ProductNameSnapshot</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.VariantNameSnapshot) ? "-" : item.VariantNameSnapshot)</td>
                     <td>@item.SkuSnapshot</td>
-                    <td>@item.Quantity</td>
+                    <td>@(string.IsNullOrWhiteSpace(item.UnitName) ? "Lẻ" : item.UnitName)</td>
+                    <td>@(item.Quantity * Math.Max(1, item.UnitFactor))</td>
                     <td>@item.UnitPrice.ToString("N0") đ</td>
                     <td>@item.LineTotal.ToString("N0") đ</td>
                 </tr>
@@ -178,6 +182,30 @@
         </table>
     </div>
 </div>
+
+@if (Model.Timelines.Any())
+{
+    <div class="card mt-3">
+        <div class="card-header fw-semibold">Timeline xử lý đơn</div>
+        <div class="card-body p-0">
+            <table class="table table-bordered table-striped mb-0">
+                <thead><tr><th>Thời gian</th><th>Action</th><th>Từ</th><th>Đến</th><th>Ghi chú</th></tr></thead>
+                <tbody>
+                @foreach (var t in Model.Timelines.OrderByDescending(x => x.CreatedAtUtc))
+                {
+                    <tr>
+                        <td>@t.CreatedAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>@t.Action</td>
+                        <td>@t.FromStatus</td>
+                        <td>@t.ToStatus</td>
+                        <td>@t.Note</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
 
 <div class="card">
     <div class="card-header fw-semibold">Lịch sử thanh toán</div>

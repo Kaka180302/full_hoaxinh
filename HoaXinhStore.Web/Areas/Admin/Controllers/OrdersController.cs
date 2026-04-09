@@ -25,6 +25,8 @@ public class OrdersController(AppDbContext db) : Controller
         var query = db.Orders
             .AsNoTracking()
             .Include(o => o.Customer)
+            .Include(o => o.Items)
+                .ThenInclude(i => i.Product)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
@@ -47,6 +49,7 @@ public class OrdersController(AppDbContext db) : Controller
         {
             query = query.Where(o => o.PaymentStatus == paymentStatus);
         }
+
 
         var pendingQuery = query
             .Where(o => o.OrderStatus != "Completed")
@@ -100,6 +103,7 @@ public class OrdersController(AppDbContext db) : Controller
                 .ThenInclude(c => c.Addresses)
             .Include(o => o.Items)
             .Include(o => o.Payments)
+            .Include(o => o.Timelines)
             .FirstOrDefaultAsync(o => o.Id == id);
 
         if (order is null) return NotFound();
@@ -125,8 +129,17 @@ public class OrdersController(AppDbContext db) : Controller
             return RedirectToAction(nameof(Details), new { id });
         }
 
+        var fromStatus = order.OrderStatus;
         order.OrderStatus = normalizedStatus;
         order.Note = BuildShippingNote(shippingCarrier, trackingCode, note);
+        db.OrderTimelines.Add(new OrderTimeline
+        {
+            OrderId = order.Id,
+            Action = "StatusChanged",
+            FromStatus = fromStatus,
+            ToStatus = normalizedStatus,
+            Note = note ?? string.Empty
+        });
 
         if (IsCompletedStatus(order.OrderStatus) && order.PaymentMethod == PaymentMethod.COD && order.PaymentStatus != "Paid")
         {

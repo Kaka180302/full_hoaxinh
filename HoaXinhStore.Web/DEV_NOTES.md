@@ -400,3 +400,19 @@
     - Dang xuat tung phien hoac dang xuat tat ca phien khac.
     - Moi request doi chieu session voi DB; session bi revoke se bi buoc dang xuat.
   - Chuyen trang Sessions vao layout admin (`_AdminLayout`) de dong bo giao dien quan tri.
+## Stock / Dat Truoc Flow (2026-04-09)
+
+- Luong chuan khi khach chon so luong lon hon ton kho:
+  - He thong thong bao: "San pham hien chi con X trong kho".
+  - Lua chon 1: Dong y mua theo so luong con lai -> tu dong dieu chinh so luong ve bang ton kho va tiep tuc thanh toan.
+  - Lua chon 2: Dat truoc phan con thieu -> mo form dat truoc.
+  - Lua chon 3: Khong dong y -> dong thong bao, giu nguyen trang thai hien tai.
+- Neu ton kho = 0:
+  - Trang chi tiet: hien "Tam het hang", hien "So luong con lai: 0".
+  - Nut "Dat mua" doi thanh "Dat truoc".
+  - Nut "Them vao gio" bi vo hieu hoa.
+  - Tren card san pham hien nhan "Dat truoc" o goc phai tren anh (position absolute).
+- Form dat truoc:
+  - URL: `/Store/PreOrder?productId=...&requestedQty=...`
+  - Cho phep chon ty le coc tu 10% den 30%.
+  - He thong tinh san tong tien dat truoc + tien coc can thanh toan.

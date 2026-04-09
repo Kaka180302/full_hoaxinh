@@ -1205,6 +1205,13 @@ if (window.__checkoutMessage) {
 
 openBtn_cart.forEach(btn => {
   btn.addEventListener("click", (e) => {
+    if (document.body?.dataset?.cartNav === "true") {
+      const anchor = btn.querySelector("a[href]")
+      if (!anchor) {
+        window.location.href = "/Store/Cart"
+      }
+      return
+    }
     e.stopPropagation();
     cart.classList.add("active_cart")
     menu.classList.remove("active")

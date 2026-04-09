@@ -1,52 +1,69 @@
 
-// Helper: đọc target lang từ cookie googtrans (vd: "/vi/en")
-function getCurrentGTLang() {
-    const m = document.cookie.match(/(?:^|;)\s*googtrans=([^;]+)/);
-    if (!m) return null;
-    const parts = decodeURIComponent(m[1]).split('/');
-    return parts.pop() || null;
-}
+(function () {
+    const BASE_LANG = 'vi';
+    const COOKIE_PATH = 'path=/';
+    const COOKIE_MAX_AGE = 'max-age=31536000';
 
-// Đổi ngôn ngữ bằng cách set value cho select và trigger change
-function setLanguage(lang) {
-    const sel = document.querySelector('#google_translate_element select.goog-te-combo');
-    if (!sel) { setTimeout(() => setLanguage(lang), 50); return; } // chờ widget render
-    sel.value = lang;
-    sel.dispatchEvent(new Event('change'));
-    // Cập nhật active UI sau một nhịp (cookie được set không đồng bộ)
-    setTimeout(updateActiveFlag, 300);
-}
+    function readCurrentLang() {
+        const m = document.cookie.match(/(?:^|;)\s*googtrans=([^;]+)/);
+        if (!m) return null;
+        const val = decodeURIComponent(m[1] || '');
+        const parts = val.split('/');
+        return parts[parts.length - 1] || null;
+    }
 
-// Gán trạng thái active cho lá cờ đang chọn
-function updateActiveFlag() {
-    const current = getCurrentGTLang() || 'vi';
-    document.querySelectorAll('.lang-flag').forEach(btn => {
-        btn.classList.toggle('is-active', btn.dataset.lang === current);
-    });
-}
+    function writeGoogTransCookie(lang) {
+        const value = `/${BASE_LANG}/${lang}`;
+        const encoded = encodeURIComponent(value);
+        document.cookie = `googtrans=${encoded}; ${COOKIE_PATH}; ${COOKIE_MAX_AGE}`;
+        document.cookie = `googtrans=${encoded}; ${COOKIE_PATH}; domain=${location.hostname}; ${COOKIE_MAX_AGE}`;
+    }
 
-// Gắn sự kiện click cho các lá cờ
-// Gắn sự kiện click TRỰC TIẾP cho từng lá cờ
-document.querySelectorAll('.lang-flag').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        
-        // Gọi hàm đổi ngôn ngữ
-        setLanguage(btn.dataset.lang);
+    function updateActiveFlag() {
+        const current = readCurrentLang() || BASE_LANG;
+        document.querySelectorAll('.lang-flag').forEach((btn) => {
+            btn.classList.toggle('is-active', btn.dataset.lang === current);
+        });
+    }
 
-        // (Tùy chọn) Bấm chọn ngôn ngữ xong thì tự động thu cụm cờ lại cho gọn
-        const langWrap = btn.closest('.lang-flags_mobile');
-        if (langWrap) {
-            langWrap.classList.remove('active');
+    function triggerComboChange(lang, retry) {
+        const select = document.querySelector('#google_translate_element select.goog-te-combo');
+        if (!select) {
+            if (retry > 0) {
+                setTimeout(() => triggerComboChange(lang, retry - 1), 120);
+            }
+            return;
         }
-    });
-});
 
-// Đồng bộ UI khi tải trang xong
-window.addEventListener('load', () => {
-    // Lần đầu: nếu chưa có cookie, đánh dấu VI
-    updateActiveFlag();
-    // Khi Google đổi ngôn ngữ sẽ reload/hay DOM thay đổi — cập nhật lại
-    const observer = new MutationObserver(updateActiveFlag);
-    observer.observe(document.documentElement, { subtree: true, childList: true });
-});
+        select.value = lang;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+
+        if (document.createEvent) {
+            const event = document.createEvent('HTMLEvents');
+            event.initEvent('change', true, true);
+            select.dispatchEvent(event);
+        }
+    }
+
+    function setLanguage(lang) {
+        if (!lang) return;
+        writeGoogTransCookie(lang);
+        updateActiveFlag();
+        triggerComboChange(lang, 40);
+    }
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.lang-flag');
+        if (!btn) return;
+        e.preventDefault();
+        setLanguage(btn.dataset.lang);
+    });
+
+    window.setLanguage = setLanguage;
+
+    window.addEventListener('load', () => {
+        updateActiveFlag();
+        const observer = new MutationObserver(updateActiveFlag);
+        observer.observe(document.documentElement, { subtree: true, childList: true });
+    });
+})();

@@ -1,26 +1,482 @@
-﻿@model HoaXinhStore.Web.ViewModels.Admin.AdminProductEditViewModel
+@using System.Text.Json
+@model HoaXinhStore.Web.ViewModels.Admin.AdminProductEditViewModel
 @{
     ViewData["Title"] = Model.Id.HasValue ? "Sửa sản phẩm" : "Thêm sản phẩm";
+    var attributes = ViewBag.Attributes ?? new List<object>();
+    var attrJson = JsonSerializer.Serialize(attributes, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 }
 <h2>@ViewData["Title"]</h2>
-<form method="post" asp-action="Save" enctype="multipart/form-data" class="bg-white p-3 border rounded">
+<form method="post" asp-action="Save" enctype="multipart/form-data" class="admin-card p-3" id="productEditForm">
     @Html.AntiForgeryToken()
     <input asp-for="Id" type="hidden" />
-    <div class="row g-3">
-        <div class="col-md-4"><label asp-for="Sku" class="form-label"></label><input asp-for="Sku" class="form-control" /></div>
-        <div class="col-md-8"><label asp-for="Name" class="form-label"></label><input asp-for="Name" class="form-control" /></div>
-        <div class="col-md-4"><label asp-for="CategoryId" class="form-label"></label><select asp-for="CategoryId" asp-items="Model.CategoryOptions" class="form-select"></select></div>
-        <div class="col-md-4"><label asp-for="Price" class="form-label"></label><input asp-for="Price" class="form-control" /></div>
-        <div class="col-md-4"><label asp-for="StockQuantity" class="form-label"></label><input asp-for="StockQuantity" class="form-control" /></div>
-        <div class="col-md-8"><label asp-for="ImageUrl" class="form-label"></label><input asp-for="ImageUrl" class="form-control" /></div>
-        <div class="col-md-4"><label asp-for="ImageFile" class="form-label"></label><input asp-for="ImageFile" class="form-control" type="file" /></div>
-        <div class="col-12"><label asp-for="Summary" class="form-label"></label><textarea asp-for="Summary" class="form-control" rows="2"></textarea></div>
-        <div class="col-12"><label asp-for="Descriptions" class="form-label"></label><textarea asp-for="Descriptions" class="form-control" rows="5"></textarea></div>
-        <div class="col-12"><div class="form-check"><input asp-for="IsActive" class="form-check-input" /><label asp-for="IsActive" class="form-check-label"></label></div></div>
+    <input asp-for="StockQuantity" type="hidden" id="StockQuantityHidden" />
+    <input asp-for="StockCase" type="hidden" value="0" />
+    <input asp-for="StockPack" type="hidden" value="0" />
+    <input asp-for="CaseFactor" type="hidden" value="0" />
+    <input asp-for="PackFactor" type="hidden" value="0" />
+
+    <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-general" type="button">Thông tin chung</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-media" type="button">Hình ảnh</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-variants" type="button">Biến thể</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-content" type="button">Mô tả nội dung</button></li>
+    </ul>
+
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="tab-general">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label asp-for="Sku" class="form-label"></label>
+                    <input asp-for="Sku" class="form-control" />
+                </div>
+                <div class="col-md-8">
+                    <label asp-for="Name" class="form-label"></label>
+                    <input asp-for="Name" class="form-control" />
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="CategoryId" class="form-label"></label>
+                    <select asp-for="CategoryId" asp-items="Model.CategoryOptions" class="form-select"></select>
+                </div>
+                <div class="col-md-4">
+                    <label asp-for="BrandId" class="form-label"></label>
+                    <select asp-for="BrandId" asp-items="Model.BrandOptions" class="form-select"><option value="">-- Chọn thương hiệu --</option></select>
+                </div>
+                <input asp-for="Price" type="hidden" />
+                <input asp-for="SalePrice" type="hidden" />
+                <div class="col-12">
+                    <div class="form-check">
+                        <input asp-for="IsActive" class="form-check-input" />
+                        <label asp-for="IsActive" class="form-check-label"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-media">
+            <div class="row g-3">
+                <div class="col-12">
+                    <label asp-for="ImageFile" class="form-label"></label>
+                    <input asp-for="ImageFile" class="form-control" type="file" />
+                </div>
+                <div class="col-12">
+                    <label asp-for="GalleryFiles" class="form-label"></label>
+                    <input asp-for="GalleryFiles" class="form-control" type="file" multiple />
+                </div>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-variants">
+            <div class="admin-card p-3 mb-3">
+                <h5 class="mb-3">Chọn thuộc tính</h5>
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label class="form-label">Thuộc tính</label>
+                        <select id="attributeSelect" class="form-select"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Giá trị</label>
+                        <div id="valuePicker" class="form-control p-1 hx-value-picker">
+                            <div id="valueTags" class="d-flex flex-wrap gap-1"></div>
+                            <input id="valueSearchInput" type="text" class="border-0 w-100 hx-value-input" placeholder="Chọn giá trị..." autocomplete="off" />
+                            <div id="valueDropdown" class="hx-value-dropdown"></div>
+                        </div>
+                    </div>
+                    <div class="col-md-2 d-grid">
+                        <button type="button" id="btnAddAttributeGroup" class="btn btn-success">+ Thêm</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-card p-3 mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h5 class="mb-0">Giá trị đã chọn cho từng thuộc tính</h5>
+                    <div class="d-flex gap-2">
+                        <button type="button" id="btnAddVariantRow" class="btn btn-outline-secondary">+ Thêm biến thể</button>
+                        <button type="button" id="btnGenerateMatrix" class="btn btn-outline-primary">Tạo biến thể</button>
+                    </div>
+                </div>
+                <div id="selectedAttributesWrap" class="d-grid gap-2 hx-selected-wrap"></div>
+            </div>
+
+            <div class="table-responsive admin-card p-2">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Tổ hợp thuộc tính</th>
+                            <th>SKU</th>
+                            <th>Giá *</th>
+                            <th>Giá KM *</th>
+                            <th>Tồn kho *</th>
+                            <th>Khối lượng (g)</th>
+                            <th>Dài (cm)</th>
+                            <th>Rộng (cm)</th>
+                            <th>Cao (cm)</th>
+                            <th>Barcode</th>
+                            <th>Ảnh biến thể</th>
+                            <th>Trạng thái</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="variantWrap">
+                        @for (var i = 0; i < Model.Variants.Count; i++)
+                        {
+                            <tr class="variant-row">
+                                <td>
+                                    <input type="hidden" name="Variants[@i].Id" value="@Model.Variants[i].Id" />
+                                    <input class="form-control form-control-sm" name="Variants[@i].Name" value="@Model.Variants[i].Name" />
+                                </td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].Sku" value="@Model.Variants[i].Sku" readonly /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].Price" value="@Model.Variants[i].Price" type="number" min="1" required /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].SalePrice" value="@Model.Variants[i].SalePrice" type="number" min="0" /></td>
+                                <td><input class="form-control form-control-sm js-variant-stock" name="Variants[@i].StockQuantity" value="@Model.Variants[i].StockQuantity" type="number" min="0" required /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].WeightGram" value="@Model.Variants[i].WeightGram" type="number" min="0" /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].LengthMm" value="@Model.Variants[i].LengthMm" type="number" min="0" /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].WidthMm" value="@Model.Variants[i].WidthMm" type="number" min="0" /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].HeightMm" value="@Model.Variants[i].HeightMm" type="number" min="0" /></td>
+                                <td><input class="form-control form-control-sm" name="Variants[@i].Barcode" value="@Model.Variants[i].Barcode" /></td>
+                                <td>
+                                    <input type="hidden" name="Variants[@i].ImageUrl" value="@Model.Variants[i].ImageUrl" />
+                                    <input class="form-control form-control-sm" type="file" name="VariantImageFiles[@i]" />
+                                </td>
+                                <td>
+                                    <input type="hidden" name="Variants[@i].SortOrder" value="@i" />
+                                    <input class="form-check-input" name="Variants[@i].IsActive" type="checkbox" value="true" @(Model.Variants[i].IsActive ? "checked" : "") />
+                                </td>
+                                <td>
+                                    <button type="button" class="btn btn-sm btn-outline-danger js-remove-variant">Xóa</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-content">
+            <div class="row g-3">
+                <div class="col-12"><label asp-for="Summary" class="form-label"></label><textarea asp-for="Summary" class="form-control js-ckeditor" rows="4"></textarea></div>
+                <div class="col-12"><label asp-for="TechnicalSpecs" class="form-label"></label><textarea asp-for="TechnicalSpecs" class="form-control" rows="3"></textarea></div>
+                <div class="col-12"><label asp-for="UsageGuide" class="form-label"></label><textarea asp-for="UsageGuide" class="form-control" rows="3"></textarea></div>
+                <div class="col-12"><label asp-for="Descriptions" class="form-label"></label><textarea asp-for="Descriptions" class="form-control js-ckeditor" rows="8"></textarea></div>
+            </div>
+        </div>
     </div>
+
     <div asp-validation-summary="All" class="text-danger mt-2"></div>
     <div class="mt-3 d-flex gap-2">
         <button class="btn btn-primary" type="submit">Lưu</button>
-        <a class="btn btn-secondary" asp-action="Index">Quay lại</a>
+        <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
     </div>
 </form>
+
+<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<style>
+    .hx-value-picker { min-height: 44px; position: relative; }
+    .hx-value-input { outline: none; padding: 2px 6px; }
+    .hx-value-dropdown {
+        position: absolute;
+        left: -1px;
+        right: -1px;
+        top: calc(100% + 3px);
+        z-index: 20;
+        max-height: 230px;
+        overflow: auto;
+        display: none;
+        background: #fff;
+        border: 1px solid #e2d6c1;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0,0,0,.09);
+        padding: 6px;
+    }
+    .hx-value-dropdown .dropdown-item {
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 2px;
+        text-align: left;
+    }
+    .hx-value-dropdown .dropdown-item.active {
+        background: #eaf2ff;
+        color: #24538c;
+    }
+    .hx-tag-chip {
+        border: 1px solid #c8d3e2;
+        border-radius: 8px;
+        background: #f7fbff;
+        color: #244466;
+        padding: 2px 8px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .hx-tag-chip button { border: 0; background: transparent; color: #6f7f90; line-height: 1; }
+    .hx-selected-row {
+        display: grid;
+        grid-template-columns: 170px 1fr;
+        align-items: start;
+        gap: 10px;
+    }
+    .hx-selected-row .hx-selected-name { display: flex; gap: 8px; align-items: center; font-weight: 700; }
+    .hx-selected-row .hx-selected-values {
+        min-height: 42px;
+        border: 1px solid #d7dfeb;
+        border-radius: 8px;
+        background: #fff;
+        padding: 6px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+</style>
+<script>
+    document.querySelectorAll('.js-ckeditor').forEach((el) => ClassicEditor.create(el).catch(() => {}));
+
+    (() => {
+        const attributes = @Html.Raw(attrJson);
+        const attrSelect = document.getElementById('attributeSelect');
+        const valuePicker = document.getElementById('valuePicker');
+        const valueTags = document.getElementById('valueTags');
+        const valueSearchInput = document.getElementById('valueSearchInput');
+        const valueDropdown = document.getElementById('valueDropdown');
+        const addGroupBtn = document.getElementById('btnAddAttributeGroup');
+        const selectedWrap = document.getElementById('selectedAttributesWrap');
+        const matrixBtn = document.getElementById('btnGenerateMatrix');
+        const addVariantRowBtn = document.getElementById('btnAddVariantRow');
+        const variantWrap = document.getElementById('variantWrap');
+        const skuInput = document.getElementById('Sku');
+        const stockTotalHidden = document.getElementById('StockQuantityHidden');
+        const form = document.getElementById('productEditForm');
+        if (!attrSelect || !valuePicker || !valueTags || !valueSearchInput || !valueDropdown || !addGroupBtn || !selectedWrap || !matrixBtn || !variantWrap || !skuInput || !form || !stockTotalHidden) return;
+
+        const state = { groups: [], pickedValues: [], activeDropdownIndex: -1 };
+
+        const renderAttributeSelect = () => {
+            attrSelect.innerHTML = '<option value="">-- Chọn thuộc tính --</option>';
+            attributes.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = String(a.id);
+                opt.textContent = a.name;
+                attrSelect.appendChild(opt);
+            });
+        };
+
+        const renderValueDropdown = () => {
+            valueDropdown.innerHTML = '';
+            const id = Number(attrSelect.value || 0);
+            const attr = attributes.find(a => Number(a.id) === id);
+            const keyword = (valueSearchInput.value || '').trim().toLowerCase();
+            const list = (attr?.values || []).filter(v => !keyword || String(v.value || '').toLowerCase().includes(keyword));
+            state.activeDropdownIndex = list.length > 0 ? 0 : -1;
+            list.forEach(v => {
+                const item = document.createElement('button');
+                item.type = 'button';
+                item.className = 'dropdown-item';
+                item.textContent = v.value;
+                item.setAttribute('data-id', String(v.id));
+                item.setAttribute('data-value', v.value);
+                valueDropdown.appendChild(item);
+            });
+            [...valueDropdown.querySelectorAll('.dropdown-item')].forEach((el, idx) => el.classList.toggle('active', idx === state.activeDropdownIndex));
+            valueDropdown.style.display = list.length > 0 ? 'block' : 'none';
+        };
+
+        const renderPickedTags = () => {
+            valueTags.innerHTML = '';
+            state.pickedValues.forEach((v, idx) => {
+                const chip = document.createElement('span');
+                chip.className = 'hx-tag-chip';
+                chip.innerHTML = `${v.value}<button type="button" data-remove-picked="${idx}">×</button>`;
+                valueTags.appendChild(chip);
+            });
+        };
+
+        const resetValuePicker = () => {
+            state.pickedValues = [];
+            valueSearchInput.value = '';
+            renderPickedTags();
+            renderValueDropdown();
+        };
+
+        const renderGroups = () => {
+            selectedWrap.innerHTML = '';
+            state.groups.forEach((g, i) => {
+                const row = document.createElement('div');
+                row.className = 'hx-selected-row';
+                row.innerHTML = `<div class="hx-selected-name"><span>${g.name}</span><button type="button" class="btn btn-sm btn-outline-danger" data-remove="${i}">xóa</button></div><div class="hx-selected-values">${g.values.map(v => `<span class="hx-tag-chip">${v.value}</span>`).join("")}</div>`;
+                selectedWrap.appendChild(row);
+            });
+        };
+
+        const cartesian = (arrs) => arrs.reduce((a, b) => a.flatMap(d => b.map(e => [...d, e])), [[]]);
+        const slug = (text) => (text || '')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            .replace(/đ/g, 'd').replace(/Đ/g, 'D')
+            .toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+        const makeSku = (combo, idx) => `${(skuInput.value || 'SP-0').trim().toUpperCase()}-${combo.map(x => slug(x.value)).join('_') || `V${idx + 1}`}`;
+
+        const existingKeys = () => {
+            return new Set([...variantWrap.querySelectorAll('input[name*=".Name"]')]
+                .map(i => (i.value || '').trim().toLowerCase())
+                .filter(Boolean));
+        };
+
+        const createVariantRow = (idx, payload = {}) => {
+            const tr = document.createElement('tr');
+            tr.className = 'variant-row';
+            tr.innerHTML = `<td><input type="hidden" name="Variants[${idx}].Id" value="${payload.id || ''}"><input class="form-control form-control-sm" name="Variants[${idx}].Name" value="${payload.name || ''}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].Sku" value="${payload.sku || ''}" readonly></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].Price" type="number" min="1" required value="${payload.price ?? ''}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].SalePrice" type="number" min="0" value="${payload.salePrice ?? ''}"></td>
+<td><input class="form-control form-control-sm js-variant-stock" name="Variants[${idx}].StockQuantity" type="number" min="0" required value="${payload.stockQuantity ?? 0}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].WeightGram" type="number" min="0" value="${payload.weightGram ?? ''}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].LengthMm" type="number" min="0" value="${payload.lengthMm ?? ''}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].WidthMm" type="number" min="0" value="${payload.widthMm ?? ''}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].HeightMm" type="number" min="0" value="${payload.heightMm ?? ''}"></td>
+<td><input class="form-control form-control-sm" name="Variants[${idx}].Barcode" value="${payload.barcode ?? ''}"></td>
+<td><input type="hidden" name="Variants[${idx}].ImageUrl" value="${payload.imageUrl ?? ''}"><input class="form-control form-control-sm" type="file" name="VariantImageFiles[${idx}]"></td>
+<td><input type="hidden" name="Variants[${idx}].SortOrder" value="${idx}"><input class="form-check-input" name="Variants[${idx}].IsActive" type="checkbox" value="true" ${payload.isActive === false ? '' : 'checked'}></td>
+<td><button type="button" class="btn btn-sm btn-outline-danger js-remove-variant">Xóa</button></td>`;
+            variantWrap.appendChild(tr);
+        };
+
+        const reindexRows = () => {
+            [...variantWrap.querySelectorAll('tr.variant-row')].forEach((tr, idx) => {
+                tr.querySelectorAll('input,select,textarea').forEach(el => {
+                    const n = el.getAttribute('name');
+                    if (!n) return;
+                    el.setAttribute('name', n.replace(/Variants\[\d+\]/, `Variants[${idx}]`));
+                });
+                const sort = tr.querySelector('input[name*=".SortOrder"]');
+                if (sort) sort.value = String(idx);
+            });
+        };
+
+        const buildMatrix = () => {
+            if (state.groups.length === 0) return;
+            const combos = cartesian(state.groups.map(g => g.values));
+            const keys = existingKeys();
+            let nextIndex = variantWrap.querySelectorAll('tr.variant-row').length;
+            combos.forEach((combo) => {
+                const name = combo.map(x => x.value).join(' - ');
+                const key = name.trim().toLowerCase();
+                if (keys.has(key)) return;
+                createVariantRow(nextIndex++, { name, sku: makeSku(combo, nextIndex) });
+                keys.add(key);
+            });
+            reindexRows();
+            syncTotalStock();
+        };
+
+        const syncTotalStock = () => {
+            const total = [...variantWrap.querySelectorAll('input[name*=".StockQuantity"]')].reduce((s, x) => s + Math.max(0, Number(x.value || 0)), 0);
+            stockTotalHidden.value = String(total);
+        };
+
+        addGroupBtn.addEventListener('click', () => {
+            const attrId = Number(attrSelect.value || 0);
+            if (!attrId) return;
+            const attr = attributes.find(a => Number(a.id) === attrId);
+            if (!attr) return;
+            const picked = state.pickedValues;
+            if (picked.length === 0) return;
+            const existedIndex = state.groups.findIndex(g => Number(g.id) === attrId);
+            if (existedIndex >= 0) state.groups.splice(existedIndex, 1);
+            state.groups.push({ id: attr.id, name: attr.name, values: picked });
+            renderGroups();
+            resetValuePicker();
+        });
+
+        selectedWrap.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-remove]');
+            if (!btn) return;
+            const idx = Number(btn.getAttribute('data-remove'));
+            if (idx >= 0) state.groups.splice(idx, 1);
+            renderGroups();
+        });
+
+        matrixBtn.addEventListener('click', buildMatrix);
+        addVariantRowBtn?.addEventListener('click', () => {
+            const idx = variantWrap.querySelectorAll('tr.variant-row').length;
+            createVariantRow(idx, { name: 'Biến thể mới', sku: makeSku([], idx) });
+            reindexRows();
+            syncTotalStock();
+        });
+        variantWrap.addEventListener('click', (e) => {
+            const btn = e.target.closest('.js-remove-variant');
+            if (!btn) return;
+            const row = btn.closest('tr.variant-row');
+            if (!row) return;
+            const idInput = row.querySelector('input[name*=".Id"]');
+            const activeInput = row.querySelector('input[name*=".IsActive"]');
+            const hasId = !!(idInput && String(idInput.value || '').trim());
+            if (hasId) {
+                if (activeInput) activeInput.checked = false;
+                row.classList.add('table-warning');
+            } else {
+                row.remove();
+                reindexRows();
+            }
+            syncTotalStock();
+        });
+        variantWrap.addEventListener('input', syncTotalStock);
+        form.addEventListener('submit', syncTotalStock);
+        valuePicker.addEventListener('click', () => {
+            renderValueDropdown();
+            valueSearchInput.focus();
+        });
+        valueSearchInput.addEventListener('focus', renderValueDropdown);
+        valueSearchInput.addEventListener('input', renderValueDropdown);
+        valueSearchInput.addEventListener('keydown', (e) => {
+            const items = [...valueDropdown.querySelectorAll('.dropdown-item')];
+            if (items.length === 0) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                state.activeDropdownIndex = (state.activeDropdownIndex + 1) % items.length;
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                state.activeDropdownIndex = (state.activeDropdownIndex - 1 + items.length) % items.length;
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const item = items[state.activeDropdownIndex] || items[0];
+                item?.click();
+                return;
+            } else {
+                return;
+            }
+            items.forEach((el, idx) => el.classList.toggle('active', idx === state.activeDropdownIndex));
+            items[state.activeDropdownIndex]?.scrollIntoView({ block: 'nearest' });
+        });
+        attrSelect.addEventListener('change', resetValuePicker);
+        valueDropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.dropdown-item');
+            if (!item) return;
+            const id = Number(item.getAttribute('data-id') || 0);
+            const value = item.getAttribute('data-value') || '';
+            if (!id || !value) return;
+            if (!state.pickedValues.some(x => Number(x.id) === id)) {
+                state.pickedValues.push({ id, value });
+                renderPickedTags();
+            }
+            valueSearchInput.value = '';
+            renderValueDropdown();
+            valueSearchInput.focus();
+        });
+        valueTags.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-remove-picked]');
+            if (!btn) return;
+            const idx = Number(btn.getAttribute('data-remove-picked'));
+            if (idx >= 0) {
+                state.pickedValues.splice(idx, 1);
+                renderPickedTags();
+            }
+        });
+        document.addEventListener('click', (e) => {
+            if (!valuePicker.contains(e.target)) {
+                valueDropdown.style.display = 'none';
+                state.activeDropdownIndex = -1;
+            }
+        });
+        renderAttributeSelect();
+        resetValuePicker();
+        syncTotalStock();
+    })();
+</script>

@@ -1,0 +1,78 @@
+:root {
+    --admin-brown: #8b5a2b;
+    --admin-gold: #d4a63f;
+    --admin-cream: #fffaf0;
+    --admin-blue: #3f7edb;
+    --admin-light-blue: #edf5ff;
+    --admin-peach: #ffe9cc;
+}
+
+body {
+    background: radial-gradient(1200px 600px at 20% -10%, #fff5df 0%, transparent 60%),
+                radial-gradient(900px 500px at 100% 0%, #eaf3ff 0%, transparent 60%),
+                linear-gradient(180deg, #fffdf8 0%, #f7faff 100%);
+}
+
+.admin-topbar {
+    background: linear-gradient(90deg, #a86b2b 0%, #d3a143 28%, #f3d17b 48%, #7fb1ea 100%);
+    box-shadow: 0 8px 24px rgba(67, 53, 25, .16);
+}
+
+.admin-nav-link {
+    color: #fff;
+    font-weight: 600;
+    padding: .35rem .6rem;
+    border-radius: 10px;
+    transition: all .2s ease;
+}
+
+.admin-nav-link:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, .18);
+    transform: translateY(-1px);
+}
+
+.admin-card {
+    background: rgba(255, 255, 255, .82);
+    border: 1px solid #ecdcbf;
+    border-radius: 14px;
+    box-shadow: 0 8px 24px rgba(91, 73, 23, .07);
+    animation: adminFadeIn .28s ease;
+}
+
+.table thead th {
+    background: linear-gradient(180deg, #fff4df 0%, #eef5ff 100%);
+}
+
+.btn-primary {
+    background: linear-gradient(90deg, #e1b458, #9f6730);
+    border-color: #b77f34;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(90deg, #e8be69, #ab6f34);
+    border-color: #b77f34;
+}
+
+.nav-tabs .nav-link.active {
+    background: #fffef9;
+    border-color: #e5d8be #e5d8be #fff;
+    color: var(--admin-brown);
+    font-weight: 700;
+}
+
+.dropdown-menu {
+    border: 1px solid #ecd9b2;
+    border-radius: 10px;
+}
+
+.dropdown-item:active,
+.dropdown-item:hover {
+    background: #eef5ff;
+    color: #285a99;
+}
+
+@keyframes adminFadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

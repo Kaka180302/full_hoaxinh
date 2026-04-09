@@ -8,13 +8,14 @@
 
         <div class="header_mobileWrap">
             <div title="Giỏ hàng" class="icon_cartWrap">
-                <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
-                    <circle cx="8" cy="21" r="1"></circle>
-                    <circle cx="19" cy="21" r="1"></circle>
-                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-                </svg>
-
-                <span id="cart_count" class="cart_count">0</span>
+                <a asp-controller="Store" asp-action="Cart" class="cart_iconLink">
+                    <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                    </svg>
+                    <span id="cart_count" class="cart_count">0</span>
+                </a>
             </div>
 
             <button class="menu_toggle" id="menuToggle">
@@ -37,7 +38,7 @@
                         <a href="#Abouts" class="header_navList--link no_link">Giới thiệu</a>
                     </li>
                     <li class="header_navList--item">
-                        <a href="#Products" class="header_navList--link no_link">Sản phẩm</a>
+                        <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
                     </li>
                     <li class="header_navList--item">
                         <a href="#Certificate" class="header_navList--link no_link">Chứng nhận</a>
@@ -54,12 +55,12 @@
                 <div class="header_nav">
                     <ul class="header_navList no_list">
                         <li class="header_navList--item">
-                            <a href="#Products" class="header_navList--link no_link">Sản phẩm</a>
+                            <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
                             <div class="menu_product">
-                                <a href="#Products" class="menu_product--item" data-filter="all">Tất cả sản phẩm</a>
+                                <a asp-controller="Store" asp-action="Products" class="menu_product--item">Tất cả sản phẩm</a>
                                 @foreach (var category in Model.Categories)
                                 {
-                                    <a href="#Products" class="menu_product--item" data-filter="@category.Slug">@category.Name</a>
+                                    <a asp-controller="Store" asp-action="Products" asp-route-category="@category.Slug" class="menu_product--item">@category.Name</a>
                                 }
                             </div>
                         </li>
@@ -89,14 +90,18 @@
                     </div>
                 </div>
             </div>
-            <div title="Giỏ hàng" class="icon_cartWrap">
-                <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
-                    <circle cx="8" cy="21" r="1"></circle>
-                    <circle cx="19" cy="21" r="1"></circle>
-                    <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
-                </svg>
-
-                <span id="cart_count" class="cart_count">0</span>
+            <div title="Giỏ hàng" class="icon_cartWrap cart-hover-wrap">
+                <a asp-controller="Store" asp-action="Cart" class="cart_iconLink">
+                    <svg id="icon_cart" xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mb-4">
+                        <circle cx="8" cy="21" r="1"></circle>
+                        <circle cx="19" cy="21" r="1"></circle>
+                        <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                    </svg>
+                    <span id="cart_count" class="cart_count">0</span>
+                </a>
+                <div class="mini-cart-preview shadow">
+                    <div data-mini-cart-content class="mini-cart-content"></div>
+                </div>
             </div>
         </div>
 
@@ -105,12 +110,12 @@
         <input type="radio" name="slider_check" id="s3">
         <input type="radio" name="slider_check" id="s4">
         <div class="slider_item">
-            <img src="~/assets/img/banner_Artboard.jpg" alt="img_slide4">
-            <img src="~/assets/img/banner_Artboard.jpg" alt="img_slide1">
-            <img src="~/assets/img/banner_Artboard.jpg">
-            <img src="~/assets/img/banner_Artboard.jpg">
-            <img src="~/assets/img/banner_Artboard.jpg">
-            <img src="~/assets/img/banner_Artboard.jpg">
+            <img src="~/assets/img/banner.jpg" alt="img_slide4">
+            <img src="~/assets/img/banner.jpg" alt="img_slide1">
+            <img src="~/assets/img/banner.jpg">
+            <img src="~/assets/img/banner.jpg">
+            <img src="~/assets/img/banner.jpg">
+            <img src="~/assets/img/banner.jpg">
         </div>
         <div class="slider_navigation">
             <label for="s1"></label>
@@ -120,3 +125,18 @@
         </div>
     </div>
 </header>
+<script>
+    if (typeof window.googleTranslateElementInit !== "function") {
+        window.googleTranslateElementInit = function () {
+            if (!window.google || !google.translate || !google.translate.TranslateElement) return;
+            new google.translate.TranslateElement({
+                pageLanguage: "vi",
+                includedLanguages: "ko,vi,en",
+                autoDisplay: false,
+                layout: google.translate.TranslateElement.InlineLayout.HORIZONTAL
+            }, "google_translate_element");
+        };
+    }
+</script>
+<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+<script src="~/language.js" asp-append-version="true"></script>

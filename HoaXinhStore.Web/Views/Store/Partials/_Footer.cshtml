@@ -1,4 +1,16 @@
-﻿<footer class="footer">
+<section id="order-lookup" class="store-order-lookup">
+    <div class="container">
+        <h3>Tra cứu đơn hàng</h3>
+        <p>Nhập mã đơn hoặc số điện thoại để kiểm tra trạng thái đơn hàng của bạn.</p>
+        <form method="get" action="/Store/TrackOrderLookup" class="store-order-lookup-form" id="orderLookupForm">
+            <input type="text" name="orderNo" placeholder="Mã đơn hàng" />
+            <input type="text" name="phoneNumber" placeholder="Số điện thoại đặt hàng" />
+            <button type="submit">Tra cứu</button>
+        </form>
+        <div id="orderLookupResult" class="store-order-lookup-result"></div>
+    </div>
+</section>
+<footer class="footer">
     <div class="footer_content">
         <div class="footer_logoWrap">
             <a href="#" class="footer_logoLink no_link">
@@ -31,19 +43,19 @@
                 <a href="#Abouts" class="footer_about--link">Giới thiệu</a>
                 <a href="#Products" class="footer_about--link">Sản phẩm</a>
                 <a href="#Certificate" class="footer_about--link">Chứng nhận</a>
-                <a asp-controller="Store" asp-action="TrackOrder" class="footer_about--link">Tra cứu đơn hàng</a>
+                <a href="#order-lookup" class="footer_about--link">Tra cứu đơn hàng</a>
             </div>
         </div>
         <div class="footer_policy line_height">
             <div class="footer_policy--title title">Chính Sách</div>
             <div class="footer_policy--content">
-                <button type="button" class="footer_policy--link" data-policy-key="about">Về Chúng Tôi</button>
-                <button type="button" class="footer_policy--link" data-policy-key="buy-guide">Hướng dẫn mua dẫn hàng</button>
-                <button type="button" class="footer_policy--link" data-policy-key="payment">Chính sách thanh toán</button>
-                <button type="button" class="footer_policy--link" data-policy-key="warranty">Chính sách bảo hành</button>
-                <button type="button" class="footer_policy--link" data-policy-key="shipping">Chính sách giao nhận và vận chuyển</button>
-                <button type="button" class="footer_policy--link" data-policy-key="refund">Chính sách đổi trả và hoàn tiền</button>
-                <button type="button" class="footer_policy--link footer_policy--linkStrong" data-policy-key="privacy">Chính Sách Bảo Mật Thông Tin Cá Nhân</button>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="about" class="footer_policy--link">Về Chúng Tôi</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="buy-guide" class="footer_policy--link">Hướng dẫn mua dẫn hàng</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="payment" class="footer_policy--link">Chính sách thanh toán</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="warranty" class="footer_policy--link">Chính sách bảo hành</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="shipping" class="footer_policy--link">Chính sách giao nhận và vận chuyển</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="refund" class="footer_policy--link">Chính sách đổi trả và hoàn tiền</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="privacy" class="footer_policy--link footer_policy--linkStrong">Chính Sách Bảo Mật Thông Tin Cá Nhân</a>
             </div>
         </div>
     </div>
@@ -71,9 +83,9 @@
                 <svg class="footer_accIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M297.4 470.6C309.9 483.1 330.2 483.1 342.7 470.6L534.7 278.6C547.2 266.1 547.2 245.8 534.7 233.3C522.2 220.8 501.9 220.8 489.4 233.3L320 402.7L150.6 233.4C138.1 220.9 117.8 220.9 105.3 233.4C92.8 245.9 92.8 266.2 105.3 278.7L297.3 470.7z"/></svg>
             </button>
             <div class="footer_accPanel">
-                <button type="button" class="footer_policy--link" data-policy-key="buy-guide">Hướng dẫn mua hàng</button>
-                <button type="button" class="footer_policy--link" data-policy-key="shipping">Vận chuyển & giao hàng</button>
-                <button type="button" class="footer_policy--link" data-policy-key="refund">Chính sách đổi trả</button>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="buy-guide" class="footer_policy--link">Hướng dẫn mua hàng</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="shipping" class="footer_policy--link">Vận chuyển & giao hàng</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="refund" class="footer_policy--link">Chính sách đổi trả</a>
             </div>
         </div>
 
@@ -83,9 +95,9 @@
                 <svg class="footer_accIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M297.4 470.6C309.9 483.1 330.2 483.1 342.7 470.6L534.7 278.6C547.2 266.1 547.2 245.8 534.7 233.3C522.2 220.8 501.9 220.8 489.4 233.3L320 402.7L150.6 233.4C138.1 220.9 117.8 220.9 105.3 233.4C92.8 245.9 92.8 266.2 105.3 278.7L297.3 470.7z"/></svg>
             </button>
             <div class="footer_accPanel">
-                <button type="button" class="footer_policy--link" data-policy-key="payment">Chính sách thanh toán</button>
-                <button type="button" class="footer_policy--link" data-policy-key="warranty">Chính sách bảo hành</button>
-                <button type="button" class="footer_policy--link" data-policy-key="privacy">Chính sách bảo mật</button>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="payment" class="footer_policy--link">Chính sách thanh toán</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="warranty" class="footer_policy--link">Chính sách bảo hành</a>
+                <a asp-controller="Store" asp-action="Policy" asp-route-key="privacy" class="footer_policy--link">Chính sách bảo mật</a>
             </div>
         </div>
 
@@ -98,7 +110,7 @@
                 <a href="#Abouts" class="footer_about--link">Giới thiệu</a>
                 <a href="#Products" class="footer_about--link">Sản phẩm</a>
                 <a href="#Certificate" class="footer_about--link">Chứng nhận</a>
-                <a asp-controller="Store" asp-action="TrackOrder" class="footer_about--link">Tra cứu đơn hàng</a>
+                <a href="#order-lookup" class="footer_about--link">Tra cứu đơn hàng</a>
             </div>
         </div>
 
@@ -136,13 +148,40 @@
         </ul>
     </div>
 </footer>
+<script>
+(() => {
+  const form = document.getElementById('orderLookupForm');
+  const result = document.getElementById('orderLookupResult');
+  if (!form || !result) return;
+  const render = (data) => {
+    if (!data) return;
+    if (!data.found || !data.order) {
+      result.innerHTML = `<div class="alert alert-warning mt-3">${data.message || 'Không tìm thấy đơn hàng.'}</div>`;
+      return;
+    }
+    const o = data.order;
+    result.innerHTML = `
+      <div class="store-order-result-card mt-3">
+        <h4>Kết quả tra cứu</h4>
+        <div class="store-order-result-grid">
+          <div><strong>Mã đơn:</strong> ${o.orderNo || ''}</div>
+          <div><strong>Trạng thái:</strong> ${o.orderStatus || ''}</div>
+          <div><strong>Thanh toán:</strong> ${o.paymentStatus || ''}</div>
+          <div><strong>Tổng tiền:</strong> ${(Number(o.totalAmount || 0)).toLocaleString('vi-VN')} đ</div>
+          <div><strong>Mã vận đơn:</strong> ${o.trackingCode || 'Đang cập nhật'}</div>
+          <div><strong>Đơn vị VC:</strong> ${o.shippingCarrier || 'Đang cập nhật'}</div>
+        </div>
+      </div>`;
+  };
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(form);
+    const q = new URLSearchParams(fd);
+    const res = await fetch(`/Store/TrackOrderLookup?${q.toString()}`, { method: 'GET' });
+    const data = await res.json();
+    render(data);
+  });
+})();
+</script>
 
-<div class="policy_popup" id="policyPopup">
-    <div class="policy_popup--overlay"></div>
-    <div class="policy_popup--dialog">
-        <button type="button" class="policy_popup--close" aria-label="Đóng">×</button>
-        <h3 class="policy_popup--title"></h3>
-        <div class="policy_popup--body"></div>
-        <a class="policy_popup--source" href="#" target="_blank" rel="noopener noreferrer">Xem nguồn tại hoaxinhstore.vn</a>
-    </div>
-</div>
+
