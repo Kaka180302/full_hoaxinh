@@ -171,6 +171,7 @@ using (var scope = app.Services.CreateScope())
                     [HeightMm] INT NULL,
                     [ImageUrl] NVARCHAR(500) NOT NULL CONSTRAINT DF_ProductVariants_ImageUrl DEFAULT N'',
                     [StockQuantity] INT NOT NULL CONSTRAINT DF_ProductVariants_Stock DEFAULT 0,
+                    [IsDefault] BIT NOT NULL CONSTRAINT DF_ProductVariants_IsDefault DEFAULT 0,
                     [IsActive] BIT NOT NULL CONSTRAINT DF_ProductVariants_IsActive DEFAULT 1,
                     [SortOrder] INT NOT NULL CONSTRAINT DF_ProductVariants_Sort DEFAULT 0,
                     CONSTRAINT FK_ProductVariants_Products_ProductId FOREIGN KEY([ProductId]) REFERENCES [dbo].[Products]([Id]) ON DELETE CASCADE
@@ -201,6 +202,10 @@ using (var scope = app.Services.CreateScope())
             IF COL_LENGTH(N'dbo.ProductVariants', N'ImageUrl') IS NULL
             BEGIN
                 ALTER TABLE [dbo].[ProductVariants] ADD [ImageUrl] NVARCHAR(500) NOT NULL CONSTRAINT DF_ProductVariants_ImageUrl DEFAULT N'';
+            END
+            IF COL_LENGTH(N'dbo.ProductVariants', N'IsDefault') IS NULL
+            BEGIN
+                ALTER TABLE [dbo].[ProductVariants] ADD [IsDefault] BIT NOT NULL CONSTRAINT DF_ProductVariants_IsDefault DEFAULT 0;
             END
             IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_OrderItems_ProductVariants_VariantId')
             BEGIN

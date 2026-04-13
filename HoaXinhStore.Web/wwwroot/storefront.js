@@ -71,7 +71,14 @@
             <p class="hx-preorder-title"><strong>${item.name || ""}</strong></p>
             <form id="hxPreOrderForm" class="hx-preorder-form">
                 <input type="hidden" name="productId" value="${item.id}" />
-                <input type="number" name="quantity" min="1" value="${Math.max(1, Number(qty || 1))}" class="form-control" placeholder="Số lượng" />
+                <div class="hx-preorder-qty">
+                    <label for="hxPreOrderQtyInput">Số lượng</label>
+                    <div class="hx-qty-control">
+                        <button type="button" class="hx-qty-btn" data-qty-minus>-</button>
+                        <input id="hxPreOrderQtyInput" type="number" name="quantity" min="1" value="${Math.max(1, Number(qty || 1))}" class="form-control hx-qty-input" />
+                        <button type="button" class="hx-qty-btn" data-qty-plus>+</button>
+                    </div>
+                </div>
                 <input type="text" name="customerName" class="form-control" placeholder="Họ tên" required />
                 <input type="text" name="phoneNumber" class="form-control" placeholder="Số điện thoại" required />
                 <input type="text" name="address" class="form-control" placeholder="Địa chỉ" required />
@@ -85,6 +92,15 @@
         modal.style.display = "flex";
         const form = body.querySelector("#hxPreOrderForm");
         const msg = body.querySelector("#hxPreOrderMsg");
+        const qtyInput = body.querySelector("#hxPreOrderQtyInput");
+        body.querySelector("[data-qty-minus]")?.addEventListener("click", () => {
+            if (!qtyInput) return;
+            qtyInput.value = String(Math.max(1, Number(qtyInput.value || 1) - 1));
+        });
+        body.querySelector("[data-qty-plus]")?.addEventListener("click", () => {
+            if (!qtyInput) return;
+            qtyInput.value = String(Math.max(1, Number(qtyInput.value || 1) + 1));
+        });
         form?.addEventListener("submit", async (e) => {
             e.preventDefault();
             const fd = new FormData(form);
@@ -590,7 +606,18 @@
     document.addEventListener("DOMContentLoaded", () => {
         updateCartBadge();
         renderMiniCart();
-        bindAddButtons();
+    bindAddButtons();
+    document.addEventListener("hx:preorder-open", (e) => {
+        const detail = e?.detail || {};
+        showPreOrderModal({
+            id: Number(detail.id || 0),
+            name: detail.name || ""
+        }, Math.max(1, Number(detail.qty || 1)));
+    });
+    window.HXStorefront = {
+        showPreOrderModal,
+        showNoticeModal
+    };
         renderCartPage();
         renderCheckoutPage();
         bindMobileMenu();

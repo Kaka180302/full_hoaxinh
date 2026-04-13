@@ -149,7 +149,8 @@ public class StoreController(
                         Name = v.Name,
                         Price = v.Price,
                         SalePrice = v.SalePrice,
-                        StockQuantity = v.StockQuantity
+                        StockQuantity = v.StockQuantity,
+                        IsDefault = v.IsDefault
                     }).ToList()
             })
             .ToListAsync();
@@ -279,7 +280,8 @@ public class StoreController(
                     Name = v.Name,
                     Price = v.Price,
                     SalePrice = v.SalePrice,
-                    StockQuantity = v.StockQuantity
+                    StockQuantity = v.StockQuantity,
+                    IsDefault = v.IsDefault
                 }).ToList()
         }).ToListAsync();
         ApplyProductMeta(products);
@@ -333,7 +335,8 @@ public class StoreController(
                         Name = v.Name,
                         Price = v.Price,
                         SalePrice = v.SalePrice,
-                        StockQuantity = v.StockQuantity
+                        StockQuantity = v.StockQuantity,
+                        IsDefault = v.IsDefault
                     }).ToList()
             })
             .FirstOrDefaultAsync();
@@ -375,7 +378,8 @@ public class StoreController(
                         Name = v.Name,
                         Price = v.Price,
                         SalePrice = v.SalePrice,
-                        StockQuantity = v.StockQuantity
+                        StockQuantity = v.StockQuantity,
+                        IsDefault = v.IsDefault
                     }).ToList()
             })
             .ToListAsync();
@@ -506,7 +510,8 @@ public class StoreController(
                         Name = v.Name,
                         Price = v.Price,
                         SalePrice = v.SalePrice,
-                        StockQuantity = v.StockQuantity
+                        StockQuantity = v.StockQuantity,
+                        IsDefault = v.IsDefault
                     }).ToList()
             })
             .ToListAsync();
@@ -860,6 +865,19 @@ public class StoreController(
             item.UsageGuide = parsed.UsageGuide;
             item.UnitOptions = parsed.UnitOptions;
             item.GalleryImages = parsed.GalleryImages;
+
+            var visibleVariants = (item.Variants ?? [])
+                .OrderByDescending(v => v.IsDefault)
+                .ThenBy(v => v.Id)
+                .ToList();
+            if (visibleVariants.Count > 0)
+            {
+                var defaultVariant = visibleVariants.First();
+                item.Price = defaultVariant.Price;
+                item.SalePrice = defaultVariant.SalePrice;
+                item.StockQuantity = visibleVariants.Sum(v => Math.Max(0, v.StockQuantity));
+                item.IsPreOrderEnabled = item.StockQuantity <= 0;
+            }
         }
     }
 

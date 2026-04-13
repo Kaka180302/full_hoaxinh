@@ -2008,6 +2008,34 @@ body[data-cart-nav="true"] {
     min-height: 42px;
 }
 
+.hx-preorder-qty label {
+    font-size: 0.92rem;
+    color: #5a4633;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: inline-block;
+}
+
+.hx-qty-control {
+    display: grid;
+    grid-template-columns: 38px 1fr 38px;
+    gap: 8px;
+    align-items: center;
+}
+
+.hx-qty-btn {
+    border: 1px solid #d6b48a;
+    background: #fff7ee;
+    color: #6b4a2e;
+    border-radius: 10px;
+    height: 42px;
+    font-weight: 700;
+}
+
+.hx-qty-input {
+    text-align: center;
+}
+
 .hx-preorder-form textarea.form-control {
     min-height: 86px;
 }

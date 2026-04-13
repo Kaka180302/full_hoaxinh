@@ -4,6 +4,13 @@
     var p = Model.Product;
     var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
     var sale = p.SalePrice ?? p.Price;
+    var defaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+        .OrderByDescending(v => v.IsDefault)
+        .ThenBy(v => v.Id)
+        .FirstOrDefault();
+    var displayPrice = defaultVariant?.Price ?? p.Price;
+    var displaySale = defaultVariant?.SalePrice;
+    var displayActive = displaySale ?? displayPrice;
     var vi = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
     var thumbs = new List<string> { image };
     thumbs.AddRange((p.GalleryImages ?? []).Where(x => !string.IsNullOrWhiteSpace(x)));
@@ -15,7 +22,7 @@
     var unitOptionsJson = System.Text.Json.JsonSerializer.Serialize(
         p.UnitOptions.Select(u => new { name = u.Name, factor = u.Factor }).ToList());
     var variantsJson = System.Text.Json.JsonSerializer.Serialize(
-        p.Variants.Select(v => new { id = v.Id, name = v.Name, sku = v.Sku, price = v.Price, salePrice = v.SalePrice, stock = v.StockQuantity }).ToList());
+        p.Variants.Select(v => new { id = v.Id, name = v.Name, sku = v.Sku, price = v.Price, salePrice = v.SalePrice, stock = v.StockQuantity, isDefault = v.IsDefault }).ToList());
     var attributeCatalogJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.AttributeCatalog ?? new object());
     var isOutOfStock = p.StockQuantity <= 0;
 }
@@ -62,10 +69,10 @@
                     <h1>@p.Name</h1>
 
                     <div class="product-luxe-price">
-                        <strong id="detailActivePrice">@sale.ToString("N0", vi) đ</strong>
-                        @if (p.SalePrice.HasValue && p.SalePrice.Value < p.Price)
+                        <strong id="detailActivePrice">@displayActive.ToString("N0", vi) đ</strong>
+                        @if (displaySale.HasValue && displaySale.Value > 0 && displaySale.Value < displayPrice)
                         {
-                            <span class="old" id="detailOldPrice">@p.Price.ToString("N0", vi) đ</span>
+                            <span class="old" id="detailOldPrice">@displayPrice.ToString("N0", vi) đ</span>
                         }
                         else
                         {
@@ -123,8 +130,8 @@
                                 id="detailAddToCartBtn"
                                 data-id="@p.Id"
                                 data-name="@p.Name"
-                                data-price="@p.Price"
-                                data-sale-price="@p.SalePrice"
+                                data-price="@displayPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                data-sale-price="@(displaySale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                                 data-unit-factor="1"
                                 data-unit-name=""
                                 data-unit-options='@unitOptionsJson'
@@ -314,7 +321,15 @@
                         map.get(key).add(val);
                     });
                 });
-                return [...map.entries()].map(([name, values]) => ({ name, values: [...values] }));
+                let groups = [...map.entries()].map(([name, values]) => ({ name, values: [...values] }));
+                if (groups.length === 0 && variantExt.length > 0) {
+                    const allNames = [...new Set(variantExt.map(v => String(v.name || "").trim()).filter(Boolean))];
+                    if (allNames.length > 0) {
+                        groups = [{ name: "Phân loại", values: allNames }];
+                        variantExt.forEach(v => { v.attrs = { "Phân loại": String(v.name || "").trim() }; });
+                    }
+                }
+                return groups;
             })();
             const selected = {};
 
@@ -338,9 +353,11 @@
             };
             const findMatchingVariant = () => {
                 const keys = Object.keys(selected);
-                if (!keys.length) return variantExt[0] || null;
-                const match = variantExt.find(v => keys.every(k => (v.attrs?.[k] || "") === selected[k]));
-                return match || variantExt[0] || null;
+                if (!keys.length) return variantExt.find(v => v.isDefault) || variantExt[0] || null;
+                const match = variantExt.find(v => keys.every(k =>
+                    String(v.attrs?.[k] || "").trim().toLowerCase() === String(selected[k] || "").trim().toLowerCase()
+                ));
+                return match || variantExt.find(v => v.isDefault) || variantExt[0] || null;
             };
             const applyVariant = (variant) => {
                 if (!variant || !addBtn) return;
@@ -348,7 +365,10 @@
                 const variantSku = String(variant.sku || "");
                 const variantName = String(variant.name || "");
                 const variantPrice = Number(variant.price || 0);
-                const variantSale = variant.salePrice != null && variant.salePrice !== "" ? Number(variant.salePrice) : null;
+                const variantSaleRaw = variant.salePrice;
+                const variantSale = (variantSaleRaw !== null && variantSaleRaw !== undefined && String(variantSaleRaw).trim() !== "")
+                    ? Number(variantSaleRaw)
+                    : null;
                 const variantStock = Math.max(0, Number(variant.stock || 0));
                 const activePrice = variantSale ?? variantPrice;
                 addBtn.setAttribute("data-variant-id", String(variantId));
@@ -386,6 +406,12 @@
                     </div>
                 `).join("");
                 attributeGroups.forEach(g => { selected[g.name] = g.values[0]; });
+                const defaultVariant = variantExt.find(v => v.isDefault);
+                if (defaultVariant) {
+                    Object.entries(defaultVariant.attrs || {}).forEach(([k, v]) => {
+                        if (selected[k] != null) selected[k] = v;
+                    });
+                }
                 Object.entries(selected).forEach(([k, v]) => {
                     const chip = variantWrap.querySelector(`.variant-chip[data-attr="${k}"][data-value="${v}"]`);
                     chip?.classList.add("active");
@@ -520,25 +546,9 @@
             buyBtn?.addEventListener("click", function () {
                 if (buyBtn.hasAttribute("data-preorder-popup")) {
                     const qty = getQty();
-                    const wrap = document.createElement('div');
-                    wrap.className = 'hx-popup-backdrop';
-                    wrap.style.display = 'flex';
-                    wrap.innerHTML = `<div class="hx-popup-card hx-preorder-popup"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Đặt trước sản phẩm</h4><p class="hx-preorder-title"><strong>@p.Name</strong></p><form id="hxDetailPreForm" class="hx-preorder-form"><input class="form-control" name="qty" type="number" min="1" value="${qty}" placeholder="Số lượng"><input class="form-control" name="customerName" placeholder="Họ tên" required><input class="form-control" name="phoneNumber" placeholder="Số điện thoại" required><input class="form-control" name="address" placeholder="Địa chỉ" required><input class="form-control" name="email" placeholder="Email (không bắt buộc)"><textarea class="form-control" name="note" rows="3" placeholder="Ghi chú"></textarea><button class="mini-cart-view-btn" type="submit">Gửi yêu cầu đặt trước</button></form><div id="hxDetailPreMsg" class="hx-preorder-msg"></div></div></div>`;
-                    document.body.appendChild(wrap);
-                    const close = () => wrap.remove();
-                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
-                    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
-                    const form = wrap.querySelector('#hxDetailPreForm');
-                    const msg = wrap.querySelector('#hxDetailPreMsg');
-                    form?.addEventListener('submit', async (ev) => {
-                        ev.preventDefault();
-                        const fd = new FormData(form);
-                        const payload = { productId: @p.Id, quantity: Number(fd.get('qty') || 1), customerName: String(fd.get('customerName') || ''), phoneNumber: String(fd.get('phoneNumber') || ''), email: String(fd.get('email') || ''), address: String(fd.get('address') || ''), note: String(fd.get('note') || '') };
-                        const res = await fetch('/Store/SubmitPreOrderPopup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                        const data = await res.json();
-                        if (msg) msg.textContent = data.message || '';
-                        if (data.ok) setTimeout(close, 900);
-                    });
+                    document.dispatchEvent(new CustomEvent("hx:preorder-open", {
+                        detail: { id: @p.Id, name: @Html.Raw(System.Text.Json.JsonSerializer.Serialize(p.Name)), qty: qty }
+                    }));
                     return;
                 }
                 const qty = getQty();

@@ -137,13 +137,13 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 Name = v.Name,
                 Price = v.Price,
                 SalePrice = v.SalePrice,
-                Barcode = v.Barcode,
                 WeightGram = v.WeightGram,
                 LengthMm = v.LengthMm,
                 WidthMm = v.WidthMm,
                 HeightMm = v.HeightMm,
                 ImageUrl = v.ImageUrl,
                 StockQuantity = v.StockQuantity,
+                IsDefault = v.IsDefault,
                 IsActive = v.IsActive,
                 SortOrder = v.SortOrder
             })
@@ -172,6 +172,18 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Save(AdminProductEditViewModel vm)
     {
+        var csvDeleted = (vm.DeletedVariantIdsCsv ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => int.TryParse(x, out var n) ? n : 0)
+            .Where(x => x > 0);
+        var deletedSet = (vm.DeletedVariantIds ?? [])
+            .Concat(csvDeleted)
+            .Where(x => x > 0)
+            .ToHashSet();
+        vm.Variants = (vm.Variants ?? [])
+            .Where(v => !(v.Id.HasValue && deletedSet.Contains(v.Id.Value)))
+            .ToList();
+
         if (!ModelState.IsValid)
         {
             await LoadCategoryOptions(vm);
@@ -240,7 +252,8 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        vm.StockQuantity = ResolveLooseStock(vm);
+        // Tồn kho sản phẩm được đồng bộ hoàn toàn từ tổng tồn kho biến thể đang hiển thị.
+        vm.StockQuantity = 0;
         vm.UnitOptions = SyncUnitOptions(vm.UnitOptions, vm.CaseFactor, vm.PackFactor);
 
         if (vm.Id is null)
@@ -254,10 +267,10 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 Name = vm.Name,
                 Price = vm.Price,
                 SalePrice = vm.SalePrice,
-                StockQuantity = vm.StockQuantity,
+                StockQuantity = 0,
                 ImageUrl = imageUrl,
                 BrandId = vm.BrandId,
-                IsPreOrderEnabled = vm.StockQuantity == 0,
+                IsPreOrderEnabled = true,
                 Summary = vm.Summary,
                 Descriptions = ProductContentMeta.Compose(
                     vm.Descriptions,
@@ -283,13 +296,13 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             entity.Name = vm.Name;
             entity.Price = vm.Price;
             entity.SalePrice = vm.SalePrice;
-            entity.StockQuantity = vm.StockQuantity;
+            entity.StockQuantity = 0;
             if (vm.ImageFile is { Length: > 0 })
             {
                 entity.ImageUrl = await SaveImageAsync(vm.ImageFile);
             }
             entity.BrandId = vm.BrandId;
-            entity.IsPreOrderEnabled = vm.StockQuantity == 0;
+            entity.IsPreOrderEnabled = true;
             entity.Summary = vm.Summary;
             entity.Descriptions = ProductContentMeta.Compose(
                 vm.Descriptions,
@@ -332,13 +345,14 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 name = v.Name,
                 price = v.Price,
                 salePrice = v.SalePrice,
-                barcode = v.Barcode,
                 weightGram = v.WeightGram,
                 lengthMm = v.LengthMm,
                 widthMm = v.WidthMm,
                 heightMm = v.HeightMm,
                 imageUrl = v.ImageUrl,
                 stockQuantity = v.StockQuantity,
+                isDefault = v.IsDefault,
+                isActive = v.IsActive,
                 sortOrder = v.SortOrder
             })
             .ToListAsync();
@@ -495,14 +509,6 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         return $"{root}-{(maxNo + 1)}";
     }
 
-    private static int ResolveLooseStock(AdminProductEditViewModel vm)
-    {
-        var loose = Math.Max(0, vm.StockQuantity);
-        var fromCase = vm.CaseFactor > 0 ? Math.Max(0, vm.StockCase) * vm.CaseFactor : 0;
-        var fromPack = vm.PackFactor > 0 ? Math.Max(0, vm.StockPack) * vm.PackFactor : 0;
-        return Math.Max(loose, Math.Max(fromCase, fromPack));
-    }
-
     private static List<AdminProductUnitOptionInput> SyncUnitOptions(List<AdminProductUnitOptionInput> source, int caseFactor, int packFactor)
     {
         var map = (source ?? [])
@@ -559,6 +565,23 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
     private async Task UpsertVariantsAsync(int productId, AdminProductEditViewModel vm, List<ProductVariant>? existing = null)
     {
         existing ??= await db.ProductVariants.Where(v => v.ProductId == productId).ToListAsync();
+        var csvDeleted = (vm.DeletedVariantIdsCsv ?? string.Empty)
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(x => int.TryParse(x, out var n) ? n : 0)
+            .Where(x => x > 0);
+        var deletedSet = (vm.DeletedVariantIds ?? [])
+            .Concat(csvDeleted)
+            .Where(x => x > 0)
+            .ToHashSet();
+        if (deletedSet.Count > 0)
+        {
+            var deleteRows = existing.Where(x => deletedSet.Contains(x.Id)).ToList();
+            if (deleteRows.Count > 0)
+            {
+                db.ProductVariants.RemoveRange(deleteRows);
+                existing = existing.Where(x => !deletedSet.Contains(x.Id)).ToList();
+            }
+        }
         var rows = vm.Variants;
         if (rows.Count == 0)
         {
@@ -571,16 +594,49 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                     Sku = p.Sku + "-V1",
                     Price = p.Price,
                     SalePrice = p.SalePrice,
-                    Barcode = string.Empty,
                     WeightGram = null,
                     LengthMm = null,
                     WidthMm = null,
                     HeightMm = null,
                     ImageUrl = string.Empty,
                     StockQuantity = p.StockQuantity,
+                    IsDefault = true,
                     IsActive = true,
                     SortOrder = 0
                 });
+            }
+        }
+
+        // Ensure there is exactly one default visible variant.
+        var visibleRows = rows.Where(v => v.IsActive).ToList();
+        if (visibleRows.Count > 0)
+        {
+            var hasDefaultVisible = visibleRows.Any(v => v.IsDefault);
+            if (!hasDefaultVisible)
+            {
+                var firstVisible = visibleRows
+                    .OrderBy(v => v.SortOrder)
+                    .ThenBy(v => string.IsNullOrWhiteSpace(v.Sku))
+                    .First();
+                firstVisible.IsDefault = true;
+            }
+
+            foreach (var row in rows.Where(v => !v.IsActive))
+            {
+                row.IsDefault = false;
+            }
+
+            var chosen = visibleRows.First(v => v.IsDefault);
+            foreach (var row in visibleRows.Where(v => !ReferenceEquals(v, chosen)))
+            {
+                row.IsDefault = false;
+            }
+        }
+        else
+        {
+            foreach (var row in rows)
+            {
+                row.IsDefault = false;
             }
         }
 
@@ -602,13 +658,13 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 ev.Name = row.Name.Trim();
                 ev.Price = row.Price;
                 ev.SalePrice = row.SalePrice;
-                ev.Barcode = (row.Barcode ?? string.Empty).Trim();
                 ev.WeightGram = row.WeightGram;
                 ev.LengthMm = row.LengthMm;
                 ev.WidthMm = row.WidthMm;
                 ev.HeightMm = row.HeightMm;
                 ev.ImageUrl = (variantImageUrl ?? string.Empty).Trim();
                 ev.StockQuantity = Math.Max(0, row.StockQuantity);
+                ev.IsDefault = row.IsDefault;
                 ev.IsActive = row.IsActive;
                 ev.SortOrder = row.SortOrder;
             }
@@ -621,13 +677,13 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                     Name = row.Name.Trim(),
                     Price = row.Price,
                     SalePrice = row.SalePrice,
-                    Barcode = (row.Barcode ?? string.Empty).Trim(),
                     WeightGram = row.WeightGram,
                     LengthMm = row.LengthMm,
                     WidthMm = row.WidthMm,
                     HeightMm = row.HeightMm,
                     ImageUrl = (variantImageUrl ?? string.Empty).Trim(),
                     StockQuantity = Math.Max(0, row.StockQuantity),
+                    IsDefault = row.IsDefault,
                     IsActive = row.IsActive,
                     SortOrder = row.SortOrder
                 });
@@ -637,7 +693,20 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         var product = await db.Products.FindAsync(productId);
         if (product is not null)
         {
-            product.StockQuantity = await db.ProductVariants.Where(v => v.ProductId == productId && v.IsActive).SumAsync(v => (int?)v.StockQuantity) ?? product.StockQuantity;
+            var activeVariants = await db.ProductVariants
+                .Where(v => v.ProductId == productId && v.IsActive)
+                .OrderByDescending(v => v.IsDefault)
+                .ThenBy(v => v.SortOrder)
+                .ThenBy(v => v.Id)
+                .ToListAsync();
+            product.StockQuantity = activeVariants.Sum(v => Math.Max(0, v.StockQuantity));
+            product.IsPreOrderEnabled = product.StockQuantity <= 0;
+            var defaultVariant = activeVariants.FirstOrDefault();
+            if (defaultVariant is not null)
+            {
+                product.Price = defaultVariant.Price;
+                product.SalePrice = defaultVariant.SalePrice;
+            }
             await db.SaveChangesAsync();
         }
     }

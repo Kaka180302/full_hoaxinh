@@ -1289,6 +1289,23 @@ html, body {
     font-size: 1.4rem;
 }
 
+.store-order-lookup-head{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.2rem;
+}
+
+.store-order-lookup-icon{
+    width: 86px;
+    height: 86px;
+    object-fit: cover;
+    border-radius: 14px;
+    border: 1px solid #e3d2b8;
+    background: #fff;
+    padding: 4px;
+}
+
 .store-order-lookup-form{
     display: flex;
     gap: .8rem;
@@ -4378,6 +4395,24 @@ input{
 }
 
 @media (max-width: 768px) {
+    .hx-home2-shell {
+        width: 100%;
+        padding: 0;
+        margin: 0;
+    }
+
+    .hx-home2-main {
+        width: 100%;
+        max-width: 100%;
+        padding: 10px 0;
+        margin: 0;
+    }
+
+    .hx-home2-section {
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
     .hx-home2-head {
         grid-template-columns: 1fr;
         padding: 10px;
@@ -4477,6 +4512,23 @@ input{
     .hx-home2-category-card span,
     .hx-home2-product-card h3 {
         font-size: 0.72rem;
+    }
+
+    .store-order-lookup .container{
+        width: 100%;
+        max-width: 100%;
+        padding-left: 10px;
+        padding-right: 10px;
+    }
+
+    .store-order-lookup-head{
+        align-items: flex-start;
+    }
+
+    .store-order-lookup-icon{
+        width: 56px;
+        height: 56px;
+        border-radius: 10px;
     }
 }
 

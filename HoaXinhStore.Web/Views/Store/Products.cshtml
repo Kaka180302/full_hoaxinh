@@ -120,7 +120,13 @@
                             foreach (var p in Model.Products)
                             {
                                 var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
-                                var sale = p.SalePrice ?? p.Price;
+                                var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+                                    .OrderByDescending(v => v.IsDefault)
+                                    .ThenBy(v => v.Id)
+                                    .FirstOrDefault();
+                                var cardPrice = cardDefaultVariant?.Price ?? p.Price;
+                                var cardSale = cardDefaultVariant?.SalePrice;
+                                var cardActive = cardSale ?? cardPrice;
                                 <article class="luxe-card" data-category="@p.CategorySlug">
                                     <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.Id" class="luxe-card__img">
                                         <img src="@image" alt="@p.Name" />
@@ -128,10 +134,10 @@
                                     <button type="button" class="luxe-fav" aria-label="Yêu thích"><i class="fa-regular fa-heart"></i></button>
                                     <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.Id" class="no_link">@p.Name</a></h3>
                                     <div class="luxe-price">
-                                        <strong>@sale.ToString("N0", vi) đ</strong>
-                                        @if (p.SalePrice.HasValue && p.SalePrice.Value < p.Price)
+                                        <strong>@cardActive.ToString("N0", vi) đ</strong>
+                                        @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
                                         {
-                                            <span>@p.Price.ToString("N0", vi) đ</span>
+                                            <span>@cardPrice.ToString("N0", vi) đ</span>
                                         }
                                     </div>
                                     @if (p.StockQuantity <= 0)
@@ -149,8 +155,8 @@
                                                 data-add-cart
                                                 data-id="@p.Id"
                                                 data-name="@p.Name"
-                                                data-price="@p.Price"
-                                                data-sale-price="@p.SalePrice"
+                                                data-price="@cardPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-sale-price="@(cardSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                                                 data-stock="@Math.Max(0, p.StockQuantity)"
                                                 data-image="@image"><i class="fa-solid fa-cart-shopping"></i></button>
                                     }

@@ -66,6 +66,8 @@ public class AdminProductEditViewModel
     [Display(Name = "Ảnh con (nhiều ảnh)")]
     public List<IFormFile> GalleryFiles { get; set; } = [];
     public List<IFormFile?> VariantImageFiles { get; set; } = [];
+    public List<int> DeletedVariantIds { get; set; } = [];
+    public string? DeletedVariantIdsCsv { get; set; }
 
     public List<SelectListItem> CategoryOptions { get; set; } = [];
     public List<SelectListItem> BrandOptions { get; set; } = [];
@@ -90,13 +92,13 @@ public class AdminProductVariantInput
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public decimal? SalePrice { get; set; }
-    public string? Barcode { get; set; }
     public int? WeightGram { get; set; }
     public int? LengthMm { get; set; }
     public int? WidthMm { get; set; }
     public int? HeightMm { get; set; }
     public string? ImageUrl { get; set; }
     public int StockQuantity { get; set; }
-    public bool IsActive { get; set; } = true;
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; }
     public int SortOrder { get; set; }
 }

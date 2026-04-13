@@ -47,5 +47,51 @@
         @RenderBody()
     </main>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const createPreviewBox = (input) => {
+                const holder = document.createElement('div');
+                holder.className = 'admin-upload-preview d-flex gap-2 flex-wrap mt-2';
+                input.insertAdjacentElement('afterend', holder);
+                return holder;
+            };
+
+            const renderPreview = (input) => {
+                const targetSelector = input.getAttribute('data-preview-target');
+                const target = targetSelector ? document.querySelector(targetSelector) : null;
+                const files = Array.from(input.files || []).filter(f => /^image\//i.test(f.type));
+
+                if (target) {
+                    if (!files.length) return;
+                    const file = files[0];
+                    const url = URL.createObjectURL(file);
+                    target.src = url;
+                    target.style.display = '';
+                    target.onload = () => URL.revokeObjectURL(url);
+                    return;
+                }
+
+                let box = input.parentElement?.querySelector(':scope > .admin-upload-preview');
+                if (!box) box = createPreviewBox(input);
+                box.innerHTML = '';
+                files.slice(0, 6).forEach(file => {
+                    const url = URL.createObjectURL(file);
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.alt = file.name;
+                    img.style.cssText = 'width:76px;height:76px;object-fit:cover;border:1px solid #e5e7eb;border-radius:8px;background:#fff;';
+                    img.onload = () => URL.revokeObjectURL(url);
+                    box.appendChild(img);
+                });
+            };
+
+            document.addEventListener('change', (e) => {
+                const input = e.target.closest('input[type="file"]');
+                if (!input) return;
+                renderPreview(input);
+            });
+        })();
+    </script>
+    @RenderSection("Scripts", required: false)
 </body>
 </html>

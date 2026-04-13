@@ -1,7 +1,12 @@
 <section id="order-lookup" class="store-order-lookup">
     <div class="container">
-        <h3>Tra cứu đơn hàng</h3>
-        <p>Nhập mã đơn hoặc số điện thoại để kiểm tra trạng thái đơn hàng của bạn.</p>
+        <div class="store-order-lookup-head">
+            <div>
+                <h3>Tra cứu đơn hàng</h3>
+                <p>Nhập mã đơn hoặc số điện thoại để kiểm tra trạng thái đơn hàng của bạn.</p>
+            </div>
+            <img class="store-order-lookup-icon" src="~/assets/img/icon-xe.jpg" alt="Giao hàng" />
+        </div>
         <form method="get" action="/Store/TrackOrderLookup" class="store-order-lookup-form" id="orderLookupForm">
             <input type="text" name="orderNo" placeholder="Mã đơn hàng" />
             <input type="text" name="phoneNumber" placeholder="Số điện thoại đặt hàng" />

@@ -19,14 +19,16 @@
         </div>
         <div class="col-md-8">
             <label asp-for="ImageFile" class="form-label"></label>
-            <input asp-for="ImageFile" type="file" class="form-control" />
+            <input asp-for="ImageFile" type="file" class="form-control" accept="image/*" data-preview-target="#brandImagePreview" />
         </div>
         <div class="col-md-4">
-            @{
-                var img = string.IsNullOrWhiteSpace(Model.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : Model.ImageUrl;
-            }
             <label class="form-label">Ảnh hiện tại</label>
-            <div><img src="@img" alt="Brand" style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;" /></div>
+            <div>
+                <img id="brandImagePreview"
+                     src="@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "" : Model.ImageUrl)"
+                     alt="Brand"
+                     style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "display:none;" : "")" />
+            </div>
         </div>
         <div class="col-12">
             <div class="form-check">
@@ -41,4 +43,3 @@
         <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
     </div>
 </form>
-

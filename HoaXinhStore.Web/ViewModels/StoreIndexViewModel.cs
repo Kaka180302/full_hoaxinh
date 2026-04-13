@@ -55,6 +55,7 @@ public class StoreVariantViewModel
     public decimal Price { get; set; }
     public decimal? SalePrice { get; set; }
     public int StockQuantity { get; set; }
+    public bool IsDefault { get; set; }
 }
 
 public class ProductListPageViewModel

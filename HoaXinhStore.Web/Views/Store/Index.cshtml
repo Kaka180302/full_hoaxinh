@@ -92,17 +92,23 @@
                         @foreach (var p in catSection.Products)
                         {
                             var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
-                            var price = p.SalePrice ?? p.Price;
+                            var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+                                .OrderByDescending(v => v.IsDefault)
+                                .ThenBy(v => v.Id)
+                                .FirstOrDefault();
+                            var cardPrice = cardDefaultVariant?.Price ?? p.Price;
+                            var cardSale = cardDefaultVariant?.SalePrice;
+                            var cardActive = cardSale ?? cardPrice;
                             <article class="hx-home2-product-card">
                                 <a href="/Store/ProductDetail/@p.Id" class="hx-home2-product-media">
                                     <img src="@img" alt="@p.Name">
                                 </a>
                                 <h3><a href="/Store/ProductDetail/@p.Id">@p.Name</a></h3>
                                 <div class="hx-home2-price">
-                                    <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", price)</strong>
-                                    @if (p.SalePrice.HasValue && p.SalePrice.Value < p.Price)
+                                    <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardActive)</strong>
+                                    @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
                                     {
-                                        <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", p.Price)</span>
+                                        <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardPrice)</span>
                                     }
                                 </div>
                                 @if (p.StockQuantity <= 0)
@@ -124,8 +130,8 @@
                                             data-add-cart
                                             data-id="@p.Id"
                                             data-name="@p.Name"
-                                            data-price="@p.Price"
-                                            data-sale-price="@(p.SalePrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                            data-price="@cardPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-sale-price="@(cardSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
                                             data-stock="@Math.Max(0, p.StockQuantity)"
                                             data-image="@img">
                                         <i class="fa-solid fa-cart-shopping"></i>
@@ -391,32 +397,6 @@
                     stock: Number(btn.getAttribute('data-stock') || 0)
                 };
                 addToCart(payload, img);
-            });
-
-            document.addEventListener('click', async function (e) {
-                const btn = e.target.closest('[data-preorder-popup]');
-                if (!btn) return;
-                const name = btn.getAttribute('data-name') || '';
-                const pid = Number(btn.getAttribute('data-id') || 0);
-                const wrap = document.createElement('div');
-                wrap.className = 'hx-popup-backdrop';
-                wrap.style.display = 'flex';
-                wrap.innerHTML = `<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Đặt trước</h4><p><strong>${name}</strong></p><form id="hxInlinePreorderForm" class="d-grid gap-2"><input class="form-control" name="qty" type="number" min="1" value="" placeholder="Nhập số lượng cần đặt trước"><input class="form-control" name="customerName" placeholder="Họ tên" required><input class="form-control" name="phoneNumber" placeholder="Số điện thoại" required><input class="form-control" name="email" placeholder="Email"><input class="form-control" name="address" placeholder="Địa chỉ"><button class="mini-cart-view-btn" type="submit">Gửi yêu cầu</button></form><div id="hxInlineMsg"></div></div></div>`;
-                document.body.appendChild(wrap);
-                const close = () => wrap.remove();
-                wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
-                wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
-                const form = wrap.querySelector('#hxInlinePreorderForm');
-                const msg = wrap.querySelector('#hxInlineMsg');
-                form?.addEventListener('submit', async (ev) => {
-                    ev.preventDefault();
-                    const fd = new FormData(form);
-                    const payload = { productId: pid, quantity: Number(fd.get('qty') || 1), customerName: String(fd.get('customerName') || ''), phoneNumber: String(fd.get('phoneNumber') || ''), email: String(fd.get('email') || ''), address: String(fd.get('address') || '') };
-                    const res = await fetch('/Store/SubmitPreOrderPopup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    const data = await res.json();
-                    if (msg) msg.textContent = data.message || '';
-                    if (data.ok) setTimeout(close, 900);
-                });
             });
 
             cartLink?.addEventListener('click', function (e) {
