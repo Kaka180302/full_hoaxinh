@@ -26,6 +26,10 @@ public class ProductAttributeValueEditItem
     [StringLength(120)]
     public string Value { get; set; } = string.Empty;
 
+    [Display(Name = "Hệ số quy đổi")]
+    [Range(0, 9999999, ErrorMessage = "Hệ số phải >= 0")]
+    public int? ConversionFactor { get; set; }
+
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 }

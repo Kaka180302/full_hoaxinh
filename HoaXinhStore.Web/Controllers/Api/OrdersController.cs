@@ -1,4 +1,4 @@
-﻿using HoaXinhStore.Web.Data;
+using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities;
 using HoaXinhStore.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
@@ -25,6 +25,7 @@ public class OrdersController(AppDbContext db) : ControllerBase
 
         var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
         var products = await db.Products
+            .Include(p => p.Variants)
             .Where(p => productIds.Contains(p.Id))
             .ToDictionaryAsync(p => p.Id);
 
@@ -63,13 +64,41 @@ public class OrdersController(AppDbContext db) : ControllerBase
             await db.SaveChangesAsync();
         }
 
-        var orderItems = request.Items.Select(i =>
+        var orderItems = new List<OrderItem>();
+        foreach (var i in request.Items)
         {
             var qty = Math.Max(1, i.Quantity);
             var product = products[i.ProductId];
-            product.StockQuantity = Math.Max(0, product.StockQuantity - qty);
+            var defaultVariant = (product.Variants ?? [])
+                .Where(v => v.IsActive)
+                .OrderByDescending(v => v.IsDefault)
+                .ThenBy(v => v.SortOrder)
+                .ThenBy(v => v.Id)
+                .FirstOrDefault();
 
-            return new OrderItem
+            if (defaultVariant is not null)
+            {
+                var available = Math.Max(0, defaultVariant.AvailableStock);
+                if (qty > available)
+                {
+                    await tx.RollbackAsync();
+                    return BadRequest("One or more products are out of stock.");
+                }
+
+                defaultVariant.StockQuantity = Math.Max(0, defaultVariant.StockQuantity - qty);
+                defaultVariant.AvailableStock = Math.Max(0, defaultVariant.StockQuantity - Math.Max(0, defaultVariant.ReservedStock));
+            }
+            else
+            {
+                if (qty > product.StockQuantity)
+                {
+                    await tx.RollbackAsync();
+                    return BadRequest("One or more products are out of stock.");
+                }
+                product.StockQuantity = Math.Max(0, product.StockQuantity - qty);
+            }
+
+            orderItems.Add(new OrderItem
             {
                 ProductId = product.Id,
                 VariantId = null,
@@ -77,11 +106,11 @@ public class OrdersController(AppDbContext db) : ControllerBase
                 SkuSnapshot = product.Sku,
                 VariantNameSnapshot = string.Empty,
                 Quantity = qty,
-                IsPreOrder = product.StockQuantity == 0,
+                IsPreOrder = false,
                 UnitPrice = product.Price,
                 LineTotal = product.Price * qty
-            };
-        }).ToList();
+            });
+        }
 
         var subtotal = orderItems.Sum(i => i.LineTotal);
         var order = new Order
@@ -122,6 +151,18 @@ public class OrdersController(AppDbContext db) : ControllerBase
             ToStatus = order.OrderStatus,
             Note = "Tạo đơn từ API"
         });
+        await db.SaveChangesAsync();
+
+        foreach (var p in products.Values)
+        {
+            var activeVariants = (p.Variants ?? []).Where(v => v.IsActive).ToList();
+            if (activeVariants.Count > 0)
+            {
+                p.StockQuantity = activeVariants.Sum(v => Math.Max(0, v.AvailableStock));
+                p.IsPreOrderEnabled = p.StockQuantity <= 0;
+            }
+        }
+
         await db.SaveChangesAsync();
         await tx.CommitAsync();
 

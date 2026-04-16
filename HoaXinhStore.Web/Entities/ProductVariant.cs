@@ -33,6 +33,8 @@ public class ProductVariant
     public string ImageUrl { get; set; } = string.Empty;
 
     public int StockQuantity { get; set; }
+    public int ReservedStock { get; set; }
+    public int AvailableStock { get; set; }
     public bool IsDefault { get; set; }
     public bool IsActive { get; set; } = true;
     public int SortOrder { get; set; } = 0;

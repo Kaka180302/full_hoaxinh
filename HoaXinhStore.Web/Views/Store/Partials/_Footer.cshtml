@@ -1,25 +1,8 @@
-<section id="order-lookup" class="store-order-lookup">
-    <div class="container">
-        <div class="store-order-lookup-head">
-            <div>
-                <h3>Tra cứu đơn hàng</h3>
-                <p>Nhập mã đơn hoặc số điện thoại để kiểm tra trạng thái đơn hàng của bạn.</p>
-            </div>
-            <img class="store-order-lookup-icon" src="~/assets/img/icon-xe.jpg" alt="Giao hàng" />
-        </div>
-        <form method="get" action="/Store/TrackOrderLookup" class="store-order-lookup-form" id="orderLookupForm">
-            <input type="text" name="orderNo" placeholder="Mã đơn hàng" />
-            <input type="text" name="phoneNumber" placeholder="Số điện thoại đặt hàng" />
-            <button type="submit">Tra cứu</button>
-        </form>
-        <div id="orderLookupResult" class="store-order-lookup-result"></div>
-    </div>
-</section>
-<footer class="footer">
+﻿<footer class="footer">
     <div class="footer_content">
         <div class="footer_logoWrap">
             <a href="#" class="footer_logoLink no_link">
-                <img class="footer_logo" src="~/assets/img/Logo_HX.png" alt="img_logo-footer">
+                <img class="footer_logo" src="~/assets/img/logo/Logo_HX.png" alt="img_logo-footer">
                 <div class="footer_nameCty no_link">CÔNG TY TNHH SX TM & DV HOA XINH</div>
             </a>
         </div>
@@ -45,10 +28,9 @@
         <div class="footer_abouts line_height">
             <div class="footer_abous--title title">Về chúng tôi</div>
             <div class="footer_abouts--content">
-                <a href="#Abouts" class="footer_about--link">Giới thiệu</a>
-                <a href="#Products" class="footer_about--link">Sản phẩm</a>
-                <a href="#Certificate" class="footer_about--link">Chứng nhận</a>
-                <a href="#order-lookup" class="footer_about--link">Tra cứu đơn hàng</a>
+                <a asp-controller="Store" asp-action="Products" class="footer_about--link">Sản phẩm</a>
+                <a asp-controller="Store" asp-action="Index" asp-fragment="featured" class="footer_about--link">Nổi bật</a>
+                <a asp-controller="Store" asp-action="TrackOrder" class="footer_about--link">Tra cứu đơn hàng</a>
             </div>
         </div>
         <div class="footer_policy line_height">
@@ -67,7 +49,7 @@
 
     <div class="footer_mobileAccordion">
         <div class="footer_mobileCard">
-            <img class="footer_mobileLogo" src="~/assets/img/Logo_HX.png" alt="Hoa Xinh Store">
+            <img class="footer_mobileLogo" src="~/assets/img/logo/Logo_HX.png" alt="Hoa Xinh Store">
             <p class="footer_mobileName">Bạn cần tư vấn?</p>
             <a class="footer_mobilePhone" href="tel:0819981900">08 1998 1900</a>
             <div class="footer_mobileInfo">
@@ -112,10 +94,9 @@
                 <svg class="footer_accIcon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M297.4 470.6C309.9 483.1 330.2 483.1 342.7 470.6L534.7 278.6C547.2 266.1 547.2 245.8 534.7 233.3C522.2 220.8 501.9 220.8 489.4 233.3L320 402.7L150.6 233.4C138.1 220.9 117.8 220.9 105.3 233.4C92.8 245.9 92.8 266.2 105.3 278.7L297.3 470.7z"/></svg>
             </button>
             <div class="footer_accPanel">
-                <a href="#Abouts" class="footer_about--link">Giới thiệu</a>
-                <a href="#Products" class="footer_about--link">Sản phẩm</a>
-                <a href="#Certificate" class="footer_about--link">Chứng nhận</a>
-                <a href="#order-lookup" class="footer_about--link">Tra cứu đơn hàng</a>
+                <a asp-controller="Store" asp-action="Products" class="footer_about--link">Sản phẩm</a>
+                <a asp-controller="Store" asp-action="Index" asp-fragment="featured" class="footer_about--link">Nổi bật</a>
+                <a asp-controller="Store" asp-action="TrackOrder" class="footer_about--link">Tra cứu đơn hàng</a>
             </div>
         </div>
 
@@ -147,46 +128,10 @@
             </li>
             <li class="footer_platfom--item">
                 <a target="_blank" href="https://shopee.vn/hoaxinhstore.vn?" class="footer_platfom--link">
-                    <img src="https://cdn-0863.cafe24img.com/hoaxinhstore/img/icon_shopee.png" alt="" class="icon_platfom">
+                    <img src="~/assets/img/icon/icon_shopee.png" alt="" class="icon_platfom">
                 </a>
             </li>
         </ul>
     </div>
 </footer>
-<script>
-(() => {
-  const form = document.getElementById('orderLookupForm');
-  const result = document.getElementById('orderLookupResult');
-  if (!form || !result) return;
-  const render = (data) => {
-    if (!data) return;
-    if (!data.found || !data.order) {
-      result.innerHTML = `<div class="alert alert-warning mt-3">${data.message || 'Không tìm thấy đơn hàng.'}</div>`;
-      return;
-    }
-    const o = data.order;
-    result.innerHTML = `
-      <div class="store-order-result-card mt-3">
-        <h4>Kết quả tra cứu</h4>
-        <div class="store-order-result-grid">
-          <div><strong>Mã đơn:</strong> ${o.orderNo || ''}</div>
-          <div><strong>Trạng thái:</strong> ${o.orderStatus || ''}</div>
-          <div><strong>Thanh toán:</strong> ${o.paymentStatus || ''}</div>
-          <div><strong>Tổng tiền:</strong> ${(Number(o.totalAmount || 0)).toLocaleString('vi-VN')} đ</div>
-          <div><strong>Mã vận đơn:</strong> ${o.trackingCode || 'Đang cập nhật'}</div>
-          <div><strong>Đơn vị VC:</strong> ${o.shippingCarrier || 'Đang cập nhật'}</div>
-        </div>
-      </div>`;
-  };
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const q = new URLSearchParams(fd);
-    const res = await fetch(`/Store/TrackOrderLookup?${q.toString()}`, { method: 'GET' });
-    const data = await res.json();
-    render(data);
-  });
-})();
-</script>
-
 

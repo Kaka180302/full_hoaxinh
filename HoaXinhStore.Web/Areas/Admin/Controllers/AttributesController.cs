@@ -63,6 +63,7 @@ public class AttributesController(AppDbContext db) : Controller
                 {
                     Id = v.Id,
                     Value = v.Value,
+                    ConversionFactor = Math.Max(0, (int)Math.Round(v.ConversionFactor ?? 1m)),
                     SortOrder = v.SortOrder,
                     IsActive = v.IsActive
                 }).ToList()
@@ -104,6 +105,7 @@ public class AttributesController(AppDbContext db) : Controller
                 var ev = existing.FirstOrDefault(x => x.Id == row.Id.Value);
                 if (ev is null) continue;
                 ev.Value = row.Value.Trim();
+                ev.ConversionFactor = Math.Max(0, row.ConversionFactor ?? 1);
                 ev.SortOrder = row.SortOrder;
                 ev.IsActive = row.IsActive;
                 keep.Add(ev.Id);
@@ -114,6 +116,7 @@ public class AttributesController(AppDbContext db) : Controller
                 {
                     ProductAttributeId = entity.Id,
                     Value = row.Value.Trim(),
+                    ConversionFactor = Math.Max(0, row.ConversionFactor ?? 1),
                     SortOrder = row.SortOrder,
                     IsActive = row.IsActive
                 });
@@ -137,4 +140,3 @@ public class AttributesController(AppDbContext db) : Controller
         return RedirectToAction(nameof(Index));
     }
 }
-

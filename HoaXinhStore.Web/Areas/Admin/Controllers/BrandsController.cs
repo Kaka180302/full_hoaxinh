@@ -1,7 +1,9 @@
 using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities;
 using HoaXinhStore.Web.ViewModels.Admin;
+using HoaXinhStore.Web.Hubs;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +12,7 @@ namespace HoaXinhStore.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = "Admin")]
-public class BrandsController(AppDbContext db, IWebHostEnvironment env) : Controller
+public class BrandsController(AppDbContext db, IWebHostEnvironment env, IHubContext<StorefrontHub> hub) : Controller
 {
     public async Task<IActionResult> Index(string q = "")
     {
@@ -87,6 +89,7 @@ public class BrandsController(AppDbContext db, IWebHostEnvironment env) : Contro
         }
 
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("storefront-updated", new { type = "brand", id = entity.Id, at = DateTimeOffset.UtcNow });
         return RedirectToAction(nameof(Index));
     }
 
@@ -98,6 +101,7 @@ public class BrandsController(AppDbContext db, IWebHostEnvironment env) : Contro
         if (entity is null) return NotFound();
         entity.IsActive = !entity.IsActive;
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("storefront-updated", new { type = "brand", id = entity.Id, at = DateTimeOffset.UtcNow });
         return RedirectToAction(nameof(Index));
     }
 
@@ -127,4 +131,3 @@ public class BrandsController(AppDbContext db, IWebHostEnvironment env) : Contro
         return $"/uploads/brands/{fileName}";
     }
 }
-

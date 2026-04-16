@@ -1,8 +1,10 @@
-using HoaXinhStore.Web.Data;
+﻿using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities;
+using HoaXinhStore.Web.Hubs;
 using HoaXinhStore.Web.Services;
 using HoaXinhStore.Web.ViewModels.Admin;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
@@ -11,12 +13,18 @@ namespace HoaXinhStore.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = "Admin")]
-public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Controller
+public class ProductsController(AppDbContext db, IWebHostEnvironment env, IHubContext<StorefrontHub> hub) : Controller
 {
+    private const string DefaultSummaryText = "Hàng nhập khẩu chính hãng từ Hàn Quốc\nCam kết bảo hành chính hãng 12 tháng\nĐổi trả dễ dàng trong 7 ngày miễn phí";
+
     public async Task<IActionResult> Index(string q = "", int? categoryId = null, int page = 1, int pageSize = 10)
     {
         await NormalizeSkusAsync();
-        var query = db.Products.AsNoTracking().Include(p => p.Category).AsQueryable();
+        var query = db.Products
+            .AsNoTracking()
+            .Include(p => p.Category)
+            .Include(p => p.Variants)
+            .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(q))
         {
@@ -38,11 +46,25 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             .Take(pageSize)
             .ToListAsync();
 
+        var baseStockByProductId = new Dictionary<int, int>();
+        foreach (var p in items)
+        {
+            var active = (p.Variants ?? []).Where(v => v.IsActive).ToList();
+            if (active.Count == 0)
+            {
+                baseStockByProductId[p.Id] = Math.Max(0, p.StockQuantity);
+                continue;
+            }
+
+            baseStockByProductId[p.Id] = Math.Max(0, active.Sum(v => v.AvailableStock));
+        }
+
         ViewBag.Query = q;
         ViewBag.CategoryId = categoryId;
         ViewBag.Page = page;
         ViewBag.TotalPages = totalPages;
         ViewBag.TotalItems = totalItems;
+        ViewBag.BaseStockByProductId = baseStockByProductId;
         ViewBag.Categories = await db.Categories
             .AsNoTracking()
             .OrderBy(c => c.Name)
@@ -74,7 +96,11 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         {
             CategoryId = categoryId.Value,
             BrandId = Request.Query.ContainsKey("brandId") ? int.TryParse(Request.Query["brandId"], out var bid) ? bid : null : null,
-            Sku = await GenerateNextSkuAsync(categoryId.Value)
+            Sku = await GenerateNextSkuAsync(categoryId.Value),
+            Summary = DefaultSummaryText,
+            Descriptions = "Chưa có mô tả",
+            TechnicalSpecs = "Chưa có mô tả",
+            UsageGuide = "Chưa có mô tả"
         };
         vm.CaseFactor = 0;
         vm.PackFactor = 0;
@@ -108,6 +134,7 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             Price = entity.Price,
             SalePrice = entity.SalePrice,
             StockQuantity = entity.StockQuantity,
+            ImageUrl = entity.ImageUrl,
             Summary = entity.Summary,
             Descriptions = ProductContentMeta.Parse(entity.Descriptions).CleanDescription,
             CategoryId = entity.CategoryId,
@@ -115,13 +142,18 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             IsActive = entity.IsActive
         };
         var parsed = ProductContentMeta.Parse(entity.Descriptions);
-        vm.TechnicalSpecs = parsed.TechnicalSpecs;
-        vm.UsageGuide = parsed.UsageGuide;
+        vm.Summary = string.IsNullOrWhiteSpace(entity.Summary) || string.Equals(entity.Summary.Trim(), "Chưa có mô tả", StringComparison.OrdinalIgnoreCase)
+            ? DefaultSummaryText
+            : entity.Summary;
+        vm.Descriptions = string.IsNullOrWhiteSpace(parsed.CleanDescription) ? "Chưa có mô tả" : parsed.CleanDescription;
+        vm.TechnicalSpecs = string.IsNullOrWhiteSpace(parsed.TechnicalSpecs) ? "Chưa có mô tả" : parsed.TechnicalSpecs;
+        vm.UsageGuide = string.IsNullOrWhiteSpace(parsed.UsageGuide) ? "Chưa có mô tả" : parsed.UsageGuide;
         vm.UnitOptions = parsed.UnitOptions.Select(u => new AdminProductUnitOptionInput
         {
             Name = u.Name,
             Factor = u.Factor
         }).ToList();
+        vm.GalleryImageUrls = (parsed.GalleryImages ?? []).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
         vm.CaseFactor = parsed.UnitOptions.FirstOrDefault(x => string.Equals(x.Name, "thùng", StringComparison.OrdinalIgnoreCase))?.Factor ?? 0;
         vm.PackFactor = parsed.UnitOptions.FirstOrDefault(x => string.Equals(x.Name, "lốc", StringComparison.OrdinalIgnoreCase))?.Factor ?? 0;
 
@@ -162,9 +194,16 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         var entity = await db.Products
             .AsNoTracking()
             .Include(p => p.Category)
+            .Include(p => p.Brand)
+            .Include(p => p.Variants)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (entity is null) return NotFound();
+        var parsed = ProductContentMeta.Parse(entity.Descriptions);
+        ViewBag.CleanDescription = string.IsNullOrWhiteSpace(parsed.CleanDescription) ? "Chưa có mô tả" : parsed.CleanDescription;
+        ViewBag.TechnicalSpecs = string.IsNullOrWhiteSpace(parsed.TechnicalSpecs) ? "Chưa có mô tả" : parsed.TechnicalSpecs;
+        ViewBag.UsageGuide = string.IsNullOrWhiteSpace(parsed.UsageGuide) ? "Chưa có mô tả" : parsed.UsageGuide;
+        ViewBag.TotalVariantStock = (entity.Variants ?? []).Where(v => v.IsActive).Sum(v => Math.Max(0, v.AvailableStock));
         return View(entity);
     }
 
@@ -238,6 +277,10 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         vm.Variants = (vm.Variants ?? [])
             .Where(v => !string.IsNullOrWhiteSpace(v.Name))
             .ToList();
+        var summaryText = string.IsNullOrWhiteSpace(vm.Summary) ? DefaultSummaryText : vm.Summary!.Trim();
+        var descText = string.IsNullOrWhiteSpace(vm.Descriptions) ? "Chưa có mô tả" : vm.Descriptions!.Trim();
+        var techText = string.IsNullOrWhiteSpace(vm.TechnicalSpecs) ? "Chưa có mô tả" : vm.TechnicalSpecs!.Trim();
+        var usageText = string.IsNullOrWhiteSpace(vm.UsageGuide) ? "Chưa có mô tả" : vm.UsageGuide!.Trim();
         var galleryImages = new List<string>();
         if (vm.GalleryFiles is { Count: > 0 })
         {
@@ -260,7 +303,7 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         {
             var imageUrl = vm.ImageFile is { Length: > 0 }
                 ? await SaveImageAsync(vm.ImageFile)
-                : "/assets/img/hoa_xinh_group_fav.png";
+                : "/assets/img/logo/hoa_xinh_group_fav.png";
             var entity = new Product
             {
                 Sku = string.IsNullOrWhiteSpace(vm.Sku) ? await GenerateNextSkuAsync(vm.CategoryId) : vm.Sku,
@@ -271,11 +314,11 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 ImageUrl = imageUrl,
                 BrandId = vm.BrandId,
                 IsPreOrderEnabled = true,
-                Summary = vm.Summary,
+                Summary = summaryText,
                 Descriptions = ProductContentMeta.Compose(
-                    vm.Descriptions,
-                    vm.TechnicalSpecs,
-                    vm.UsageGuide,
+                    descText,
+                    techText,
+                    usageText,
                     vm.UnitOptions.Select(x => new ProductUnitOption { Name = x.Name, Factor = x.Factor }),
                     galleryImages),
                 CategoryId = vm.CategoryId,
@@ -292,6 +335,29 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 .FirstOrDefaultAsync(x => x.Id == vm.Id.Value);
             if (entity is null) return NotFound();
 
+            // Keep existing gallery images, then append newly uploaded files.
+            var existingMeta = ProductContentMeta.Parse(entity.Descriptions);
+            if (existingMeta.GalleryImages is { Count: > 0 })
+            {
+                galleryImages = existingMeta.GalleryImages
+                    .Where(x => !string.IsNullOrWhiteSpace(x))
+                    .Select(x => x.Trim())
+                    .ToList();
+            }
+
+            if (vm.GalleryFiles is { Count: > 0 })
+            {
+                foreach (var file in vm.GalleryFiles.Where(f => f is { Length: > 0 }))
+                {
+                    galleryImages.Add(await SaveImageAsync(file));
+                }
+            }
+            galleryImages = galleryImages
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
             entity.Sku = vm.Sku;
             entity.Name = vm.Name;
             entity.Price = vm.Price;
@@ -303,11 +369,11 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             }
             entity.BrandId = vm.BrandId;
             entity.IsPreOrderEnabled = true;
-            entity.Summary = vm.Summary;
+            entity.Summary = summaryText;
             entity.Descriptions = ProductContentMeta.Compose(
-                vm.Descriptions,
-                vm.TechnicalSpecs,
-                vm.UsageGuide,
+                descText,
+                techText,
+                usageText,
                 vm.UnitOptions.Select(x => new ProductUnitOption { Name = x.Name, Factor = x.Factor }),
                 galleryImages);
             entity.CategoryId = vm.CategoryId;
@@ -316,6 +382,7 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
         }
 
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("storefront-updated", new { type = "product", at = DateTimeOffset.UtcNow });
         return RedirectToAction(nameof(Index));
     }
 
@@ -328,7 +395,38 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
 
         entity.IsActive = !entity.IsActive;
         await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("storefront-updated", new { type = "product", at = DateTimeOffset.UtcNow });
+        return RedirectToAction(nameof(Index));
+    }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var entity = await db.Products
+            .Include(p => p.Variants)
+            .FirstOrDefaultAsync(p => p.Id == id);
+        if (entity is null) return NotFound();
+
+        var hasOrderItems = await db.OrderItems.AnyAsync(x => x.ProductId == id);
+        if (hasOrderItems)
+        {
+            TempData["ProductAdminMessage"] = "Sản phẩm đã phát sinh đơn hàng nên không thể xóa. Bạn có thể dùng Ẩn/Hiện để ngừng bán.";
+            TempData["ProductAdminStatus"] = "error";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var preOrders = await db.PreOrderRequests.Where(x => x.ProductId == id).ToListAsync();
+        if (preOrders.Count > 0)
+        {
+            db.PreOrderRequests.RemoveRange(preOrders);
+        }
+
+        db.Products.Remove(entity);
+        await db.SaveChangesAsync();
+        await hub.Clients.All.SendAsync("storefront-updated", new { type = "product", id, at = DateTimeOffset.UtcNow });
+        TempData["ProductAdminMessage"] = "Đã xóa sản phẩm thành công.";
+        TempData["ProductAdminStatus"] = "success";
         return RedirectToAction(nameof(Index));
     }
 
@@ -454,7 +552,12 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                     .Where(v => v.IsActive)
                     .OrderBy(v => v.SortOrder)
                     .ThenBy(v => v.Id)
-                    .Select(v => new { v.Id, v.Value })
+                    .Select(v => new
+                    {
+                        v.Id,
+                        v.Value,
+                        ConversionFactor = Math.Max(0, (int)Math.Round(v.ConversionFactor ?? 1m))
+                    })
                     .ToList()
             })
             .ToListAsync();
@@ -578,7 +681,26 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             var deleteRows = existing.Where(x => deletedSet.Contains(x.Id)).ToList();
             if (deleteRows.Count > 0)
             {
-                db.ProductVariants.RemoveRange(deleteRows);
+                var deleteIds = deleteRows.Select(x => x.Id).ToList();
+                var referencedVariantIds = await db.OrderItems
+                    .AsNoTracking()
+                    .Where(x => x.VariantId.HasValue && deleteIds.Contains(x.VariantId.Value))
+                    .Select(x => x.VariantId!.Value)
+                    .Distinct()
+                    .ToListAsync();
+                var refSet = referencedVariantIds.ToHashSet();
+
+                var hardDeleteRows = deleteRows.Where(x => !refSet.Contains(x.Id)).ToList();
+                if (hardDeleteRows.Count > 0)
+                {
+                    db.ProductVariants.RemoveRange(hardDeleteRows);
+                }
+
+                foreach (var row in deleteRows.Where(x => refSet.Contains(x.Id)))
+                {
+                    row.IsActive = false;
+                    row.IsDefault = false;
+                }
                 existing = existing.Where(x => !deletedSet.Contains(x.Id)).ToList();
             }
         }
@@ -664,6 +786,8 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 ev.HeightMm = row.HeightMm;
                 ev.ImageUrl = (variantImageUrl ?? string.Empty).Trim();
                 ev.StockQuantity = Math.Max(0, row.StockQuantity);
+                ev.ReservedStock = Math.Clamp(ev.ReservedStock, 0, ev.StockQuantity);
+                ev.AvailableStock = Math.Max(0, ev.StockQuantity - ev.ReservedStock);
                 ev.IsDefault = row.IsDefault;
                 ev.IsActive = row.IsActive;
                 ev.SortOrder = row.SortOrder;
@@ -683,6 +807,8 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                     HeightMm = row.HeightMm,
                     ImageUrl = (variantImageUrl ?? string.Empty).Trim(),
                     StockQuantity = Math.Max(0, row.StockQuantity),
+                    ReservedStock = 0,
+                    AvailableStock = Math.Max(0, row.StockQuantity),
                     IsDefault = row.IsDefault,
                     IsActive = row.IsActive,
                     SortOrder = row.SortOrder
@@ -699,7 +825,7 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
                 .ThenBy(v => v.SortOrder)
                 .ThenBy(v => v.Id)
                 .ToListAsync();
-            product.StockQuantity = activeVariants.Sum(v => Math.Max(0, v.StockQuantity));
+            product.StockQuantity = Math.Max(0, activeVariants.Sum(v => v.AvailableStock));
             product.IsPreOrderEnabled = product.StockQuantity <= 0;
             var defaultVariant = activeVariants.FirstOrDefault();
             if (defaultVariant is not null)
@@ -710,5 +836,10 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env) : Cont
             await db.SaveChangesAsync();
         }
     }
+
 }
+
+
+
+
 

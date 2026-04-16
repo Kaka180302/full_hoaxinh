@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace HoaXinhStore.Web.ViewModels.Admin;
 
@@ -18,6 +19,11 @@ public class CategoryEditViewModel
     [StringLength(30)]
     public string SkuPrefix { get; set; } = string.Empty;
 
+    [Display(Name = "Danh mục cha")]
+    public int? ParentCategoryId { get; set; }
+
     [Display(Name = "Hiển thị danh mục")]
     public bool IsActive { get; set; } = true;
+
+    public List<SelectListItem> ParentOptions { get; set; } = [];
 }

@@ -925,8 +925,12 @@ btnOrderCart.onclick = () => {
     });
 
     if (!selectedItems.length) {
-        alert("Chá»n Ã­t nháº¥t 1 sáº£n pháº©m");
-        return;
+                if (window.HXStorefront && typeof window.HXStorefront.showNoticeModal === "function") {
+                    window.HXStorefront.showNoticeModal("Chọn ít nhất 1 sản phẩm");
+                } else {
+                    console.warn("Chọn ít nhất 1 sản phẩm");
+                }
+                return;
     }
 
     window.productBox.innerHTML = "";

@@ -55,14 +55,35 @@
 
         <div class="tab-pane fade" id="tab-media">
             <div class="row g-3">
-                <div class="col-12">
+                <div class="col-md-8">
                     <label asp-for="ImageFile" class="form-label"></label>
-                    <input asp-for="ImageFile" class="form-control" type="file" />
+                    <input asp-for="ImageFile" class="form-control" type="file" accept="image/*" data-preview-target="#productMainPreview" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Ảnh đại diện hiện tại</label>
+                    <div>
+                        <img id="productMainPreview"
+                             src="@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "" : Model.ImageUrl)"
+                             alt="Ảnh đại diện"
+                             style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "display:none;" : "")" />
+                    </div>
                 </div>
                 <div class="col-12">
                     <label asp-for="GalleryFiles" class="form-label"></label>
-                    <input asp-for="GalleryFiles" class="form-control" type="file" multiple />
+                    <input asp-for="GalleryFiles" class="form-control" type="file" accept="image/*" multiple />
                 </div>
+                @if (Model.GalleryImageUrls.Count > 0)
+                {
+                    <div class="col-12">
+                        <label class="form-label">Ảnh con đã upload</label>
+                        <div class="admin-upload-preview" style="display:flex;gap:8px;flex-wrap:wrap;">
+                            @foreach (var g in Model.GalleryImageUrls)
+                            {
+                                <img src="@g" alt="Gallery" style="width:76px;height:76px;object-fit:cover;border:1px solid #e5e7eb;border-radius:8px;background:#fff;" />
+                            }
+                        </div>
+                    </div>
+                }
             </div>
         </div>
 
@@ -84,6 +105,22 @@
                     </div>
                     <div class="col-md-2 d-grid">
                         <button type="button" id="btnAddAttributeGroup" class="btn btn-success">+ Thêm</button>
+                    </div>
+                </div>
+                <div class="row g-2 align-items-end mt-2">
+                    <div class="col-md-3">
+                        <label class="form-label">Giá cơ sở (đơn vị hệ số 1)</label>
+                        <input id="variantBasePrice" type="number" min="0" step="1" class="form-control" placeholder="vd: 8000" />
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Tồn cơ sở (đơn vị hệ số 1)</label>
+                        <input id="variantBaseStock" type="number" min="0" step="1" class="form-control" placeholder="vd: 120" />
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-check mt-4">
+                            <input class="form-check-input" type="checkbox" id="autoCalcByFactor" checked />
+                            <label class="form-check-label" for="autoCalcByFactor">Tự tính giá theo hệ số quy đổi đơn vị (không tự quy đổi tồn kho)</label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -136,7 +173,11 @@
                                 <td><input class="form-control form-control-sm" name="Variants[@i].HeightMm" value="@Model.Variants[i].HeightMm" type="number" min="0" /></td>
                                 <td>
                                     <input type="hidden" name="Variants[@i].ImageUrl" value="@Model.Variants[i].ImageUrl" />
-                                    <input class="form-control form-control-sm" type="file" name="VariantImageFiles[@i]" />
+                                    <input class="form-control form-control-sm" type="file" name="VariantImageFiles[@i]" accept="image/*" data-preview-target="#variantPreview_@i" />
+                                    <img id="variantPreview_@i"
+                                         src="@(string.IsNullOrWhiteSpace(Model.Variants[i].ImageUrl) ? "" : Model.Variants[i].ImageUrl)"
+                                         alt="Variant"
+                                         style="margin-top:6px;width:52px;height:52px;object-fit:cover;border:1px solid #e5e7eb;border-radius:6px;@(string.IsNullOrWhiteSpace(Model.Variants[i].ImageUrl) ? "display:none;" : "")" />
                                 </td>
                                 <td>
                                     <input type="hidden" name="Variants[@i].SortOrder" value="@i" />
@@ -172,7 +213,6 @@
     </div>
 </form>
 
-<script src="https://cdn.ckeditor.com/4.22.1/full-all/ckeditor.js"></script>
 <style>
     .hx-value-picker { min-height: 44px; position: relative; }
     .hx-value-input { outline: none; padding: 2px 6px; }
@@ -230,16 +270,36 @@
         gap: 6px;
     }
 </style>
+<script src="https://cdn.ckeditor.com/4.22.1/full/ckeditor.js"></script>
 <script>
-    document.querySelectorAll('.js-ckeditor-full').forEach((el) => {
-        if (window.CKEDITOR) {
-            CKEDITOR.replace(el, {
-                height: 220,
-                removeButtons: '',
-                extraPlugins: 'uploadimage,image2,justify,colorbutton,colordialog,font,smiley,iframe,templates,showblocks,preview,print,codesnippet'
+    (function initAdminCkeditor() {
+        const applyEditors = () => {
+            if (!window.CKEDITOR) return;
+            document.querySelectorAll('.js-ckeditor-full').forEach((el) => {
+                if (!el.id) el.id = `ck_${Math.random().toString(36).slice(2, 10)}`;
+                if (CKEDITOR.instances[el.id]) return;
+                try {
+                    CKEDITOR.replace(el.id, {
+                        height: 220
+                    });
+                } catch (err) {
+                    console.error('CKEditor init failed:', err);
+                }
             });
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', applyEditors, { once: true });
+        } else {
+            applyEditors();
         }
-    });
+
+        document.querySelectorAll('[data-bs-toggle="tab"]').forEach((tabBtn) => {
+            tabBtn.addEventListener('shown.bs.tab', () => {
+                setTimeout(applyEditors, 0);
+            });
+        });
+    })();
 
     (() => {
         const attributes = @Html.Raw(attrJson);
@@ -254,12 +314,27 @@
         const addVariantRowBtn = document.getElementById('btnAddVariantRow');
         const variantWrap = document.getElementById('variantWrap');
         const deletedInput = document.getElementById('DeletedVariantIds');
+        const basePriceInput = document.getElementById('variantBasePrice');
+        const baseStockInput = document.getElementById('variantBaseStock');
+        const autoCalcByFactorInput = document.getElementById('autoCalcByFactor');
         const skuInput = document.getElementById('Sku');
         const stockTotalHidden = document.getElementById('StockQuantityHidden');
         const form = document.getElementById('productEditForm');
         if (!attrSelect || !valuePicker || !valueTags || !valueSearchInput || !valueDropdown || !addGroupBtn || !selectedWrap || !matrixBtn || !variantWrap || !skuInput || !form || !stockTotalHidden) return;
 
         const state = { groups: [], pickedValues: [], activeDropdownIndex: -1 };
+        const factorByValue = new Map();
+        (attributes || []).forEach(a => (a.values || []).forEach(v => {
+            const key = String(v.value || '').trim().toLowerCase();
+            const f = Number(v.conversionFactor || 1);
+            const safeFactor = f > 0 ? f : 1;
+            if (!key) return;
+            if (!factorByValue.has(key)) {
+                factorByValue.set(key, safeFactor);
+            } else {
+                factorByValue.set(key, Math.min(factorByValue.get(key), safeFactor));
+            }
+        }));
         const deletedIds = new Set();
         const syncDeletedInput = () => {
             if (deletedInput) deletedInput.value = [...deletedIds].join(',');
@@ -280,15 +355,30 @@
             const id = Number(attrSelect.value || 0);
             const attr = attributes.find(a => Number(a.id) === id);
             const keyword = (valueSearchInput.value || '').trim().toLowerCase();
-            const list = (attr?.values || []).filter(v => !keyword || String(v.value || '').toLowerCase().includes(keyword));
+            const rawValues = (attr?.values || []);
+            const duplicateCount = rawValues.reduce((acc, v) => {
+                const k = String(v.value || '').trim().toLowerCase();
+                if (!k) return acc;
+                acc[k] = (acc[k] || 0) + 1;
+                return acc;
+            }, {});
+            const list = rawValues.filter(v => !keyword || String(v.value || '').toLowerCase().includes(keyword));
             state.activeDropdownIndex = list.length > 0 ? 0 : -1;
             list.forEach(v => {
+                const rawValue = String(v.value || '').trim();
+                const factor = Number(v.conversionFactor || 1);
+                const safeFactor = factor > 0 ? factor : 1;
+                const key = rawValue.toLowerCase();
+                const shouldShowFactor = (duplicateCount[key] || 0) > 1;
+                const displayText = shouldShowFactor ? `${rawValue} (x${safeFactor})` : rawValue;
                 const item = document.createElement('button');
                 item.type = 'button';
                 item.className = 'dropdown-item';
-                item.textContent = v.value;
+                item.textContent = displayText;
                 item.setAttribute('data-id', String(v.id));
-                item.setAttribute('data-value', v.value);
+                item.setAttribute('data-value', rawValue);
+                item.setAttribute('data-display', displayText);
+                item.setAttribute('data-factor', v.conversionFactor != null ? String(v.conversionFactor) : '');
                 valueDropdown.appendChild(item);
             });
             [...valueDropdown.querySelectorAll('.dropdown-item')].forEach((el, idx) => el.classList.toggle('active', idx === state.activeDropdownIndex));
@@ -300,7 +390,8 @@
             state.pickedValues.forEach((v, idx) => {
                 const chip = document.createElement('span');
                 chip.className = 'hx-tag-chip';
-                chip.innerHTML = `${v.value}<button type="button" data-remove-picked="${idx}">×</button>`;
+                const factorText = v.factor != null && Number(v.factor) > 0 ? ` <small>(x${v.factor})</small>` : '';
+                chip.innerHTML = `${v.value}${factorText}<button type="button" data-remove-picked="${idx}">×</button>`;
                 valueTags.appendChild(chip);
             });
         };
@@ -336,8 +427,10 @@
         };
 
         const createVariantRow = (idx, payload = {}) => {
+            const rowFactor = Number(payload.factor || 1) > 0 ? Number(payload.factor) : 1;
             const tr = document.createElement('tr');
             tr.className = 'variant-row';
+            tr.setAttribute('data-factor', String(rowFactor));
             tr.innerHTML = `<td><input type="hidden" name="Variants[${idx}].Id" value="${payload.id || ''}"><input class="form-control form-control-sm" name="Variants[${idx}].Name" value="${payload.name || ''}"></td>
 <td><input class="form-control form-control-sm" name="Variants[${idx}].Sku" value="${payload.sku || ''}" readonly></td>
 <td><input class="form-control form-control-sm" name="Variants[${idx}].Price" type="number" min="1" required value="${payload.price ?? ''}"></td>
@@ -347,11 +440,58 @@
 <td><input class="form-control form-control-sm" name="Variants[${idx}].LengthMm" type="number" min="0" value="${payload.lengthMm ?? ''}"></td>
 <td><input class="form-control form-control-sm" name="Variants[${idx}].WidthMm" type="number" min="0" value="${payload.widthMm ?? ''}"></td>
 <td><input class="form-control form-control-sm" name="Variants[${idx}].HeightMm" type="number" min="0" value="${payload.heightMm ?? ''}"></td>
-<td><input type="hidden" name="Variants[${idx}].ImageUrl" value="${payload.imageUrl ?? ''}"><input class="form-control form-control-sm" type="file" name="VariantImageFiles[${idx}]"></td>
+<td><input type="hidden" name="Variants[${idx}].ImageUrl" value="${payload.imageUrl ?? ''}"><input class="form-control form-control-sm" type="file" accept="image/*" data-preview-target="#variantPreview_${idx}" name="VariantImageFiles[${idx}]"><img id="variantPreview_${idx}" src="${payload.imageUrl ?? ''}" alt="Variant" style="margin-top:6px;width:52px;height:52px;object-fit:cover;border:1px solid #e5e7eb;border-radius:6px;${payload.imageUrl ? '' : 'display:none;'}"></td>
 <td><input type="hidden" name="Variants[${idx}].SortOrder" value="${idx}"><input class="form-check-input js-variant-default" name="Variants[${idx}].IsDefault" type="checkbox" value="true" ${payload.isDefault === true ? 'checked' : ''}></td>
 <td><input class="form-check-input" name="Variants[${idx}].IsActive" type="checkbox" value="true" ${payload.isActive === false ? '' : 'checked'}></td>
 <td><button type="button" class="btn btn-sm btn-outline-danger js-remove-variant">Xóa</button></td>`;
             variantWrap.appendChild(tr);
+        };
+
+        const parseVariantFactorByName = (name) => {
+            const parts = String(name || '').split(' - ').map(x => x.trim()).filter(Boolean);
+            if (!parts.length) return 1;
+            let factor = 1;
+            parts.forEach(part => {
+                const explicit = part.match(/\(x\s*(\d+)\s*\)/i);
+                if (explicit && explicit[1]) {
+                    const fExp = Number(explicit[1]);
+                    if (fExp > 0) {
+                        factor *= fExp;
+                        return;
+                    }
+                }
+                const cleaned = part.replace(/\(x\s*\d+\s*\)/ig, '').trim().toLowerCase();
+                const f = Number(factorByValue.get(cleaned) || 1);
+                if (f > 0) factor *= f;
+            });
+            return factor > 0 ? factor : 1;
+        };
+
+        const applyAutoStockMode = () => {
+            const rows = [...variantWrap.querySelectorAll('tr.variant-row')];
+            if (!rows.length) {
+                syncTotalStock();
+                return;
+            }
+
+            // Sync factor from row name/data first.
+            rows.forEach((tr) => {
+                const nameInput = tr.querySelector('input[name*=".Name"]');
+                const fromData = Number(tr.getAttribute('data-factor') || 0);
+                const fromName = parseVariantFactorByName(nameInput?.value || '');
+                const factor = fromData > 0 ? fromData : fromName;
+                tr.setAttribute('data-factor', String(Math.max(1, factor)));
+            });
+
+            // Không tự khóa hay tự quy đổi tồn kho: admin nhập trực tiếp từng biến thể.
+            rows.forEach((tr) => {
+                const stockInput = tr.querySelector('input[name*=".StockQuantity"]');
+                if (!stockInput) return;
+                stockInput.readOnly = false;
+                stockInput.classList.remove('bg-light');
+            });
+
+            syncTotalStock();
         };
 
         const reindexRows = () => {
@@ -372,14 +512,30 @@
             const combos = cartesian(state.groups.map(g => g.values));
             const keys = existingKeys();
             let nextIndex = variantWrap.querySelectorAll('tr.variant-row').length;
+            const autoCalc = !!autoCalcByFactorInput?.checked;
+            const basePrice = Math.max(0, Number(basePriceInput?.value || 0));
+            const baseStock = Math.max(0, Number(baseStockInput?.value || 0));
             combos.forEach((combo) => {
                 const name = combo.map(x => x.value).join(' - ');
                 const key = name.trim().toLowerCase();
                 if (keys.has(key)) return;
-                createVariantRow(nextIndex++, { name, sku: makeSku(combo, nextIndex) });
+                const factor = combo.reduce((acc, x) => {
+                    const f = Number(x.factor || 0);
+                    return f > 0 ? acc * f : acc;
+                }, 1);
+                const calculatedPrice = autoCalc ? Math.round(basePrice * Math.max(1, factor)) : '';
+            const calculatedStock = 0;
+            createVariantRow(nextIndex++, {
+                name,
+                sku: makeSku(combo, nextIndex),
+                price: calculatedPrice,
+                    stockQuantity: calculatedStock,
+                    factor
+                });
                 keys.add(key);
             });
             reindexRows();
+            applyAutoStockMode();
             syncTotalStock();
         };
 
@@ -415,6 +571,7 @@
             const idx = variantWrap.querySelectorAll('tr.variant-row').length;
             createVariantRow(idx, { name: 'Biến thể mới', sku: makeSku([], idx) });
             reindexRows();
+            applyAutoStockMode();
             syncTotalStock();
         });
         variantWrap.addEventListener('click', (e) => {
@@ -444,6 +601,18 @@
             }
         });
         variantWrap.addEventListener('input', syncTotalStock);
+        variantWrap.addEventListener('input', (e) => {
+            if (e.target?.matches('input[name*=".Name"]')) {
+                const tr = e.target.closest('tr.variant-row');
+                if (tr) {
+                    const factor = parseVariantFactorByName(e.target.value || '');
+                    tr.setAttribute('data-factor', String(factor));
+                    applyAutoStockMode();
+                }
+            }
+        });
+        baseStockInput?.addEventListener('input', syncTotalStock);
+        autoCalcByFactorInput?.addEventListener('change', applyAutoStockMode);
         form.addEventListener('submit', syncTotalStock);
         form.addEventListener('submit', syncDeletedInput);
         form.addEventListener('submit', () => {
@@ -507,9 +676,12 @@
             if (!item) return;
             const id = Number(item.getAttribute('data-id') || 0);
             const value = item.getAttribute('data-value') || '';
+            const display = item.getAttribute('data-display') || value;
+            const factorRaw = item.getAttribute('data-factor');
+            const factor = factorRaw != null && factorRaw !== '' ? Number(factorRaw) : null;
             if (!id || !value) return;
             if (!state.pickedValues.some(x => Number(x.id) === id)) {
-                state.pickedValues.push({ id, value });
+                state.pickedValues.push({ id, value: display, factor });
                 renderPickedTags();
             }
             valueSearchInput.value = '';
@@ -533,6 +705,93 @@
         });
         renderAttributeSelect();
         resetValuePicker();
+        [...variantWrap.querySelectorAll('tr.variant-row')].forEach((tr) => {
+            const nameInput = tr.querySelector('input[name*=".Name"]');
+            const factor = parseVariantFactorByName(nameInput?.value || '');
+            tr.setAttribute('data-factor', String(factor));
+        });
+        applyAutoStockMode();
         syncTotalStock();
+    })();
+</script>
+<script>
+    (() => {
+        const input = document.getElementById('GalleryFiles');
+        if (!input) return;
+        input.multiple = true;
+        const dt = new DataTransfer();
+        const seen = new Set();
+        const previewHost = document.createElement('div');
+        previewHost.className = 'admin-upload-preview mt-2';
+        previewHost.style.display = 'flex';
+        previewHost.style.gap = '8px';
+        previewHost.style.flexWrap = 'wrap';
+        input.insertAdjacentElement('afterend', previewHost);
+
+        const fileKey = (file) => `${file.name}__${file.size}__${file.lastModified}`;
+        const syncInputFiles = () => {
+            input.files = dt.files;
+        };
+
+        const renderPreview = () => {
+            previewHost.innerHTML = '';
+            [...dt.files].forEach((file, idx) => {
+                const wrap = document.createElement('div');
+                wrap.style.position = 'relative';
+                wrap.style.width = '76px';
+                wrap.style.height = '76px';
+                const img = document.createElement('img');
+                img.style.width = '76px';
+                img.style.height = '76px';
+                img.style.objectFit = 'cover';
+                img.style.border = '1px solid #e5e7eb';
+                img.style.borderRadius = '8px';
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.textContent = '×';
+                remove.style.position = 'absolute';
+                remove.style.top = '-6px';
+                remove.style.right = '-6px';
+                remove.style.width = '20px';
+                remove.style.height = '20px';
+                remove.style.border = 'none';
+                remove.style.borderRadius = '50%';
+                remove.style.background = '#dc3545';
+                remove.style.color = '#fff';
+                remove.style.fontSize = '12px';
+                remove.addEventListener('click', () => {
+                    const next = new DataTransfer();
+                    seen.clear();
+                    [...dt.files].forEach((f, i) => {
+                        if (i !== idx) {
+                            next.items.add(f);
+                            seen.add(fileKey(f));
+                        }
+                    });
+                    dt.items.clear();
+                    [...next.files].forEach(f => dt.items.add(f));
+                    syncInputFiles();
+                    renderPreview();
+                });
+                const reader = new FileReader();
+                reader.onload = e => { img.src = String(e.target?.result || ''); };
+                reader.readAsDataURL(file);
+                wrap.appendChild(img);
+                wrap.appendChild(remove);
+                previewHost.appendChild(wrap);
+            });
+        };
+
+        input.addEventListener('change', () => {
+            [...(input.files || [])].forEach(file => {
+                const key = fileKey(file);
+                if (seen.has(key)) return;
+                seen.add(key);
+                dt.items.add(file);
+            });
+            syncInputFiles();
+            renderPreview();
+            input.value = '';
+        });
     })();
 </script>

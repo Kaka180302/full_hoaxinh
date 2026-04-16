@@ -1,5 +1,6 @@
 using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities;
+using HoaXinhStore.Web.Services.Inventory;
 using HoaXinhStore.Web.Services.Notifications;
 using HoaXinhStore.Web.Services.Payments;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,8 @@ namespace HoaXinhStore.Web.Controllers.Api;
 public class PaymentController(
     AppDbContext db,
     IVnpayService vnpayService,
-    IEmailService emailService) : ControllerBase
+    IEmailService emailService,
+    IInventoryService inventoryService) : ControllerBase
 {
     [HttpGet("vnpay-ipn")]
     public async Task<IActionResult> VnpayIpn()
@@ -51,6 +53,7 @@ public class PaymentController(
         }
 
         var wasPaid = payment.Status == "Paid";
+        var wasTerminalFailure = payment.Status == "Cancelled" || payment.Status == "Failed";
 
         payment.RawResponseJson = string.Join("&", Request.Query.Select(kv => $"{kv.Key}={kv.Value}"));
         payment.Provider = "VNPAY";
@@ -62,6 +65,10 @@ public class PaymentController(
             payment.Status = "Paid";
             payment.PaidAtUtc ??= DateTime.UtcNow;
             order.PaymentStatus = "Paid";
+            if (!string.Equals(order.OrderStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
+            {
+                await inventoryService.ConsumeOrderReservationsAsync(order);
+            }
             order.OrderStatus = "Confirmed";
 
             if (!wasPaid)
@@ -77,6 +84,10 @@ public class PaymentController(
         }
         else
         {
+            if (!wasPaid && !wasTerminalFailure)
+            {
+                await inventoryService.ReleaseOrderReservationsAsync(order);
+            }
             payment.Status = responseCode == "24" ? "Cancelled" : "Failed";
             order.PaymentStatus = responseCode == "24" ? "Cancelled" : "Failed";
         }

@@ -113,6 +113,39 @@ public class SmtpEmailService(IOptions<SmtpOptions> options, ILogger<SmtpEmailSe
         await SendEmailAsync(companyEmail, subject, body, sku);
     }
 
+    public async Task SendPreOrderCustomerConfirmAsync(string productName, string sku, int requestedQty, string customerName, string phone, string email, string address)
+    {
+        if (string.IsNullOrWhiteSpace(_smtp.Host) || string.IsNullOrWhiteSpace(_smtp.FromEmail) || string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var safeName = WebUtility.HtmlEncode(string.IsNullOrWhiteSpace(customerName) ? "Quý khách" : customerName.Trim());
+        var safeProduct = WebUtility.HtmlEncode(productName);
+        var safeSku = WebUtility.HtmlEncode(sku);
+        var safePhone = WebUtility.HtmlEncode(phone);
+        var safeEmail = WebUtility.HtmlEncode(email);
+        var safeAddress = WebUtility.HtmlEncode(address);
+        var subject = $"[HoaXinh Store] Xác nhận đã nhận yêu cầu đặt trước - {safeSku}";
+        var body = $"""
+<div style='font-family:Arial,sans-serif;line-height:1.65;color:#1f2937'>
+  <h2 style='margin-bottom:10px;color:#9a6b3d'>HoaXinh Store cảm ơn bạn đã đặt trước</h2>
+  <p>Xin chào <b>{safeName}</b>,</p>
+  <p>Hệ thống đã ghi nhận yêu cầu đặt trước của bạn. Nhân viên HoaXinh Store sẽ liên hệ xác nhận trong thời gian sớm nhất.</p>
+  <div style='border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;background:#fffaf3'>
+    <p style='margin:6px 0'><b>Sản phẩm:</b> {safeProduct}</p>
+    <p style='margin:6px 0'><b>SKU:</b> {safeSku}</p>
+    <p style='margin:6px 0'><b>Số lượng yêu cầu:</b> {requestedQty}</p>
+    <p style='margin:6px 0'><b>Số điện thoại:</b> {safePhone}</p>
+    <p style='margin:6px 0'><b>Email:</b> {safeEmail}</p>
+    <p style='margin:6px 0'><b>Địa chỉ:</b> {safeAddress}</p>
+  </div>
+  <p style='margin-top:14px'>Cảm ơn bạn đã tin tưởng HoaXinh Store.</p>
+</div>
+""";
+        await SendEmailAsync(email.Trim(), subject, body, sku);
+    }
+
     private static string BuildOrderPlacedCustomerMailBody(
         Order order,
         string customerName,

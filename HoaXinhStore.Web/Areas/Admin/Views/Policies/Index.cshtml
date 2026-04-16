@@ -73,9 +73,20 @@
     <button type="submit" class="btn btn-primary">Lưu chính sách</button>
 </form>
 
-<script src="https://cdn.ckeditor.com/ckeditor5/39.0.1/classic/ckeditor.js"></script>
+<script src="https://cdn.ckeditor.com/4.22.1/full/ckeditor.js"></script>
 <script>
-    document.querySelectorAll('.js-ckeditor').forEach((el) => {
-        ClassicEditor.create(el).catch(() => {});
-    });
+    (function () {
+        if (!window.CKEDITOR) return;
+        document.querySelectorAll('.js-ckeditor').forEach((el) => {
+            if (!el.id) el.id = `policy_ck_${Math.random().toString(36).slice(2, 10)}`;
+            if (CKEDITOR.instances[el.id]) return;
+            try {
+                CKEDITOR.replace(el.id, {
+                    height: 280
+                });
+            } catch (e) {
+                console.error('CKEditor policy init failed', e);
+            }
+        });
+    })();
 </script>

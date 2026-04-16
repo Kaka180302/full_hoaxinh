@@ -39,16 +39,16 @@ public class AdminProductEditViewModel
 
     [Display(Name = "Mô tả ngắn")]
     [StringLength(1000)]
-    public string Summary { get; set; } = string.Empty;
+    public string? Summary { get; set; }
 
     [Display(Name = "Mô tả chi tiết")]
-    public string Descriptions { get; set; } = string.Empty;
+    public string? Descriptions { get; set; }
 
     [Display(Name = "Thông số kỹ thuật")]
-    public string TechnicalSpecs { get; set; } = string.Empty;
+    public string? TechnicalSpecs { get; set; }
 
     [Display(Name = "Hướng dẫn sử dụng")]
-    public string UsageGuide { get; set; } = string.Empty;
+    public string? UsageGuide { get; set; }
 
     [Display(Name = "Danh mục")]
     [Required(ErrorMessage = "Vui lòng chọn danh mục.")]
@@ -59,12 +59,14 @@ public class AdminProductEditViewModel
 
     [Display(Name = "Tải ảnh từ máy")]
     public IFormFile? ImageFile { get; set; }
+    public string? ImageUrl { get; set; }
 
     [Display(Name = "Thương hiệu")]
     public int? BrandId { get; set; }
 
     [Display(Name = "Ảnh con (nhiều ảnh)")]
     public List<IFormFile> GalleryFiles { get; set; } = [];
+    public List<string> GalleryImageUrls { get; set; } = [];
     public List<IFormFile?> VariantImageFiles { get; set; } = [];
     public List<int> DeletedVariantIds { get; set; } = [];
     public string? DeletedVariantIdsCsv { get; set; }

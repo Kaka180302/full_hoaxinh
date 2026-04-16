@@ -9,7 +9,15 @@ public class StoreIndexViewModel
     public List<StoreProductViewModel> Products { get; set; } = [];
     public List<StoreProductViewModel> FeaturedProducts { get; set; } = [];
     public List<CategorySectionViewModel> CategorySections { get; set; } = [];
+    public List<StoreBrandViewModel> Brands { get; set; } = [];
     public Dictionary<string, PolicyContentItem> PolicyData { get; set; } = [];
+}
+
+public class StoreBrandViewModel
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
 }
 
 public class CategorySectionViewModel
@@ -21,8 +29,10 @@ public class CategorySectionViewModel
 public class StoreCategoryViewModel
 {
     public int Id { get; set; }
+    public int? ParentCategoryId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
+    public int Depth { get; set; }
 }
 
 public class StoreProductViewModel
@@ -55,6 +65,8 @@ public class StoreVariantViewModel
     public decimal Price { get; set; }
     public decimal? SalePrice { get; set; }
     public int StockQuantity { get; set; }
+    public int ReservedStock { get; set; }
+    public int AvailableStock { get; set; }
     public bool IsDefault { get; set; }
 }
 
@@ -70,6 +82,8 @@ public class ProductListPageViewModel
     public string Sort { get; set; } = "newest";
     public decimal? MinPrice { get; set; }
     public decimal? MaxPrice { get; set; }
+    public string PriceRanges { get; set; } = string.Empty;
+    public string StatusFilters { get; set; } = string.Empty;
     public string FilterLabel { get; set; } = string.Empty;
 }
 
@@ -82,4 +96,10 @@ public class ProductDetailPageViewModel
 public class CartPageViewModel
 {
     public List<StoreProductViewModel> SuggestedProducts { get; set; } = [];
+}
+
+public class TrackOrderPageViewModel
+{
+    public StoreIndexViewModel HeaderData { get; set; } = new();
+    public OrderTrackingViewModel Tracking { get; set; } = new();
 }

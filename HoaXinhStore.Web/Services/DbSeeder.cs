@@ -29,7 +29,7 @@ public static class DbSeeder
                 Name = "Kem Duong Am KICHO",
                 Price = 420000,
                 StockQuantity = 50,
-                ImageUrl = "/assets/img/mp_kemduongam.png",
+                ImageUrl = "/assets/img/kem-duong-da/mp_kemduongam.png",
                 Summary = "Duong am va bao ve da",
                 Descriptions = "Kem duong am danh cho da kho",
                 CategoryId = myPham.Id
@@ -40,7 +40,7 @@ public static class DbSeeder
                 Name = "Xit phong Shay",
                 Price = 99000,
                 StockQuantity = 80,
-                ImageUrl = "/assets/img/tbgd_xitphong.jpg",
+                ImageUrl = "/assets/img/gia-dung/tbgd_xitphong.jpg",
                 Summary = "Mui huong nhe, khang mui",
                 Descriptions = "Su dung cho phong khach va phong ngu",
                 CategoryId = thietBi.Id
@@ -51,7 +51,7 @@ public static class DbSeeder
                 Name = "Thach nghe Nano365",
                 Price = 250000,
                 StockQuantity = 60,
-                ImageUrl = "/assets/img/tp_thachnghe.jpg",
+                ImageUrl = "/assets/img/thuc-pham/tpcn/tp_thachnghe.jpg",
                 Summary = "Bo sung dinh duong",
                 Descriptions = "San pham thuc pham bo sung",
                 CategoryId = thucPham.Id

@@ -16,6 +16,9 @@ public class Category
     public string SkuPrefix { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
+    public int? ParentCategoryId { get; set; }
+    public Category? ParentCategory { get; set; }
+    public ICollection<Category> ChildCategories { get; set; } = new List<Category>();
 
     public ICollection<Product> Products { get; set; } = new List<Product>();
     public ICollection<CategoryBrand> Brands { get; set; } = new List<CategoryBrand>();

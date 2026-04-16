@@ -2,6 +2,29 @@
 @{
     Layout = null;
     var vi = System.Globalization.CultureInfo.GetCultureInfo("vi-VN");
+    var selectedCategories = (Model.Category ?? "all")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    if (selectedCategories.Count == 0) selectedCategories.Add("all");
+    var selectedBrands = (Model.Brand ?? "all")
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    if (selectedBrands.Count == 0) selectedBrands.Add("all");
+    var selectedPriceRanges = (Model.PriceRanges ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var selectedStatuses = (Model.StatusFilters ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(x => x.ToLowerInvariant())
+        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    var rootCategories = (Model.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>())
+        .Where(c => !c.ParentCategoryId.HasValue)
+        .OrderBy(c => c.Name)
+        .ToList();
+    var categoryChildren = (Model.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>())
+        .Where(c => c.ParentCategoryId.HasValue)
+        .GroupBy(c => c.ParentCategoryId!.Value)
+        .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -14,96 +37,165 @@
     <link rel="stylesheet" href="~/storefront.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 </head>
-<body class="nav-only-page">
-    <partial name="Partials/_HeaderNavOnly" model='new HoaXinhStore.Web.ViewModels.StoreIndexViewModel()' />
+<body class="nav-only-page products-page">
+    <partial name="Partials/_HeaderNavOnly" model='new HoaXinhStore.Web.ViewModels.StoreIndexViewModel { Categories = Model.Categories }' />
 
     <main class="products-luxe-page @( (!string.IsNullOrWhiteSpace(Model.FilterLabel) || !string.IsNullOrWhiteSpace(Model.Query) || Model.Category != "all" || Model.MinPrice.HasValue || Model.MaxPrice.HasValue) ? "is-filtered" : "" )">
         <div class="container py-3">
             <h1 class="products-luxe-title">Sản phẩm</h1>
-            @if (!string.IsNullOrWhiteSpace(Model.FilterLabel) || !string.IsNullOrWhiteSpace(Model.Query) || Model.Category != "all" || Model.MinPrice.HasValue || Model.MaxPrice.HasValue)
-            {
-                <div class="products-filter-highlight">Đang lọc: @(!string.IsNullOrWhiteSpace(Model.FilterLabel) ? Model.FilterLabel : "Theo điều kiện đã chọn")</div>
-            }
-
-            <form method="get" class="products-luxe-toolbar">
+            <form method="get" class="products-luxe-toolbar products-luxe-toolbar--search-only" id="productsSearchForm">
+                <input type="hidden" name="category" value="@Model.Category" />
+                <input type="hidden" name="brand" value="@Model.Brand" />
+                <input type="hidden" name="priceRanges" value="@Model.PriceRanges" />
+                <input type="hidden" name="inStockOnly" value="@(Model.InStockOnly ? "true" : "false")" />
+                <input type="hidden" name="statusFilters" value="@Model.StatusFilters" />
+                <input type="hidden" name="sort" value="@Model.Sort" />
+                <input type="hidden" name="minPrice" value="@(Model.MinPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" />
+                <input type="hidden" name="maxPrice" value="@(Model.MaxPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" />
                 <input type="hidden" name="filterLabel" value="@Model.FilterLabel" />
                 <div class="products-luxe-search">
                     <i class="fa-solid fa-magnifying-glass"></i>
                     <input type="text" name="q" value="@Model.Query" placeholder="Tìm kiếm ..." />
                 </div>
-                <select name="category">
-                    <option value="all">Tất cả danh mục</option>
-                    @foreach (var cat in Model.Categories)
-                    {
-                        if (Model.Category == cat.Slug)
-                        {
-                            <option value="@cat.Slug" selected>@cat.Name</option>
-                        }
-                        else
-                        {
-                            <option value="@cat.Slug">@cat.Name</option>
-                        }
-                    }
-                </select>
-                <select name="brand">
-                    <option value="all">Tất cả thương hiệu</option>
-                    @foreach (var b in Model.Brands)
-                    {
-                        if (Model.Brand == b)
-                        {
-                            <option value="@b" selected>@b</option>
-                        }
-                        else
-                        {
-                            <option value="@b">@b</option>
-                        }
-                    }
-                </select>
-                <label class="d-flex align-items-center gap-2 px-2"><input type="checkbox" name="inStockOnly" value="true" @(Model.InStockOnly ? "checked" : "") /> Còn hàng</label>
-                <select name="sort">
-                    @if (Model.Sort == "newest") { <option value="newest" selected>Mới nhất</option> } else { <option value="newest">Mới nhất</option> }
-                    @if (Model.Sort == "price-asc") { <option value="price-asc" selected>Giá tăng dần</option> } else { <option value="price-asc">Giá tăng dần</option> }
-                    @if (Model.Sort == "price-desc") { <option value="price-desc" selected>Giá giảm dần</option> } else { <option value="price-desc">Giá giảm dần</option> }
-                    @if (Model.Sort == "name-asc") { <option value="name-asc" selected>Tên A-Z</option> } else { <option value="name-asc">Tên A-Z</option> }
-                    @if (Model.Sort == "name-desc") { <option value="name-desc" selected>Tên Z-A</option> } else { <option value="name-desc">Tên Z-A</option> }
-                </select>
-                <input type="number" step="1000" min="0" name="minPrice" value="@(Model.MinPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Giá từ" />
-                <input type="number" step="1000" min="0" name="maxPrice" value="@(Model.MaxPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Giá đến" />
-                <button type="submit">Lọc</button>
+                <button type="submit">Tìm</button>
             </form>
 
             <div class="products-luxe-body">
-                <aside class="products-luxe-sidebar">
+                <div class="products-filter-overlay" id="productsFilterOverlay"></div>
+                <aside class="products-luxe-sidebar" id="productsLuxeSidebar">
+                    <h2 class="products-filter-title">Bộ lọc sản phẩm</h2>
                     <section class="sidebar-box">
                         <h3>Danh mục</h3>
-                        <ul>
-                            @foreach (var cat in Model.Categories)
+                        <ul class="checkbox-list category-tree-list">
+                            @foreach (var parent in rootCategories)
                             {
-                                <li><a asp-controller="Store" asp-action="Products" asp-route-category="@cat.Slug" class="no_link">@cat.Name</a></li>
+                                var children = categoryChildren.TryGetValue(parent.Id, out var pChildren)
+                                    ? pChildren
+                                    : new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>();
+                                var parentSelected = selectedCategories.Contains(parent.Slug);
+                                var hasCheckedChild = children.Any(x => selectedCategories.Contains(x.Slug));
+                                var hasChildren = children.Count > 0;
+                                var isOpen = hasCheckedChild || parentSelected;
+                                <li class="category-tree-item @(isOpen ? "open" : "")">
+                                    <button type="button"
+                                            class="category-tree-toggle @(hasChildren ? "has-children" : "no-children")"
+                                            data-category-toggle>
+                                        <span>@parent.Name</span>
+                                        <i class="fa-solid fa-angle-down"></i>
+                                    </button>
+                                    <ul class="checkbox-list category-tree-children" @(isOpen ? "" : "hidden")>
+                                        <li>
+                                            <label class="category-tree-all">
+                                                <input type="checkbox" class="js-category-filter" value="@parent.Slug" @(parentSelected ? "checked" : "") />
+                                                Tất cả
+                                            </label>
+                                        </li>
+                                        @foreach (var child in children)
+                                        {
+                                            <li>
+                                                <label>
+                                                    <input type="checkbox" class="js-category-filter" value="@child.Slug" @(selectedCategories.Contains(child.Slug) ? "checked" : "") />
+                                                    @child.Name
+                                                </label>
+                                            </li>
+                                        }
+                                    </ul>
+                                </li>
                             }
                         </ul>
                     </section>
                     <section class="sidebar-box">
                         <h3>Khoảng giá</h3>
-                        <form method="get" class="d-grid gap-2">
-                            <input type="hidden" name="q" value="@Model.Query" />
-                            <input type="hidden" name="category" value="@Model.Category" />
-                            <input type="hidden" name="sort" value="@Model.Sort" />
-                            <input type="hidden" name="brand" value="@Model.Brand" />
-                            <input type="hidden" name="inStockOnly" value="@(Model.InStockOnly ? "true" : "false")" />
-                            <input type="hidden" name="filterLabel" value="@Model.FilterLabel" />
-                            <input class="form-control" type="number" min="0" step="1000" name="minPrice" value="@(Model.MinPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Từ giá" />
-                            <input class="form-control" type="number" min="0" step="1000" name="maxPrice" value="@(Model.MaxPrice?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")" placeholder="Đến giá" />
-                            <button class="apply-btn" type="submit">Áp dụng</button>
-                        </form>
+                        <ul class="checkbox-list">
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-price-range js-price-all" data-range="" @(!selectedPriceRanges.Any() ? "checked" : "") />
+                                    Tất cả
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-price-range" data-range="0-100000" @(selectedPriceRanges.Contains("0-100000") ? "checked" : "") />
+                                    Dưới 100.000đ
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-price-range" data-range="100000-500000" @(selectedPriceRanges.Contains("100000-500000") ? "checked" : "") />
+                                    100.000đ - 500.000đ
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-price-range" data-range="500000-1000000" @(selectedPriceRanges.Contains("500000-1000000") ? "checked" : "") />
+                                    500.000đ - 1.000.000đ
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-price-range" data-range="1000000-plus" @(selectedPriceRanges.Contains("1000000-plus") ? "checked" : "") />
+                                    Trên 1.000.000đ
+                                </label>
+                            </li>
+                        </ul>
                     </section>
                     <section class="sidebar-box">
                         <h3>Thương hiệu</h3>
-                        <ul class="muted-list">
-                            @foreach (var b in Model.Brands.Take(8))
+                        <ul class="checkbox-list">
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-filter-multi" data-filter="brand" value="all" @(Model.Brand == "all" ? "checked" : "") />
+                                    Tất cả
+                                </label>
+                            </li>
+                            @foreach (var b in Model.Brands)
                             {
-                                <li><a asp-controller="Store" asp-action="Products" asp-route-brand="@b" asp-route-category="@Model.Category" asp-route-q="@Model.Query">@b</a></li>
+                                <li>
+                                    <label>
+                                        <input type="checkbox" class="js-filter-multi" data-filter="brand" value="@b" @(selectedBrands.Contains(b) ? "checked" : "") />
+                                        @b
+                                    </label>
+                                </li>
                             }
+                        </ul>
+                    </section>
+                    <section class="sidebar-box">
+                        <h3>Tình trạng</h3>
+                        <ul class="checkbox-list">
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-status-filter" value="in-stock" @(selectedStatuses.Contains("in-stock") || Model.InStockOnly ? "checked" : "") />
+                                    Còn hàng
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-status-filter" value="bestseller" @(selectedStatuses.Contains("bestseller") ? "checked" : "") />
+                                    Bán chạy
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-status-filter" value="featured" @(selectedStatuses.Contains("featured") ? "checked" : "") />
+                                    Nổi bật
+                                </label>
+                            </li>
+                            <li>
+                                <label>
+                                    <input type="checkbox" class="js-status-filter" value="sale" @(selectedStatuses.Contains("sale") ? "checked" : "") />
+                                    Khuyến mãi
+                                </label>
+                            </li>
+                        </ul>
+                    </section>
+                    <section class="sidebar-box">
+                        <h3>Sắp xếp</h3>
+                        <ul class="checkbox-list">
+                            <li><label><input type="radio" class="js-sort-radio" name="sort_radio" value="newest" @(Model.Sort == "newest" ? "checked" : "") /> Mới nhất</label></li>
+                            <li><label><input type="radio" class="js-sort-radio" name="sort_radio" value="price-asc" @(Model.Sort == "price-asc" ? "checked" : "") /> Giá tăng dần</label></li>
+                            <li><label><input type="radio" class="js-sort-radio" name="sort_radio" value="price-desc" @(Model.Sort == "price-desc" ? "checked" : "") /> Giá giảm dần</label></li>
+                            <li><label><input type="radio" class="js-sort-radio" name="sort_radio" value="name-asc" @(Model.Sort == "name-asc" ? "checked" : "") /> Tên A-Z</label></li>
+                            <li><label><input type="radio" class="js-sort-radio" name="sort_radio" value="name-desc" @(Model.Sort == "name-desc" ? "checked" : "") /> Tên Z-A</label></li>
                         </ul>
                     </section>
                 </aside>
@@ -113,13 +205,16 @@
                     <div class="products-luxe-grid">
                         @if (!Model.Products.Any())
                         {
-                            <p class="google-sheet-status">Không có sản phẩm phù hợp.</p>
+                            <div class="products-empty-state">
+                                <i class="fa-regular fa-face-frown-open"></i>
+                                <p>Không có sản phẩm phù hợp.</p>
+                            </div>
                         }
                         else
                         {
                             foreach (var p in Model.Products)
                             {
-                                var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
+                                var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
                                 var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
                                     .OrderByDescending(v => v.IsDefault)
                                     .ThenBy(v => v.Id)
@@ -170,28 +265,148 @@
     </main>
 
     <partial name="Partials/_Footer" />
-    <script src="~/script.js"></script>
     <script src="~/storefront.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const tabButtons = document.querySelectorAll(".products-luxe-tabs button[data-filter]");
-            const cards = document.querySelectorAll(".products-luxe-grid .luxe-card");
-            if (!tabButtons.length || !cards.length) return;
+            const searchForm = document.getElementById("productsSearchForm");
+            if (!searchForm) return;
+            const mobileFilterBtn = document.getElementById("mobileFilterBtn");
+            const sidebar = document.getElementById("productsLuxeSidebar");
+            const overlay = document.getElementById("productsFilterOverlay");
+            const categoryInput = searchForm.querySelector('input[name="category"]');
+            const brandInput = searchForm.querySelector('input[name="brand"]');
+            const stockInput = searchForm.querySelector('input[name="inStockOnly"]');
+            const statusFiltersInput = searchForm.querySelector('input[name="statusFilters"]');
+            const sortInput = searchForm.querySelector('input[name="sort"]');
+            const minPriceInput = searchForm.querySelector('input[name="minPrice"]');
+            const maxPriceInput = searchForm.querySelector('input[name="maxPrice"]');
+            const priceRangesInput = searchForm.querySelector('input[name="priceRanges"]');
 
-            tabButtons.forEach(function (button) {
-                button.addEventListener("click", function () {
-                    const filter = button.getAttribute("data-filter");
-                    tabButtons.forEach(function (btn) { btn.classList.remove("active"); });
-                    button.classList.add("active");
-
-                    cards.forEach(function (card) {
-                        const category = card.getAttribute("data-category");
-                        const visible = filter === "all" || filter === category;
-                        card.style.display = visible ? "" : "none";
-                    });
+            document.querySelectorAll(".js-sort-radio").forEach(function (radio) {
+                radio.addEventListener("change", function () {
+                    if (!radio.checked) return;
+                    if (sortInput) sortInput.value = radio.value || "newest";
+                    searchForm.submit();
                 });
             });
+
+            function wireMultiFilter(filterName, hiddenInput) {
+                const boxes = Array.from(document.querySelectorAll(`.js-filter-multi[data-filter="${filterName}"]`));
+                if (!boxes.length || !hiddenInput) return;
+                const allBox = boxes.find(b => (b.value || "").toLowerCase() === "all");
+                boxes.forEach(function (box) {
+                    box.addEventListener("change", function () {
+                        if (box === allBox && box.checked) {
+                            boxes.forEach(b => { if (b !== allBox) b.checked = false; });
+                        } else if (box !== allBox && box.checked && allBox) {
+                            allBox.checked = false;
+                        }
+
+                        const selected = boxes
+                            .filter(b => b !== allBox && b.checked)
+                            .map(b => b.value)
+                            .filter(v => !!v);
+
+                        if (!selected.length) {
+                            if (allBox) allBox.checked = true;
+                            hiddenInput.value = "all";
+                        } else {
+                            hiddenInput.value = selected.join(",");
+                        }
+                        searchForm.submit();
+                    });
+                });
+            }
+            wireMultiFilter("brand", brandInput);
+
+            document.querySelectorAll(".js-category-filter").forEach(function (box) {
+                box.addEventListener("change", function () {
+                    const selected = Array.from(document.querySelectorAll(".js-category-filter:checked"))
+                        .map(cb => (cb.value || "").trim())
+                        .filter(Boolean);
+                    if (categoryInput) {
+                        categoryInput.value = selected.length ? selected.join(",") : "all";
+                    }
+                    searchForm.submit();
+                });
+            });
+
+            document.querySelectorAll("[data-category-toggle]").forEach(function (btn) {
+                btn.addEventListener("click", function () {
+                    const item = btn.closest(".category-tree-item");
+                    const panel = item?.querySelector(".category-tree-children");
+                    if (!item || !panel) return;
+                    const isOpen = item.classList.contains("open");
+                    item.classList.toggle("open", !isOpen);
+                    panel.hidden = isOpen;
+                });
+            });
+
+            document.querySelectorAll(".js-price-range").forEach(function (checkbox) {
+                checkbox.addEventListener("change", function () {
+                    const allBox = document.querySelector(".js-price-all");
+                    const allRanges = Array.from(document.querySelectorAll(".js-price-range:not(.js-price-all)"));
+                    if (checkbox.classList.contains("js-price-all") && checkbox.checked) {
+                        allRanges.forEach(cb => cb.checked = false);
+                    } else if (!checkbox.classList.contains("js-price-all") && checkbox.checked && allBox) {
+                        allBox.checked = false;
+                    }
+
+                    const selectedRanges = allRanges
+                        .filter(cb => cb.checked)
+                        .map(cb => cb.getAttribute("data-range") || "")
+                        .filter(Boolean);
+
+                    if (!selectedRanges.length) {
+                        if (allBox) allBox.checked = true;
+                        if (priceRangesInput) priceRangesInput.value = "";
+                        if (minPriceInput) minPriceInput.value = "";
+                        if (maxPriceInput) maxPriceInput.value = "";
+                    } else {
+                        if (priceRangesInput) priceRangesInput.value = selectedRanges.join(",");
+                        if (minPriceInput) minPriceInput.value = "";
+                        if (maxPriceInput) maxPriceInput.value = "";
+                    }
+                    document.querySelectorAll(".js-price-range").forEach(function (cb) {
+                        if (cb !== checkbox && checkbox.classList.contains("js-price-all") && checkbox.checked) cb.checked = false;
+                    });
+                    searchForm.submit();
+                });
+            });
+
+            document.querySelectorAll(".js-status-filter").forEach(function (checkbox) {
+                checkbox.addEventListener("change", function () {
+                    const selected = Array.from(document.querySelectorAll(".js-status-filter:checked"))
+                        .map(cb => (cb.value || "").trim())
+                        .filter(Boolean);
+                    if (statusFiltersInput) statusFiltersInput.value = selected.join(",");
+                    if (stockInput) stockInput.value = selected.includes("in-stock") ? "true" : "false";
+                    searchForm.submit();
+                });
+            });
+
+            function closeMobileFilter() {
+                sidebar?.classList.remove("open");
+                overlay?.classList.remove("open");
+                document.body.classList.remove("filter-open");
+            }
+            function openMobileFilter() {
+                sidebar?.classList.add("open");
+                overlay?.classList.add("open");
+                document.body.classList.add("filter-open");
+            }
+            mobileFilterBtn?.addEventListener("click", function () {
+                if (!sidebar) return;
+                if (sidebar.classList.contains("open")) closeMobileFilter();
+                else openMobileFilter();
+            });
+            overlay?.addEventListener("click", closeMobileFilter);
+            window.addEventListener("resize", function () {
+                if (window.innerWidth > 992) closeMobileFilter();
+            });
+
         });
     </script>
 </body>
 </html>
+

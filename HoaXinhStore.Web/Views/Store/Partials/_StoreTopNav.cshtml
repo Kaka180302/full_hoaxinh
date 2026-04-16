@@ -1,7 +1,21 @@
+@using Microsoft.EntityFrameworkCore
+@inject HoaXinhStore.Web.Data.AppDbContext AppDb
+@{
+    var headerCategories = (ViewBag.HeaderCategories as IEnumerable<HoaXinhStore.Web.Entities.Category>)?.ToList()
+        ?? new List<HoaXinhStore.Web.Entities.Category>();
+    if (headerCategories.Count == 0)
+    {
+        headerCategories = await AppDb.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Id)
+            .ToListAsync();
+    }
+}
 <header class="store-topnav border-bottom bg-white sticky-top">
     <div class="container store-topnav-inner">
         <a asp-controller="Store" asp-action="Index" class="store-brand-link">
-            <img src="~/assets/img/Logo_HX.png" alt="HoaXinh Store" class="store-brand-logo" />
+            <img src="~/assets/img/logo/Logo_HX.png" alt="HoaXinh Store" class="store-brand-logo" />
         </a>
         <div class="store-mobile-actions">
             <a asp-controller="Store" asp-action="Cart" class="store-cart-link store-mobile-cart-icon" aria-label="Giỏ hàng">
@@ -13,9 +27,18 @@
             </button>
         </div>
         <nav class="store-topnav-links">
-            <a asp-controller="Store" asp-action="Products" class="store-topnav-link">Sản phẩm</a>
-            <a asp-controller="Store" asp-action="Index" asp-fragment="Abouts" class="store-topnav-link">Giới thiệu</a>
-            <a asp-controller="Store" asp-action="Index" asp-fragment="Certificate" class="store-topnav-link">Chứng nhận</a>
+            <div class="store-topnav-item has-submenu">
+                <a asp-controller="Store" asp-action="Products" class="store-topnav-link">Sản phẩm</a>
+                <div class="menu_product">
+                    <a asp-controller="Store" asp-action="Products" class="menu_product--item">Tất cả sản phẩm</a>
+                    @foreach (var category in headerCategories)
+                    {
+                        <a asp-controller="Store" asp-action="Products" asp-route-category="@category.Slug" class="menu_product--item">@category.Name</a>
+                    }
+                </div>
+            </div>
+            <a asp-controller="Store" asp-action="Index" asp-fragment="featured" class="store-topnav-link">Nổi bật</a>
+            <a asp-controller="Store" asp-action="TrackOrder" class="store-topnav-link">Tra cứu đơn hàng</a>
             <div class="cart-hover-wrap">
                 <a asp-controller="Store" asp-action="Cart" class="store-cart-link">
                     <i class="fa-solid fa-cart-shopping"></i>
@@ -30,8 +53,12 @@
     <div class="store-mobile-menu-overlay" id="storeMobileMenuOverlay"></div>
     <div class="store-mobile-menu" id="storeMobileMenu">
         <a asp-controller="Store" asp-action="Products" class="store-topnav-link">Sản phẩm</a>
-        <a asp-controller="Store" asp-action="Index" asp-fragment="Abouts" class="store-topnav-link">Giới thiệu</a>
-        <a asp-controller="Store" asp-action="Index" asp-fragment="Certificate" class="store-topnav-link">Chứng nhận</a>
+        @foreach (var category in headerCategories)
+        {
+            <a asp-controller="Store" asp-action="Products" asp-route-category="@category.Slug" class="store-topnav-link store-mobile-sub-link">- @category.Name</a>
+        }
+        <a asp-controller="Store" asp-action="Index" asp-fragment="featured" class="store-topnav-link">Nổi bật</a>
+        <a asp-controller="Store" asp-action="TrackOrder" class="store-topnav-link">Tra cứu đơn hàng</a>
         <a asp-controller="Store" asp-action="Cart" class="store-mobile-cart-link">
             <span class="store-mobile-cart-left">
                 <i class="fa-solid fa-cart-shopping"></i>

@@ -1,5 +1,6 @@
 using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Options;
+using HoaXinhStore.Web.Services.Inventory;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -10,6 +11,7 @@ namespace HoaXinhStore.Web.Controllers.Api;
 [Route("api/shipping")]
 public class ShippingWebhookController(
     AppDbContext db,
+    IInventoryService inventoryService,
     IOptions<ShippingIntegrationOptions> shippingOptions) : ControllerBase
 {
     private readonly ShippingIntegrationOptions _shipping = shippingOptions.Value;
@@ -31,6 +33,7 @@ public class ShippingWebhookController(
 
         var order = await db.Orders
             .Include(o => o.Payments)
+            .Include(o => o.Items)
             .FirstOrDefaultAsync(o => o.OrderNo == request.OrderNo);
 
         if (order is null)
@@ -38,8 +41,18 @@ public class ShippingWebhookController(
             return NotFound(new { message = "Order not found" });
         }
 
+        var fromStatus = order.OrderStatus;
         order.OrderStatus = MapShippingStatus(request.Status, order.OrderStatus);
         order.Note = BuildShippingNote(request.Carrier, request.TrackingCode, request.Note);
+
+        if (!IsFulfillmentStatus(fromStatus) && IsFulfillmentStatus(order.OrderStatus))
+        {
+            await inventoryService.ConsumeOrderReservationsAsync(order);
+        }
+        else if (!IsClosedStatus(fromStatus) && IsClosedStatus(order.OrderStatus))
+        {
+            await inventoryService.ReleaseOrderReservationsAsync(order);
+        }
 
         if (string.Equals(order.OrderStatus, "Completed", StringComparison.OrdinalIgnoreCase)
             && string.Equals(order.PaymentMethod.ToString(), "COD", StringComparison.OrdinalIgnoreCase)
@@ -94,6 +107,19 @@ public class ShippingWebhookController(
         }
 
         return string.Join(Environment.NewLine, parts);
+    }
+
+    private static bool IsFulfillmentStatus(string? status)
+    {
+        return string.Equals(status, "Confirmed", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(status, "Completed", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsClosedStatus(string? status)
+    {
+        return string.Equals(status, "Cancelled", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(status, "DeliveryFailed", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(status, "Returned", StringComparison.OrdinalIgnoreCase);
     }
 }
 

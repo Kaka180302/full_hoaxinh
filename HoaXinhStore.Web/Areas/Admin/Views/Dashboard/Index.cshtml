@@ -1,6 +1,6 @@
 @{
     ViewData["Title"] = "Tổng quan";
-    var lowStockProducts = ViewBag.LowStockProducts as List<HoaXinhStore.Web.Entities.Product> ?? new();
+    var lowStockVariants = ViewBag.LowStockVariants as List<HoaXinhStore.Web.Entities.ProductVariant> ?? new();
 }
 <h2 class="mb-4">Tổng quan</h2>
 <div class="row g-3">
@@ -14,22 +14,23 @@
     <div class="col-md-3"><div class="card border-primary"><div class="card-body"><div class="text-muted">AOV 30 ngày</div><h4 class="text-primary">@(((decimal)ViewBag.Aov30Days).ToString("N0")) đ</h4></div></div></div>
 </div>
 
-@if (lowStockProducts.Any())
+@if (lowStockVariants.Any())
 {
     <div class="card mt-4">
-        <div class="card-header fw-semibold">Sản phẩm sắp hết hàng</div>
+        <div class="card-header fw-semibold">Biến thể sắp hết hàng</div>
         <div class="card-body p-0">
             <table class="table table-striped table-bordered mb-0">
-                <thead><tr><th>SKU</th><th>Tên</th><th>Danh mục</th><th>Tồn kho</th><th></th></tr></thead>
+                <thead><tr><th>SKU biến thể</th><th>Sản phẩm</th><th>Biến thể</th><th>Danh mục</th><th>Tồn khả dụng</th><th></th></tr></thead>
                 <tbody>
-                @foreach (var p in lowStockProducts)
+                @foreach (var v in lowStockVariants)
                 {
                     <tr>
-                        <td>@p.Sku</td>
-                        <td>@p.Name</td>
-                        <td>@p.Category?.Name</td>
-                        <td class="text-danger fw-bold">@p.StockQuantity</td>
-                        <td><a asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-warning">Sửa</a></td>
+                        <td>@v.Sku</td>
+                        <td>@v.Product?.Name</td>
+                        <td>@v.Name</td>
+                        <td>@v.Product?.Category?.Name</td>
+                        <td class="text-danger fw-bold">@v.AvailableStock</td>
+                        <td><a asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@v.ProductId" class="btn btn-sm btn-warning">Sửa</a></td>
                     </tr>
                 }
                 </tbody>

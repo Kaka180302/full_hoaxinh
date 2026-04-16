@@ -22,8 +22,7 @@ public class BrandEditViewModel
     [Display(Name = "Ảnh thương hiệu")]
     public IFormFile? ImageFile { get; set; }
 
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 
     public List<SelectListItem> CategoryOptions { get; set; } = [];
 }
-

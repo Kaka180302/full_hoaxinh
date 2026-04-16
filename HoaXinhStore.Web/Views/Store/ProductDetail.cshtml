@@ -2,7 +2,7 @@
 @{
     Layout = null;
     var p = Model.Product;
-    var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
+    var image = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
     var sale = p.SalePrice ?? p.Price;
     var defaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
         .OrderByDescending(v => v.IsDefault)
@@ -16,15 +16,33 @@
     thumbs.AddRange((p.GalleryImages ?? []).Where(x => !string.IsNullOrWhiteSpace(x)));
     thumbs = thumbs.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     var descHtml = string.IsNullOrWhiteSpace(p.Description) ? "<p>Chưa có mô tả</p>" : p.Description;
-    var guideHtml = string.IsNullOrWhiteSpace(p.UsageGuide)
-        ? (string.IsNullOrWhiteSpace(p.Summary) ? "Chưa có mô tả" : p.Summary)
-        : p.UsageGuide;
+    var guideHtml = string.IsNullOrWhiteSpace(p.UsageGuide) ? "Chưa có mô tả" : p.UsageGuide;
+    var techHtml = string.IsNullOrWhiteSpace(p.TechnicalSpecs) ? "Chưa có mô tả" : p.TechnicalSpecs;
+    var defaultHighlights = new List<string>
+    {
+        "Hàng nhập khẩu chính hãng từ Hàn Quốc",
+        "Cam kết bảo hành chính hãng 12 tháng",
+        "Đổi trả dễ dàng trong 7 ngày miễn phí"
+    };
+    var summaryRaw = (p.Summary ?? string.Empty).Trim();
+    var summaryLines = summaryRaw
+        .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Select(x => System.Net.WebUtility.HtmlDecode(x ?? string.Empty))
+        .Select(x => System.Text.RegularExpressions.Regex.Replace(x, "<.*?>", string.Empty))
+        .Select(x => x.Replace("&nbsp;", " ").Trim())
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .ToList();
+    if (summaryLines.Count == 0 || string.Equals(summaryRaw, "Chưa có mô tả", StringComparison.OrdinalIgnoreCase))
+    {
+        summaryLines = defaultHighlights;
+    }
     var unitOptionsJson = System.Text.Json.JsonSerializer.Serialize(
         p.UnitOptions.Select(u => new { name = u.Name, factor = u.Factor }).ToList());
     var variantsJson = System.Text.Json.JsonSerializer.Serialize(
         p.Variants.Select(v => new { id = v.Id, name = v.Name, sku = v.Sku, price = v.Price, salePrice = v.SalePrice, stock = v.StockQuantity, isDefault = v.IsDefault }).ToList());
     var attributeCatalogJson = System.Text.Json.JsonSerializer.Serialize(ViewBag.AttributeCatalog ?? new object());
     var isOutOfStock = p.StockQuantity <= 0;
+    var variantAttributeSummary = ViewBag.VariantAttributeSummary as IEnumerable<dynamic>;
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -96,13 +114,14 @@
                     </div>
 
                     <ul class="product-luxe-highlights">
-                        <li>Hàng nhập khẩu chính hãng từ Hàn Quốc</li>
-                        <li>Cam kết bảo hành chính hãng 12 tháng</li>
-                        <li>Đổi trả dễ dàng trong 7 ngày miễn phí</li>
+                        @foreach (var line in summaryLines)
+                        {
+                            <li>@line</li>
+                        }
                     </ul>
 
                     <div class="product-luxe-qty">
-                        <label for="productQtyInput">Qty</label>
+                        <label for="productQtyInput">Số lượng</label>
                         <div class="qty-wrap">
                             <button type="button" id="productQtyMinus">-</button>
                             <input id="productQtyInput" type="number" min="1" value="1" />
@@ -110,6 +129,23 @@
                         </div>
                     </div>
                     <div id="variantAttributeWrap" class="product-variant-attrs"></div>
+                    @if ((p.Variants == null || !p.Variants.Any()) && variantAttributeSummary != null && variantAttributeSummary.Any())
+                    {
+                        <div class="product-variant-attrs-static">
+                            @foreach (var row in variantAttributeSummary)
+                            {
+                                <div class="product-variant-group">
+                                    <div class="product-variant-label">@row.Name</div>
+                                    <div class="product-variant-values">
+                                        @foreach (var val in row.Values)
+                                        {
+                                            <span class="variant-chip is-readonly">@val</span>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
                     @if (p.UnitOptions.Any())
                     {
                         <div class="product-luxe-qty">
@@ -155,8 +191,8 @@
                     </div>
 
                     <div class="product-luxe-guarantee">
-                        <div><i class="fa-regular fa-shield"></i> Hàng nhập khẩu chính hãng</div>
-                        <div><i class="fa-regular fa-circle-check"></i> Bảo hành chính hãng 12 tháng</div>
+                        <div><i class="fa-solid fa-shield-halved"></i> Hàng nhập khẩu chính hãng</div>
+                        <div><i class="fa-solid fa-circle-check"></i> Bảo hành chính hãng 12 tháng</div>
                     </div>
                 </section>
             </div>
@@ -173,17 +209,7 @@
                 </div>
                 <div class="product-luxe-tab-content" data-pane="spec">
                     <h2>Thông số kỹ thuật</h2>
-                    @if (string.IsNullOrWhiteSpace(p.TechnicalSpecs))
-                    {
-                        <ul>
-                            <li>Danh mục: @p.CategoryName</li>
-                            <li>Tồn kho: @p.StockQuantity sản phẩm</li>
-                        </ul>
-                    }
-                    else
-                    {
-                        <div>@Html.Raw(p.TechnicalSpecs)</div>
-                    }
+                    <div>@Html.Raw(techHtml)</div>
                 </div>
                 <div class="product-luxe-tab-content" data-pane="guide">
                     <h2>Hướng dẫn sử dụng</h2>
@@ -198,7 +224,7 @@
                     <div class="product-luxe-related-grid">
                         @foreach (var item in Model.RelatedProducts)
                         {
-                            var relatedImage = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : item.ImageUrl;
+                            var relatedImage = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : item.ImageUrl;
                             var relatedSale = item.SalePrice ?? item.Price;
                             var relatedUnitOptionsJson = System.Text.Json.JsonSerializer.Serialize(
                                 item.UnitOptions.Select(u => new { name = u.Name, factor = u.Factor }).ToList());
@@ -240,7 +266,6 @@
         </div>
     </main>
     <partial name="Partials/_Footer" />
-    <script src="~/script.js"></script>
     <script src="~/storefront.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -298,17 +323,33 @@
                 const raw = addBtn?.getAttribute("data-variants") || "[]";
                 try { return JSON.parse(raw); } catch { return []; }
             })();
+            const parsedUnits = (() => {
+                const raw = addBtn?.getAttribute("data-unit-options") || "[]";
+                try { return JSON.parse(raw); } catch { return []; }
+            })();
             const attrCatalog = (() => {
                 const raw = addBtn?.getAttribute("data-attribute-catalog") || "[]";
                 try { return JSON.parse(raw); } catch { return []; }
             })();
             const valueToAttr = new Map();
-            attrCatalog.forEach(a => (a.values || []).forEach(v => valueToAttr.set(String(v).trim().toLowerCase(), String(a.name || "").trim())));
+            const normalizeVariantValue = (val) => String(val || "")
+                .trim()
+                .toLowerCase()
+                .replace(/\s*\(x\d+\)\s*$/i, "")
+                .trim();
+            attrCatalog.forEach(a => (a.values || []).forEach(v => {
+                const key = normalizeVariantValue(v);
+                if (key) valueToAttr.set(key, String(a.name || "").trim());
+            }));
             const variantExt = variants.map(v => {
                 const parts = String(v.name || "").split(" - ").map(x => x.trim()).filter(Boolean);
                 const attrs = {};
+                const defaultAttrName = (attrCatalog.find(a => String(a.name || "").trim().toLowerCase() === "đơn vị")?.name)
+                    || (attrCatalog[0]?.name)
+                    || "Thuộc tính";
                 parts.forEach(part => {
-                    const attrName = valueToAttr.get(part.toLowerCase()) || "Thuộc tính";
+                    const normalizedPart = normalizeVariantValue(part);
+                    const attrName = valueToAttr.get(normalizedPart) || defaultAttrName;
                     attrs[attrName] = part;
                 });
                 return { ...v, attrs };
@@ -332,6 +373,21 @@
                 return groups;
             })();
             const selected = {};
+            const getVariantUnitFactor = (variantName) => {
+                const normalized = String(variantName || "").trim().toLowerCase();
+                if (!normalized) return 1;
+                const factorMatch = normalized.match(/\(\s*x\s*(\d+)\s*\)/i);
+                if (factorMatch && factorMatch[1]) {
+                    const parsed = Number(factorMatch[1]);
+                    if (Number.isFinite(parsed) && parsed > 1) return Math.max(1, parsed);
+                }
+                const direct = parsedUnits.find(u => String(u.name || "").trim().toLowerCase() === normalized);
+                if (direct) return Math.max(1, Number(direct.factor || 1));
+                const stripped = normalized.replace(/\(\s*x\s*\d+\s*\)/ig, "").trim();
+                const firstPart = stripped.split(" - ")[0].trim();
+                const byFirst = parsedUnits.find(u => String(u.name || "").trim().toLowerCase() === firstPart);
+                return byFirst ? Math.max(1, Number(byFirst.factor || 1)) : 1;
+            };
 
             const formatMoney = (value) => Number(value || 0).toLocaleString("vi-VN") + " đ";
             const setCtaByStock = (stock) => {
@@ -370,6 +426,7 @@
                     ? Number(variantSaleRaw)
                     : null;
                 const variantStock = Math.max(0, Number(variant.stock || 0));
+                const variantFactor = getVariantUnitFactor(variantName);
                 const activePrice = variantSale ?? variantPrice;
                 addBtn.setAttribute("data-variant-id", String(variantId));
                 addBtn.setAttribute("data-variant-sku", variantSku);
@@ -377,6 +434,8 @@
                 addBtn.setAttribute("data-price", String(variantPrice));
                 addBtn.setAttribute("data-sale-price", variantSale != null ? String(variantSale) : "");
                 addBtn.setAttribute("data-stock", String(variantStock));
+                addBtn.setAttribute("data-unit-factor", String(variantFactor));
+                addBtn.setAttribute("data-unit-name", variantName);
                 if (priceBox) priceBox.textContent = formatMoney(activePrice);
                 if (oldPriceBox) {
                     if (variantSale != null && variantSale < variantPrice) {
@@ -424,24 +483,21 @@
                 const selected = unitSelect.options[unitSelect.selectedIndex];
                 const factor = selected ? Number(selected.value || 1) : 1;
                 const name = selected ? (selected.getAttribute("data-name") || "") : "";
-                addBtn.setAttribute("data-unit-factor", String(Math.max(1, factor)));
-                addBtn.setAttribute("data-unit-name", name);
+                if (!Number(addBtn.getAttribute("data-variant-id") || 0)) {
+                    addBtn.setAttribute("data-unit-factor", String(Math.max(1, factor)));
+                    addBtn.setAttribute("data-unit-name", name);
+                }
             };
 
             setCtaByStock(Number(addBtn?.getAttribute("data-stock") || 0));
 
             const getQty = function () {
                 if (!qtyInput) return 1;
-                return Math.max(1, Number(qtyInput.value || 1));
+                return Math.max(1, parseInt(String(qtyInput.value || "1"), 10) || 1);
             };
 
-            btnMinus?.addEventListener("click", function () {
-                qtyInput.value = Math.max(1, getQty() - 1);
-            });
-
-            btnPlus?.addEventListener("click", function () {
-                qtyInput.value = getQty() + 1;
-            });
+            // Qty +/- được xử lý tập trung tại storefront.js (event delegation),
+            // tránh bind trùng làm nhảy 2 đơn vị mỗi lần click.
 
             unitSelect?.addEventListener("change", syncUnitToButtons);
             syncUnitToButtons();
@@ -459,10 +515,7 @@
             });
             renderAttributeGroups();
 
-            const addDetailProduct = function (qty) {
-                const cartKey = "cart";
-                const raw = localStorage.getItem(cartKey);
-                const cart = raw ? JSON.parse(raw) : [];
+            const addDetailProduct = async function (qty) {
                 const productId = Number(addBtn?.getAttribute("data-id") || 0);
                 if (!productId) return;
 
@@ -473,7 +526,7 @@
                 const variantName = addBtn?.getAttribute("data-variant-name") || "";
                 const effectivePrice = salePrice ?? price;
                 const unitFactor = Math.max(1, Number(addBtn?.getAttribute("data-unit-factor") || 1));
-                const unitName = addBtn?.getAttribute("data-unit-name") || "";
+                const unitName = addBtn?.getAttribute("data-unit-name") || variantName;
                 const unitOptionsRaw = addBtn?.getAttribute("data-unit-options") || "[]";
                 let unitOptions = [];
                 try {
@@ -483,64 +536,43 @@
                 }
 
                 const maxStock = Math.max(0, Number(addBtn?.getAttribute("data-stock") || 0));
-                const existing = cart.find(function (x) { return Number(x.id) === productId && Number(x.variantId || 0) === variantId; });
+                const existingCart = (window.HXStorefront && typeof window.HXStorefront.getCart === "function")
+                    ? window.HXStorefront.getCart()
+                    : [];
+                const existing = existingCart.find(function (x) { return Number(x.id) === productId && Number(x.variantId || 0) === variantId; });
                 const currentQty = existing ? Math.max(1, Number(existing.qty || 1)) : 0;
                 const nextQty = currentQty + Math.max(1, Number(qty || 1));
                 if (maxStock > 0 && nextQty > maxStock) {
-                    const wrap = document.createElement('div');
-                    wrap.className = 'hx-popup-backdrop';
-                    wrap.style.display = 'flex';
-                    wrap.innerHTML = `<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Thông báo</h4><p>Sản phẩm hiện chỉ còn ${maxStock} trong kho.</p><button type="button" class="mini-cart-view-btn">Đã hiểu</button></div></div>`;
-                    document.body.appendChild(wrap);
-                    const close = () => wrap.remove();
-                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
-                    wrap.querySelector('.mini-cart-view-btn')?.addEventListener('click', close);
-                    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
+                    if (window.HXStorefront && typeof window.HXStorefront.showNoticeModal === "function") {
+                        window.HXStorefront.showNoticeModal(`Sản phẩm hiện chỉ còn ${maxStock} trong kho.`);
+                    }
                     return;
                 }
 
-                if (existing) {
-                    existing.qty = Math.max(1, Number(existing.qty || 1) + qty);
-                    existing.price = effectivePrice;
-                    existing.originalPrice = price;
-                    existing.salePrice = salePrice;
-                    existing.name = addBtn?.getAttribute("data-name") || existing.name || "";
-                    existing.image = addBtn?.getAttribute("data-image") || existing.image || "";
-                    existing.unitFactor = unitFactor;
-                    existing.unitName = unitName;
-                    existing.unitOptions = Array.isArray(unitOptions) ? unitOptions : [];
-                    existing.stock = maxStock;
-                    existing.variantId = variantId || null;
-                    existing.variantName = variantName;
-                } else {
-                    cart.push({
+                if (window.HXStorefront && typeof window.HXStorefront.addToCart === "function") {
+                    await window.HXStorefront.addToCart({
                         id: productId,
                         variantId: variantId || null,
                         variantName: variantName,
                         name: addBtn?.getAttribute("data-name") || "",
-                        qty: Math.max(1, qty),
-                        price: effectivePrice,
-                        originalPrice: price,
+                        price: price,
                         salePrice: salePrice,
                         image: addBtn?.getAttribute("data-image") || "",
                         stock: maxStock,
                         unitFactor: unitFactor,
                         unitName: unitName,
-                        unitOptions: Array.isArray(unitOptions) ? unitOptions : [],
-                        checked: true
-                    });
+                        unitOptions: Array.isArray(unitOptions) ? unitOptions : []
+                    }, Math.max(1, qty));
                 }
-
-                localStorage.setItem(cartKey, JSON.stringify(cart));
-                const totalQty = cart.reduce(function (sum, item) { return sum + Number(item.qty || 0); }, 0);
-                document.querySelectorAll(".cart_count").forEach(function (el) {
-                    el.textContent = totalQty;
-                    el.style.display = totalQty > 0 ? "inline-flex" : "none";
-                });
             };
 
-            addBtn?.addEventListener("click", function () {
-                addDetailProduct(getQty());
+            addBtn?.addEventListener("click", async function (e) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                await addDetailProduct(getQty());
+                if (window.HXStorefront && typeof window.HXStorefront.flyToCart === "function") {
+                    window.HXStorefront.flyToCart(addBtn);
+                }
             });
 
             buyBtn?.addEventListener("click", function () {
@@ -553,18 +585,12 @@
                 }
                 const qty = getQty();
                 const unitFactor = Math.max(1, Number(addBtn?.getAttribute("data-unit-factor") || 1));
-                const unitName = addBtn?.getAttribute("data-unit-name") || "";
+                const unitName = addBtn?.getAttribute("data-unit-name") || (addBtn?.getAttribute("data-variant-name") || "");
                 const stock = Math.max(0, Number(addBtn?.getAttribute("data-stock") || 0));
                 if (stock > 0 && qty > stock) {
-                    const wrap = document.createElement('div');
-                    wrap.className = 'hx-popup-backdrop';
-                    wrap.style.display = 'flex';
-                    wrap.innerHTML = `<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Thông báo</h4><p>Sản phẩm hiện chỉ còn ${stock} trong kho.</p><button type="button" class="mini-cart-view-btn">Đã hiểu</button></div></div>`;
-                    document.body.appendChild(wrap);
-                    const close = () => wrap.remove();
-                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
-                    wrap.querySelector('.mini-cart-view-btn')?.addEventListener('click', close);
-                    wrap.addEventListener('click', (ev) => { if (ev.target === wrap) close(); });
+                    if (window.HXStorefront && typeof window.HXStorefront.showNoticeModal === "function") {
+                        window.HXStorefront.showNoticeModal(`Sản phẩm hiện chỉ còn ${stock} trong kho.`);
+                    }
                     return;
                 }
                 const payload = {
@@ -603,3 +629,4 @@
     </script>
 </body>
 </html>
+

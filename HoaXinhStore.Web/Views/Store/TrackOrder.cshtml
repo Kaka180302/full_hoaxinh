@@ -1,0 +1,66 @@
+@model HoaXinhStore.Web.ViewModels.TrackOrderPageViewModel
+@{
+    Layout = null;
+    var m = Model.Tracking ?? new HoaXinhStore.Web.ViewModels.OrderTrackingViewModel();
+}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tra cứu đơn hàng - HoaXinh Store</title>
+    <link rel="stylesheet" href="~/assets/style.css" />
+    <link rel="stylesheet" href="~/storefront.css" />
+</head>
+<body class="nav-only-page">
+    <partial name="Partials/_HeaderNavOnly" model="Model.HeaderData" />
+
+    <main class="hx-home2-main">
+        <section class="hx-home2-section">
+            <div class="container py-4 py-lg-5">
+                <div class="store-order-lookup track-page-lookup">
+                    <div class="store-order-lookup-head">
+                        <div>
+                            <h3>Tra cứu đơn hàng</h3>
+                            <p>Nhập mã đơn hoặc số điện thoại để kiểm tra trạng thái đơn hàng của bạn.</p>
+                        </div>
+                    </div>
+                    <form method="post" asp-controller="Store" asp-action="TrackOrder" class="store-order-lookup-form">
+                        @Html.AntiForgeryToken()
+                        <input type="text" name="OrderNo" value="@m.OrderNo" placeholder="Mã đơn hàng" />
+                        <input type="text" name="PhoneNumber" value="@m.PhoneNumber" placeholder="Số điện thoại đặt hàng" />
+                        <button type="submit">Tra cứu</button>
+                    </form>
+                    <div class="store-order-lookup-result">
+                        @if (m.HasSearched)
+                        {
+                            if (!m.Found || m.Order == null)
+                            {
+                                <div class="alert alert-warning mt-3">@(string.IsNullOrWhiteSpace(m.Message) ? "Không tìm thấy đơn hàng." : m.Message)</div>
+                            }
+                            else
+                            {
+                                var o = m.Order;
+                                <div class="store-order-result-card mt-3">
+                                    <h4>Kết quả tra cứu</h4>
+                                    <div class="store-order-result-grid">
+                                        <div><strong>Mã đơn:</strong> @o.OrderNo</div>
+                                        <div><strong>Trạng thái:</strong> @o.OrderStatus</div>
+                                        <div><strong>Thanh toán:</strong> @o.PaymentStatus</div>
+                                        <div><strong>Tổng tiền:</strong> @o.TotalAmount.ToString("N0") đ</div>
+                                        <div><strong>Mã vận đơn:</strong> @(string.IsNullOrWhiteSpace(o.TrackingCode) ? "Đang cập nhật" : o.TrackingCode)</div>
+                                        <div><strong>Đơn vị VC:</strong> @(string.IsNullOrWhiteSpace(o.ShippingCarrier) ? "Đang cập nhật" : o.ShippingCarrier)</div>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <partial name="Partials/_Footer" />
+    <script src="~/storefront.js"></script>
+</body>
+</html>

@@ -1,6 +1,14 @@
 @model HoaXinhStore.Web.Entities.Product
 @{
     ViewData["Title"] = "Chi tiết sản phẩm";
+    var cleanDescription = ViewBag.CleanDescription as string ?? "Chưa có mô tả";
+    var technicalSpecs = ViewBag.TechnicalSpecs as string ?? "Chưa có mô tả";
+    var usageGuide = ViewBag.UsageGuide as string ?? "Chưa có mô tả";
+    var variants = (Model.Variants ?? new List<HoaXinhStore.Web.Entities.ProductVariant>())
+        .OrderByDescending(v => v.IsDefault)
+        .ThenBy(v => v.SortOrder)
+        .ThenBy(v => v.Id)
+        .ToList();
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -23,18 +31,69 @@
                     <div class="col-md-6"><strong>SKU:</strong> @Model.Sku</div>
                     <div class="col-md-6"><strong>Tên:</strong> @Model.Name</div>
                     <div class="col-md-6"><strong>Danh mục:</strong> @Model.Category?.Name</div>
+                    <div class="col-md-6"><strong>Thương hiệu:</strong> @(Model.Brand?.Name ?? "-")</div>
                     <div class="col-md-6"><strong>Giá bán:</strong> @Model.Price.ToString("N0") đ</div>
-                    <div class="col-md-6"><strong>Tồn kho:</strong> @Model.StockQuantity</div>
                     <div class="col-md-6"><strong>Trạng thái:</strong> @(Model.IsActive ? "Đang bán" : "Ngừng bán")</div>
                 </div>
             </div>
             <div class="col-12">
+                <h5 class="mt-3">Biến thể</h5>
+                @if (variants.Count == 0)
+                {
+                    <p class="mb-0 text-muted">Chưa có biến thể.</p>
+                }
+                else
+                {
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tên biến thể</th>
+                                    <th>SKU biến thể</th>
+                                    <th>Giá</th>
+                                    <th>Giá KM</th>
+                                    <th>Tồn vật lý</th>
+                                    <th>Đang giữ</th>
+                                    <th>Còn bán</th>
+                                    <th>Mặc định</th>
+                                    <th>Hiển thị</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach (var v in variants)
+                            {
+                                <tr>
+                                    <td>@v.Name</td>
+                                    <td>@v.Sku</td>
+                                    <td>@v.Price.ToString("N0") đ</td>
+                                    <td>@(v.SalePrice.HasValue ? v.SalePrice.Value.ToString("N0") + " đ" : "-")</td>
+                                    <td>@v.StockQuantity</td>
+                                    <td>@v.ReservedStock</td>
+                                    <td class="fw-bold @(v.AvailableStock < 10 ? "text-danger" : "")">@v.AvailableStock</td>
+                                    <td>@(v.IsDefault ? "✓" : "")</td>
+                                    <td>@(v.IsActive ? "Hiện" : "Ẩn")</td>
+                                </tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
+            <div class="col-12">
                 <h5 class="mt-3">Mô tả ngắn</h5>
-                <p class="mb-0">@Model.Summary</p>
+                <div class="mb-0">@Html.Raw(System.Net.WebUtility.HtmlDecode(Model.Summary ?? "Chưa có mô tả"))</div>
             </div>
             <div class="col-12">
                 <h5 class="mt-3">Mô tả chi tiết</h5>
-                <p class="mb-0" style="white-space: pre-line;">@Model.Descriptions</p>
+                <div class="mb-0">@Html.Raw(System.Net.WebUtility.HtmlDecode(cleanDescription))</div>
+            </div>
+            <div class="col-12">
+                <h5 class="mt-3">Thông số kỹ thuật</h5>
+                <div class="mb-0">@Html.Raw(System.Net.WebUtility.HtmlDecode(technicalSpecs))</div>
+            </div>
+            <div class="col-12">
+                <h5 class="mt-3">Hướng dẫn sử dụng</h5>
+                <div class="mb-0">@Html.Raw(System.Net.WebUtility.HtmlDecode(usageGuide))</div>
             </div>
         </div>
     </div>

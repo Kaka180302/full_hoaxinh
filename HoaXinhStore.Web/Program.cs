@@ -1,7 +1,9 @@
 using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Entities.Identity;
 using HoaXinhStore.Web.Options;
+using HoaXinhStore.Web.Hubs;
 using HoaXinhStore.Web.Services.Identity;
+using HoaXinhStore.Web.Services.Inventory;
 using HoaXinhStore.Web.Services.Notifications;
 using HoaXinhStore.Web.Services.Payments;
 using HoaXinhStore.Web.Services.Policies;
@@ -22,6 +24,7 @@ builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp")
 builder.Services.Configure<ShippingIntegrationOptions>(builder.Configuration.GetSection("ShippingIntegration"));
 builder.Services.AddScoped<IVnpayService, VnpayService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddSingleton<IPolicyContentService, JsonPolicyContentService>();
 
 builder.Services
@@ -71,15 +74,58 @@ builder.Services.ConfigureApplicationCookie(options =>
 });
 
 builder.Services.AddScoped<AdminIdentitySeeder>();
+builder.Services.AddSignalR();
 
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    // Critical schema patch for variant stock model (OMS mini).
+    // Run this independently first so storefront queries won't fail on missing columns.
     try
     {
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'dbo.ProductVariants', N'U') IS NOT NULL
+            BEGIN
+                IF COL_LENGTH(N'dbo.ProductVariants', N'ReservedStock') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[ProductVariants] ADD [ReservedStock] INT NOT NULL CONSTRAINT DF_ProductVariants_ReservedStock DEFAULT 0;
+                END
+                IF COL_LENGTH(N'dbo.ProductVariants', N'AvailableStock') IS NULL
+                BEGIN
+                    ALTER TABLE [dbo].[ProductVariants] ADD [AvailableStock] INT NOT NULL CONSTRAINT DF_ProductVariants_AvailableStock DEFAULT 0;
+                END
+            END
+            """);
+
+        // Must run in a separate batch so SQL Server can see newly added columns.
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            IF OBJECT_ID(N'dbo.ProductVariants', N'U') IS NOT NULL
+               AND COL_LENGTH(N'dbo.ProductVariants', N'ReservedStock') IS NOT NULL
+               AND COL_LENGTH(N'dbo.ProductVariants', N'AvailableStock') IS NOT NULL
+            BEGIN
+                UPDATE [dbo].[ProductVariants]
+                SET [ReservedStock] = CASE WHEN [ReservedStock] < 0 THEN 0 ELSE [ReservedStock] END,
+                    [AvailableStock] = CASE
+                        WHEN [StockQuantity] - CASE WHEN [ReservedStock] < 0 THEN 0 ELSE [ReservedStock] END < 0 THEN 0
+                        ELSE [StockQuantity] - CASE WHEN [ReservedStock] < 0 THEN 0 ELSE [ReservedStock] END
+                    END;
+            END
+            """);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Critical schema patch failed for ProductVariants (ReservedStock/AvailableStock).");
+        throw;
+    }
+
+    try
+    {
         await db.Database.ExecuteSqlRawAsync(
             """
             IF OBJECT_ID(N'dbo.AdminLoginSessions', N'U') IS NULL
@@ -135,7 +181,7 @@ using (var scope = app.Services.CreateScope())
                 ALTER TABLE [dbo].[Products] ADD [IsPreOrderEnabled] BIT NOT NULL CONSTRAINT DF_Products_IsPreOrderEnabled DEFAULT 1;
             END
             IF COL_LENGTH(N'dbo.OrderItems', N'UnitFactor') IS NULL
-            BEGIN
+            BEGIN   
                 ALTER TABLE [dbo].[OrderItems] ADD [UnitFactor] INT NOT NULL CONSTRAINT DF_OrderItems_UnitFactor DEFAULT 1;
             END
             IF COL_LENGTH(N'dbo.OrderItems', N'UnitName') IS NULL
@@ -171,6 +217,8 @@ using (var scope = app.Services.CreateScope())
                     [HeightMm] INT NULL,
                     [ImageUrl] NVARCHAR(500) NOT NULL CONSTRAINT DF_ProductVariants_ImageUrl DEFAULT N'',
                     [StockQuantity] INT NOT NULL CONSTRAINT DF_ProductVariants_Stock DEFAULT 0,
+                    [ReservedStock] INT NOT NULL CONSTRAINT DF_ProductVariants_ReservedStock DEFAULT 0,
+                    [AvailableStock] INT NOT NULL CONSTRAINT DF_ProductVariants_AvailableStock DEFAULT 0,
                     [IsDefault] BIT NOT NULL CONSTRAINT DF_ProductVariants_IsDefault DEFAULT 0,
                     [IsActive] BIT NOT NULL CONSTRAINT DF_ProductVariants_IsActive DEFAULT 1,
                     [SortOrder] INT NOT NULL CONSTRAINT DF_ProductVariants_Sort DEFAULT 0,
@@ -206,6 +254,14 @@ using (var scope = app.Services.CreateScope())
             IF COL_LENGTH(N'dbo.ProductVariants', N'IsDefault') IS NULL
             BEGIN
                 ALTER TABLE [dbo].[ProductVariants] ADD [IsDefault] BIT NOT NULL CONSTRAINT DF_ProductVariants_IsDefault DEFAULT 0;
+            END
+            IF COL_LENGTH(N'dbo.ProductVariants', N'ReservedStock') IS NULL
+            BEGIN
+                ALTER TABLE [dbo].[ProductVariants] ADD [ReservedStock] INT NOT NULL CONSTRAINT DF_ProductVariants_ReservedStock DEFAULT 0;
+            END
+            IF COL_LENGTH(N'dbo.ProductVariants', N'AvailableStock') IS NULL
+            BEGIN
+                ALTER TABLE [dbo].[ProductVariants] ADD [AvailableStock] INT NOT NULL CONSTRAINT DF_ProductVariants_AvailableStock DEFAULT 0;
             END
             IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_OrderItems_ProductVariants_VariantId')
             BEGIN
@@ -297,14 +353,58 @@ using (var scope = app.Services.CreateScope())
                     [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
                     [ProductAttributeId] INT NOT NULL,
                     [Value] NVARCHAR(120) NOT NULL,
+                    [ConversionFactor] DECIMAL(18,4) NULL,
                     [SortOrder] INT NOT NULL CONSTRAINT DF_ProductAttributeValues_SortOrder DEFAULT 0,
                     [IsActive] BIT NOT NULL CONSTRAINT DF_ProductAttributeValues_IsActive DEFAULT 1,
                     CONSTRAINT FK_ProductAttributeValues_ProductAttributes_ProductAttributeId FOREIGN KEY([ProductAttributeId]) REFERENCES [dbo].[ProductAttributes]([Id]) ON DELETE CASCADE
                 );
                 CREATE INDEX IX_ProductAttributeValues_ProductAttributeId ON [dbo].[ProductAttributeValues]([ProductAttributeId]);
             END
+            IF COL_LENGTH(N'dbo.ProductAttributeValues', N'ConversionFactor') IS NULL
+            BEGIN
+                ALTER TABLE [dbo].[ProductAttributeValues] ADD [ConversionFactor] DECIMAL(18,4) NULL;
+            END
+            IF OBJECT_ID(N'dbo.Carts', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[Carts](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [Token] NVARCHAR(100) NOT NULL,
+                    [CreatedAtUtc] DATETIME2 NOT NULL CONSTRAINT DF_Carts_CreatedAtUtc DEFAULT SYSUTCDATETIME(),
+                    [UpdatedAtUtc] DATETIME2 NOT NULL CONSTRAINT DF_Carts_UpdatedAtUtc DEFAULT SYSUTCDATETIME()
+                );
+                CREATE UNIQUE INDEX IX_Carts_Token ON [dbo].[Carts]([Token]);
+            END
+            IF OBJECT_ID(N'dbo.CartItems', N'U') IS NULL
+            BEGIN
+                CREATE TABLE [dbo].[CartItems](
+                    [Id] INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                    [CartId] INT NOT NULL,
+                    [ProductId] INT NOT NULL,
+                    [VariantId] INT NULL,
+                    [Quantity] INT NOT NULL CONSTRAINT DF_CartItems_Quantity DEFAULT 1,
+                    [Checked] BIT NOT NULL CONSTRAINT DF_CartItems_Checked DEFAULT 1,
+                    [UnitName] NVARCHAR(120) NOT NULL CONSTRAINT DF_CartItems_UnitName DEFAULT N'',
+                    [UnitFactor] INT NOT NULL CONSTRAINT DF_CartItems_UnitFactor DEFAULT 1,
+                    CONSTRAINT FK_CartItems_Carts_CartId FOREIGN KEY([CartId]) REFERENCES [dbo].[Carts]([Id]) ON DELETE CASCADE,
+                    CONSTRAINT FK_CartItems_Products_ProductId FOREIGN KEY([ProductId]) REFERENCES [dbo].[Products]([Id]) ON DELETE CASCADE
+                );
+                CREATE INDEX IX_CartItems_CartId ON [dbo].[CartItems]([CartId]);
+                CREATE INDEX IX_CartItems_ProductId ON [dbo].[CartItems]([ProductId]);
+            END
+            IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_CartItems_ProductVariants_VariantId')
+            BEGIN
+                ALTER TABLE [dbo].[CartItems] WITH CHECK ADD CONSTRAINT [FK_CartItems_ProductVariants_VariantId] FOREIGN KEY([VariantId]) REFERENCES [dbo].[ProductVariants]([Id]) ON DELETE NO ACTION;
+            END
             """);
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Database bootstrap script failed.");
+        throw;
+    }
 
+    try
+    {
         var seed = scope.ServiceProvider.GetRequiredService<AdminIdentitySeeder>();
         await seed.SeedAsync();
     }
@@ -334,5 +434,6 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Store}/{action=Index}/{id?}")
     .WithStaticAssets();
+app.MapHub<StorefrontHub>("/hubs/storefront");
 
 app.Run();

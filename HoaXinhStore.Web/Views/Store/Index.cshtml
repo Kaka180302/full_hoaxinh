@@ -1,6 +1,8 @@
-﻿@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
+@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
 @{
     Layout = null;
+    var checkoutMessage = TempData["CheckoutMessage"] as string;
+    var checkoutStatus = TempData["CheckoutStatus"] as string;
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -10,7 +12,7 @@
     <title>HoaXinh Store</title>
     <link rel="stylesheet" href="~/assets/style.css">
     <link rel="stylesheet" href="~/storefront.css" />
-    <link rel="shortcut icon" type="image/png" href="~/assets/img/hoa_xinh_group_fav.png" />
+    <link rel="shortcut icon" type="image/png" href="~/assets/img/logo/hoa_xinh_group_fav.png" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
 </head>
 <body class="hx-home2">
@@ -18,66 +20,75 @@
         <partial name="Partials/_Header" model="Model" />
 
         <main class="hx-home2-main">
-            <section id="featured" class="hx-home2-section">
-                <div class="hx-home2-section-head">
-                    <h2 class="top">Sản phẩm nổi bật</h2>
-                    <a href="/Store/Products?filterLabel=S%E1%BA%A3n%20ph%E1%BA%A9m%20n%E1%BB%95i%20b%E1%BA%ADt" class="hx-home2-viewall">Xem tất cả</a>
+            <section id="featured" class="hxs-f5-section">
+                <div class="hxs-f5-head">
+                    <h2 class="hxs-f5-title">Sản phẩm nổi bật</h2>
+                    <a href="/Store/Products?filterLabel=S%E1%BA%A3n%20ph%E1%BA%A9m%20n%E1%BB%95i%20b%E1%BA%ADt" class="hxs-f5-viewall">Xem tất cả</a>
                 </div>
                 @{
-                    var picks = Model.FeaturedProducts.Take(6).ToList();
-                    bool IsVideo(string media) => media.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase)
-                        || media.EndsWith(".webm", StringComparison.OrdinalIgnoreCase)
-                        || media.EndsWith(".ogg", StringComparison.OrdinalIgnoreCase);
+                    var picks = Model.FeaturedProducts.ToList();
                 }
-                <div class="hx-staff-pick">
-                    <div class="hx-staff-col">
-                        @foreach (var p in picks.Take(2))
-                        {
-                            var media = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
-                            <a class="hx-staff-item hx-staff-small" href="/Store/ProductDetail/@p.Id">
-                                @if (IsVideo(media))
-                                {
-                                    <video src="@media" muted autoplay loop playsinline></video>
-                                }
-                                else
-                                {
-                                    <img src="@media" alt="@p.Name" />
-                                }
-                            </a>
-                        }
-                    </div>
-                    @if (picks.Count > 2)
-                    {
-                        var center = picks[2];
-                        var media = string.IsNullOrWhiteSpace(center.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : center.ImageUrl;
-                        <a class="hx-staff-item hx-staff-main" href="/Store/ProductDetail/@center.Id">
-                            @if (IsVideo(media))
+                <div class="hxs-f5-slider" data-f5-slider>
+                    <button type="button" class="hxs-f5-nav hxs-f5-prev" data-f5-prev aria-label="Sản phẩm trước">
+                        <i class="fa-solid fa-chevron-left"></i>
+                    </button>
+                    <div class="hxs-f5-viewport" data-f5-viewport>
+                        <div class="hxs-f5-track" data-f5-track>
+                            @foreach (var p in picks)
                             {
-                                <video src="@media" muted autoplay loop playsinline></video>
+                                var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
+                                var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+                                    .OrderByDescending(v => v.IsDefault)
+                                    .ThenBy(v => v.Id)
+                                    .FirstOrDefault();
+                                var cardPrice = cardDefaultVariant?.Price ?? p.Price;
+                                var cardSale = cardDefaultVariant?.SalePrice;
+                                var cardActive = cardSale ?? cardPrice;
+                                <article class="hxs-f5-card" data-f5-card>
+                                    <a href="/Store/ProductDetail/@p.Id" class="hxs-f5-media">
+                                        <img src="@img" alt="@p.Name">
+                                    </a>
+                                    <h3 class="hxs-f5-name"><a href="/Store/ProductDetail/@p.Id">@p.Name</a></h3>
+                                    <div class="hxs-f5-price">
+                                        <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardActive)</strong>
+                                        @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
+                                        {
+                                            <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardPrice)</span>
+                                        }
+                                    </div>
+                                    @if (p.StockQuantity <= 0)
+                                    {
+                                        <button type="button"
+                                                class="hxs-f5-action hxs-f5-preorder"
+                                                aria-label="Đặt trước"
+                                                data-preorder-popup
+                                                data-id="@p.Id"
+                                                data-name="@p.Name">
+                                            Đặt trước
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button type="button"
+                                                class="hxs-f5-action"
+                                                aria-label="Thêm vào giỏ"
+                                                data-add-cart
+                                                data-id="@p.Id"
+                                                data-name="@p.Name"
+                                                data-price="@cardPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                                data-sale-price="@(cardSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                data-stock="@Math.Max(0, p.StockQuantity)"
+                                                data-image="@img">
+                                            <i class="fa-solid fa-cart-shopping"></i>
+                                        </button>
+                                    }
+                                </article>
                             }
-                            else
-                            {
-                                <img src="@media" alt="@center.Name" />
-                            }
-                            <span class="hx-staff-play"><i class="fa-solid fa-play"></i></span>
-                        </a>
-                    }
-                    <div class="hx-staff-col">
-                        @foreach (var p in picks.Skip(3).Take(3))
-                        {
-                            var media = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
-                            <a class="hx-staff-item hx-staff-small" href="/Store/ProductDetail/@p.Id">
-                                @if (IsVideo(media))
-                                {
-                                    <video src="@media" muted autoplay loop playsinline></video>
-                                }
-                                else
-                                {
-                                    <img src="@media" alt="@p.Name" />
-                                }
-                            </a>
-                        }
+                        </div>
                     </div>
+                    <button type="button" class="hxs-f5-nav hxs-f5-next" data-f5-next aria-label="Sản phẩm tiếp theo">
+                        <i class="fa-solid fa-chevron-right"></i>
+                    </button>
                 </div>
             </section>
 
@@ -89,9 +100,9 @@
                         <a href="/Store/Products?category=@catSection.Category.Slug&filterLabel=@Uri.EscapeDataString(catSection.Category.Name)" class="hx-home2-viewall">Xem tất cả</a>
                     </div>
                     <div class="hx-home2-product-grid">
-                        @foreach (var p in catSection.Products)
+                        @foreach (var p in catSection.Products.Take(5))
                         {
-                            var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : p.ImageUrl;
+                            var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
                             var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
                                 .OrderByDescending(v => v.IsDefault)
                                 .ThenBy(v => v.Id)
@@ -105,10 +116,10 @@
                                 </a>
                                 <h3><a href="/Store/ProductDetail/@p.Id">@p.Name</a></h3>
                                 <div class="hx-home2-price">
-                                    <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardActive)</strong>
+                                    <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardActive)</strong>
                                     @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
                                     {
-                                        <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardPrice)</span>
+                                        <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardPrice)</span>
                                     }
                                 </div>
                                 @if (p.StockQuantity <= 0)
@@ -143,25 +154,21 @@
                 </section>
             }
 
-            @{
-                var brands = Model.Products
-                    .Where(x => !string.IsNullOrWhiteSpace(x.BrandName) && !string.IsNullOrWhiteSpace(x.BrandImageUrl))
-                    .GroupBy(x => x.BrandName.Trim())
-                    .Select(g => new { Name = g.Key, Image = g.First().BrandImageUrl })
-                    .ToList();
-            }
-            @if (brands.Any())
+            @if (Model.Brands.Any())
             {
                 <section class="hx-home2-section">
                     <div class="hx-home2-section-head">
                         <h2>Thương hiệu</h2>
                     </div>
                     <div class="hx-home2-brand-grid">
-                        @foreach (var b in brands)
+                        @foreach (var b in Model.Brands)
                         {
+                            var brandImage = string.IsNullOrWhiteSpace(b.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : b.ImageUrl;
                             <article class="hx-home2-brand-card">
-                                <img src="@b.Image" alt="@b.Name" />
-                                <h3>@b.Name</h3>
+                                <a href="/Store/Products?brand=@Uri.EscapeDataString(b.Name)&filterLabel=@Uri.EscapeDataString("Thương hiệu: " + b.Name)" class="no_link">
+                                    <img src="@brandImage" alt="@b.Name" />
+                                    <h3>@b.Name</h3>
+                                </a>
                             </article>
                         }
                     </div>
@@ -172,247 +179,41 @@
 
     <partial name="Partials/_Footer" />
 
-    <script src="~/script.js"></script>
-    <script>
-        (function () {
-            const CART_KEY = 'cart';
-            const cartLink = document.getElementById('hxCartLink') || document.querySelector('.cart_iconLink') || document.querySelector('.store-cart-link');
-            const cartCount = document.getElementById('hxCartCount');
-            const miniCart = document.getElementById('hxMiniCart') || document.querySelector('[data-mini-cart-content]') || document.getElementById('miniCartContent');
-            const stickyHead = document.querySelector('.hx-home2-head');
-
-            function readCart() {
-                try {
-                    const raw = localStorage.getItem(CART_KEY);
-                    return raw ? JSON.parse(raw) : [];
-                } catch {
-                    return [];
+    @if (!string.IsNullOrWhiteSpace(checkoutMessage))
+    {
+        <div class="hx-popup-backdrop" id="homeCheckoutPopup" style="display:none;">
+            <div class="hx-popup-card">
+                <button type="button" class="hx-popup-close" id="homeCheckoutPopupClose">×</button>
+                <div class="hx-popup-body">
+                    <h4 id="homeCheckoutPopupTitle">Thông báo</h4>
+                    <p id="homeCheckoutPopupMessage">@checkoutMessage</p>
+                    <button type="button" class="mini-cart-view-btn" id="homeCheckoutPopupOk">Đã hiểu</button>
+                </div>
+            </div>
+        </div>
+        <script>
+            window.__checkoutMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutMessage));
+            window.__checkoutStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutStatus ?? ""));
+            (function(){
+                const popup = document.getElementById('homeCheckoutPopup');
+                if (!popup) return;
+                const title = document.getElementById('homeCheckoutPopupTitle');
+                const status = (window.__checkoutStatus || '').toLowerCase();
+                if (title) {
+                    title.textContent = status === 'success'
+                        ? 'Thanh toán thành công'
+                        : (status === 'cancelled' ? 'Bạn đã hủy thanh toán' : 'Thanh toán thất bại');
                 }
-            }
+                const close = () => popup.style.display = 'none';
+                popup.style.display = 'flex';
+                document.getElementById('homeCheckoutPopupClose')?.addEventListener('click', close);
+                document.getElementById('homeCheckoutPopupOk')?.addEventListener('click', close);
+                popup.addEventListener('click', (e) => { if (e.target === popup) close(); });
+            })();
+        </script>
+    }
 
-            function writeCart(items) {
-                localStorage.setItem(CART_KEY, JSON.stringify(items));
-            }
-
-            function formatVnd(value) {
-                return Number(value || 0).toLocaleString('vi-VN') + ' đ';
-            }
-
-            function effectivePrice(payload) {
-                return payload.salePrice != null ? Number(payload.salePrice) : Number(payload.price || 0);
-            }
-
-            function updateBadge() {
-                const total = readCart().reduce((sum, x) => sum + Number(x.qty || 0), 0);
-                if (cartCount) {
-                    cartCount.textContent = String(total);
-                    cartCount.style.display = total > 0 ? 'inline-flex' : 'none';
-                }
-                document.querySelectorAll('.cart_count').forEach(el => {
-                    el.textContent = String(total);
-                    el.style.display = total > 0 ? 'inline-flex' : 'none';
-                });
-            }
-
-            function renderMiniCart() {
-                if (!miniCart) return;
-                const items = readCart();
-                const isStoreMiniCart = miniCart.classList.contains('mini-cart-content') || miniCart.id === 'miniCartContent';
-                if (!items.length) {
-                    miniCart.innerHTML = isStoreMiniCart
-                        ? '<div class="mini-cart-title">Giỏ hàng</div><div class="mini-cart-empty">Giỏ hàng trống.</div><div class="mini-cart-footer"><a href="/Store/Cart" class="mini-cart-view-btn">Xem giỏ hàng</a></div>'
-                        : '<div class="hx-mini-cart-empty">Giỏ hàng trống</div><a href="/Store/Cart" class="hx-mini-cart-view">Xem giỏ hàng</a>';
-                    return;
-                }
-                const latest = items.slice().reverse().slice(0, 4);
-                if (isStoreMiniCart) {
-                    miniCart.innerHTML = '<div class="mini-cart-title">Giỏ hàng</div>' + latest.map(item => {
-                        const line = Number(item.qty || 1) * Number(item.price || 0);
-                        return '<div class="mini-cart-item">' +
-                            '<img src="' + (item.image || '/assets/img/hoa_xinh_group_fav.png') + '" alt="">' +
-                            '<div class="mini-cart-meta"><a class="mini-cart-name" href="/Store/ProductDetail/' + item.id + '">' + (item.name || '') + '</a><span class="mini-cart-price">' + formatVnd(line) + '</span></div>' +
-                            '</div>';
-                    }).join('') + '<div class="mini-cart-footer"><a href="/Store/Cart" class="mini-cart-view-btn">Xem giỏ hàng</a></div>';
-                    return;
-                }
-                miniCart.innerHTML = latest.map(item => {
-                    const line = Number(item.qty || 1) * Number(item.price || 0);
-                    return '<a class="hx-mini-cart-item" href="/Store/ProductDetail/' + item.id + '">' +
-                        '<img src="' + (item.image || '/assets/img/hoa_xinh_group_fav.png') + '" alt="">' +
-                        '<div><h4>' + (item.name || '') + '</h4><p>' + formatVnd(line) + '</p></div>' +
-                        '</a>';
-                }).join('') + '<a href="/Store/Cart" class="hx-mini-cart-view">Xem giỏ hàng</a>';
-            }
-
-            function animateFlyToCart(sourceImg) {
-                if (!sourceImg || !cartLink) return;
-                const imgRect = sourceImg.getBoundingClientRect();
-                const cartRect = cartLink.getBoundingClientRect();
-                const clone = sourceImg.cloneNode(true);
-                clone.classList.add('hx-fly-item');
-                clone.style.left = imgRect.left + 'px';
-                clone.style.top = imgRect.top + 'px';
-                clone.style.width = imgRect.width + 'px';
-                clone.style.height = imgRect.height + 'px';
-                document.body.appendChild(clone);
-
-                requestAnimationFrame(() => {
-                    clone.style.left = (cartRect.left + cartRect.width / 2 - 12) + 'px';
-                    clone.style.top = (cartRect.top + cartRect.height / 2 - 12) + 'px';
-                    clone.style.width = '24px';
-                    clone.style.height = '24px';
-                    clone.style.opacity = '0.2';
-                });
-
-                setTimeout(() => clone.remove(), 620);
-            }
-
-            function addToCart(payload, sourceImg) {
-                const cart = readCart();
-                const found = cart.find(x => Number(x.id) === Number(payload.id));
-                const stock = Math.max(0, Number(payload.stock || 0));
-                const desiredQty = Number(found?.qty || 0) + 1;
-                const showNotice = (msg) => {
-                    const wrap = document.createElement('div');
-                    wrap.className = 'hx-popup-backdrop';
-                    wrap.style.display = 'flex';
-                    wrap.innerHTML = `<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"><h4>Thông báo</h4><p>${msg}</p><button type="button" class="mini-cart-view-btn">Đã hiểu</button></div></div>`;
-                    document.body.appendChild(wrap);
-                    const close = () => wrap.remove();
-                    wrap.querySelector('.hx-popup-close')?.addEventListener('click', close);
-                    wrap.querySelector('.mini-cart-view-btn')?.addEventListener('click', close);
-                    wrap.addEventListener('click', (e) => { if (e.target === wrap) close(); });
-                };
-                if (stock === 0) return showNotice('Sản phẩm hiện tạm hết hàng.');
-                if (desiredQty > stock) {
-                    showNotice(`Sản phẩm hiện chỉ còn ${stock} trong kho.`);
-                    return;
-                }
-                const price = effectivePrice(payload);
-                if (found) {
-                    found.qty = Number(found.qty || 1) + 1;
-                    found.price = price;
-                    found.image = payload.image;
-                    found.name = payload.name;
-                    found.salePrice = payload.salePrice;
-                    found.originalPrice = Number(payload.price || 0);
-                } else {
-                    cart.push({
-                        id: Number(payload.id),
-                        name: payload.name || '',
-                        qty: 1,
-                        price,
-                        originalPrice: Number(payload.price || 0),
-                        salePrice: payload.salePrice,
-                        image: payload.image || '',
-                        checked: true
-                    });
-                }
-                writeCart(cart);
-                updateBadge();
-                renderMiniCart();
-                animateFlyToCart(sourceImg);
-            }
-
-            function initFeaturedSlider() {
-                const slider = document.getElementById('hxFeaturedSlider');
-                const track = document.getElementById('hxFeaturedTrack');
-                if (!slider || !track) return;
-
-                const cards = Array.from(track.querySelectorAll('.hx-home2-product-card'));
-                if (cards.length < 2) return;
-
-                const frag = document.createDocumentFragment();
-                cards.forEach(card => frag.appendChild(card.cloneNode(true)));
-                track.appendChild(frag);
-
-                const prevBtn = slider.querySelector('.hx-home2-slider-prev');
-                const nextBtn = slider.querySelector('.hx-home2-slider-next');
-                let rafId = null;
-                let paused = false;
-                let x = 0;
-                let speed = 0.55;
-
-                function itemStep() {
-                    const first = track.querySelector('.hx-home2-product-card');
-                    return first ? first.getBoundingClientRect().width + 12 : 220;
-                }
-
-                function maxLoop() {
-                    return track.scrollWidth / 2;
-                }
-
-                function render() {
-                    if (!paused) {
-                        x += speed;
-                        const loop = maxLoop();
-                        if (x >= loop) x = 0;
-                        track.style.transform = `translate3d(${-x}px,0,0)`;
-                    }
-                    rafId = requestAnimationFrame(render);
-                }
-
-                function moveBy(direction) {
-                    x += itemStep() * direction;
-                    const loop = maxLoop();
-                    if (x < 0) x += loop;
-                    if (x >= loop) x -= loop;
-                    track.style.transform = `translate3d(${-x}px,0,0)`;
-                }
-
-                prevBtn?.addEventListener('click', () => moveBy(-1));
-                nextBtn?.addEventListener('click', () => moveBy(1));
-                slider.addEventListener('mouseenter', () => { paused = true; });
-                slider.addEventListener('mouseleave', () => { paused = false; });
-
-                render();
-
-                window.addEventListener('beforeunload', () => {
-                    if (rafId) cancelAnimationFrame(rafId);
-                });
-            }
-
-            function initStickyHeader() {
-                if (!stickyHead) return;
-                const sync = () => {
-                    stickyHead.classList.toggle('is-scrolled', window.scrollY > 8);
-                };
-                sync();
-                window.addEventListener('scroll', sync, { passive: true });
-            }
-
-            document.addEventListener('click', function (e) {
-                const btn = e.target.closest('[data-add-cart]');
-                if (!btn) return;
-                e.preventDefault();
-                e.stopPropagation();
-                const card = btn.closest('.hx-home2-product-card');
-                const img = card ? card.querySelector('img') : null;
-                const payload = {
-                    id: btn.getAttribute('data-id'),
-                    name: btn.getAttribute('data-name'),
-                    price: Number(btn.getAttribute('data-price') || 0),
-                    salePrice: btn.getAttribute('data-sale-price') ? Number(btn.getAttribute('data-sale-price')) : null,
-                    image: btn.getAttribute('data-image'),
-                    stock: Number(btn.getAttribute('data-stock') || 0)
-                };
-                addToCart(payload, img);
-            });
-
-            cartLink?.addEventListener('click', function (e) {
-                if (e.target.closest('.hx-mini-cart-item') || e.target.closest('.hx-mini-cart-view') || e.target.closest('.mini-cart-item') || e.target.closest('.mini-cart-view-btn')) return;
-                window.location.href = '/Store/Cart';
-            });
-
-            initStickyHeader();
-            initFeaturedSlider();
-            updateBadge();
-            renderMiniCart();
-            if (new URLSearchParams(window.location.search).get('orderNo')) {
-                const orderLookup = document.getElementById('order-lookup');
-                orderLookup?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        })();
-    </script>
+    <script src="~/storefront.js"></script>
 </body>
 </html>
+

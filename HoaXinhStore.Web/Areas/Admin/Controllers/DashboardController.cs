@@ -28,15 +28,16 @@ public class DashboardController(AppDbContext db) : Controller
             .OrderByDescending(x => x.Qty)
             .Take(8)
             .ToListAsync();
-        var lowStockProducts = await db.Products
+        var lowStockVariants = await db.ProductVariants
             .AsNoTracking()
-            .Include(p => p.Category)
-            .Where(p => p.StockQuantity < 10 && p.IsActive)
-            .OrderBy(p => p.StockQuantity)
+            .Include(v => v.Product)
+                .ThenInclude(p => p.Category)
+            .Where(v => v.IsActive && v.Product != null && v.Product.IsActive && v.AvailableStock < 10)
+            .OrderBy(v => v.AvailableStock)
             .Take(10)
             .ToListAsync();
-        ViewBag.LowStockCount = lowStockProducts.Count;
-        ViewBag.LowStockProducts = lowStockProducts;
+        ViewBag.LowStockCount = lowStockVariants.Count;
+        ViewBag.LowStockVariants = lowStockVariants;
         return View();
     }
 }

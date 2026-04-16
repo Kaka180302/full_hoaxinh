@@ -1,4 +1,4 @@
-@model List<HoaXinhStore.Web.Entities.CategoryBrand>
+﻿@model List<HoaXinhStore.Web.Entities.CategoryBrand>
 @{
     ViewData["Title"] = "Quản lý thương hiệu";
     var q = (string?)ViewBag.Query ?? string.Empty;
@@ -30,9 +30,9 @@
         <tbody>
         @foreach (var item in Model)
         {
-            var img = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/hoa_xinh_group_fav.png" : item.ImageUrl;
+            var img = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : item.ImageUrl;
             <tr>
-                <td><img src="@img" alt="@item.Name" style="width:48px;height:48px;object-fit:cover;border-radius:8px;border:1px solid #e5e7eb;" /></td>
+                <td><img src="@img" alt="@item.Name" style="width:48px;height:48px;object-fit:contain;border-radius:8px;border:1px solid #e5e7eb;" /></td>
                 <td>@item.Name</td>
                 <td>@item.Category?.Name</td>
                 <td>@(item.IsActive ? "Hiển thị" : "Ẩn")</td>
@@ -48,4 +48,5 @@
         </tbody>
     </table>
 </div>
+
 

@@ -1,24 +1,89 @@
-﻿@model List<HoaXinhStore.Web.Entities.Category>
+@model List<HoaXinhStore.Web.Entities.Category>
 @{
     ViewData["Title"] = "Danh mục";
+    var depthMap = ViewBag.DepthMap as Dictionary<int, int> ?? new Dictionary<int, int>();
+    var parentNameMap = ViewBag.ParentNameMap as Dictionary<int, string> ?? new Dictionary<int, string>();
 }
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Quản trị danh mục</h2>
     <a class="btn btn-primary" asp-action="Create">Thêm danh mục</a>
 </div>
+@if (TempData["CategoryMessage"] is string msg && !string.IsNullOrWhiteSpace(msg))
+{
+    var type = (TempData["CategoryMessageType"] as string) == "error" ? "danger" : "success";
+    <div class="alert alert-@type">@msg</div>
+}
 <table class="table table-bordered table-striped bg-white">
-    <thead><tr><th>ID</th><th>Tên</th><th>Slug</th><th>Mã SKU</th><th>Trạng thái</th><th></th></tr></thead>
+    <thead><tr><th>ID</th><th>Tên</th><th>Danh mục cha</th><th>Slug</th><th>Mã SKU</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>
     @foreach (var c in Model)
     {
+        var depth = depthMap.TryGetValue(c.Id, out var d) ? d : 0;
+        var prefix = string.Concat(Enumerable.Repeat("— ", Math.Max(0, depth)));
+        var parentName = parentNameMap.TryGetValue(c.Id, out var p) ? p : "-";
         <tr>
             <td>@c.Id</td>
-            <td>@c.Name</td>
+            <td>@prefix@c.Name</td>
+            <td>@parentName</td>
             <td>@c.Slug</td>
             <td>@c.SkuPrefix</td>
             <td>@(c.IsActive ? "Hiển thị" : "Ẩn")</td>
-            <td><a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-warning">Sửa</a></td>
+            <td class="d-flex gap-1">
+                <a asp-action="Edit" asp-route-id="@c.Id" class="btn btn-sm btn-warning">Sửa</a>
+                <form asp-action="Delete" method="post" class="d-inline js-confirm-delete" data-confirm-message="Xóa danh mục này?">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@c.Id" />
+                    <button type="button" class="btn btn-sm btn-outline-danger js-open-confirm">Xóa</button>
+                </form>
+            </td>
         </tr>
     }
     </tbody>
 </table>
+<div class="hx-popup-backdrop" id="adminConfirmPopup" style="display:none;">
+    <div class="hx-popup-card">
+        <button type="button" class="hx-popup-close" id="adminConfirmClose">×</button>
+        <div class="hx-popup-body">
+            <h4>Xác nhận thao tác</h4>
+            <p id="adminConfirmText">Bạn có chắc chắn muốn thực hiện thao tác này?</p>
+            <div class="d-flex gap-2 justify-content-end">
+                <button type="button" class="btn btn-outline-secondary" id="adminConfirmCancel">Hủy</button>
+                <button type="button" class="btn btn-danger" id="adminConfirmOk">Xóa</button>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+(() => {
+    const popup = document.getElementById('adminConfirmPopup');
+    if (!popup) return;
+    const text = document.getElementById('adminConfirmText');
+    const btnOk = document.getElementById('adminConfirmOk');
+    const btnClose = document.getElementById('adminConfirmClose');
+    const btnCancel = document.getElementById('adminConfirmCancel');
+    let pendingForm = null;
+    const close = () => {
+        popup.classList.remove('is-open');
+        popup.style.display = 'none';
+        pendingForm = null;
+    };
+    btnClose?.addEventListener('click', close);
+    btnCancel?.addEventListener('click', close);
+    popup.addEventListener('click', (e) => { if (e.target === popup) close(); });
+    btnOk?.addEventListener('click', () => {
+        if (pendingForm) pendingForm.submit();
+        close();
+    });
+    document.querySelectorAll('.js-open-confirm').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const form = btn.closest('.js-confirm-delete');
+            if (!form) return;
+            pendingForm = form;
+            if (text) text.textContent = form.getAttribute('data-confirm-message') || 'Bạn có chắc chắn muốn xóa?';
+            popup.style.display = 'flex';
+            requestAnimationFrame(() => popup.classList.add('is-open'));
+        });
+    });
+})();
+</script>

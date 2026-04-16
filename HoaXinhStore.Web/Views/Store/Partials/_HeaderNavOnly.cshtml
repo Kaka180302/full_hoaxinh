@@ -1,9 +1,35 @@
 @model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
-
-<header class="header header--nav-only">
+@using Microsoft.EntityFrameworkCore
+@inject HoaXinhStore.Web.Data.AppDbContext AppDb
+@{
+    var headerCategories = (Model?.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>()).ToList();
+    if (headerCategories.Count == 0)
+    {
+        headerCategories = await AppDb.Categories
+            .AsNoTracking()
+            .Where(c => c.IsActive)
+            .OrderBy(c => c.Id)
+            .Select(c => new HoaXinhStore.Web.ViewModels.StoreCategoryViewModel
+            {
+                Id = c.Id,
+                ParentCategoryId = c.ParentCategoryId,
+                Name = c.Name,
+                Slug = string.IsNullOrWhiteSpace(c.Slug) ? "all" : c.Slug
+            })
+            .ToListAsync();
+    }
+    var parentCategories = headerCategories
+        .Where(c => !c.ParentCategoryId.HasValue)
+        .OrderBy(c => c.Name)
+        .ToList();
+    var childCategoryMap = headerCategories
+        .Where(c => c.ParentCategoryId.HasValue)
+        .GroupBy(c => c.ParentCategoryId!.Value)
+        .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+}<header class="header header--nav-only">
     <div id="no_show" class="header_mobile">
         <a href="/" class="header_logoLink no_link">
-            <img class="header_logo" src="~/assets/img/logo_HX.png">
+            <img class="header_logo" src="~/assets/img/logo/Logo_HX.png">
         </a>
 
         <div class="header_mobileWrap">
@@ -17,6 +43,10 @@
                     <span id="cart_count" class="cart_count">0</span>
                 </a>
             </div>
+
+            <button class="menu_toggle mobile_filter_toggle" id="mobileFilterBtn" type="button" aria-label="Mở bộ lọc">
+                <i class="fa-solid fa-filter"></i>
+            </button>
 
             <button class="menu_toggle" id="menuToggle" type="button" aria-label="Mở menu">
                 <svg class="icon_mobile" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
@@ -32,15 +62,18 @@
         </div>
 
         <div class="header_nav">
-            <ul class="header_navList no_list">
+                <ul class="header_navList no_list">
+                    <li class="header_navList--item">
+                        <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Danh mục</a>
+                    </li>
+                    <li class="header_navList--item">
+                        <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
+                    </li>
                 <li class="header_navList--item">
-                    <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
+                    <a asp-controller="Store" asp-action="Index" asp-fragment="featured" class="header_navList--link no_link">Nổi bật</a>
                 </li>
                 <li class="header_navList--item">
-                    <a asp-controller="Store" asp-action="Index" asp-fragment="Abouts" class="header_navList--link no_link">Giới thiệu</a>
-                </li>
-                <li class="header_navList--item">
-                    <a asp-controller="Store" asp-action="Index" asp-fragment="Certificate" class="header_navList--link no_link">Chứng nhận</a>
+                    <a asp-controller="Store" asp-action="TrackOrder" class="header_navList--link no_link">Tra cứu đơn hàng</a>
                 </li>
             </ul>
         </div>
@@ -49,26 +82,58 @@
     <div id="no_header" class="header_info">
         <div class="header_wrap">
             <a href="/" class="header_logoLink no_link">
-                <img class="header_logo" src="~/assets/img/Logo_HX.png" alt="Logo_Hoa_Xinh">
+                <img class="header_logo" src="~/assets/img/logo/Logo_HX.png" alt="Logo_Hoa_Xinh">
             </a>
             <div class="header_nav">
                 <ul class="header_navList no_list">
+                    <li class="header_navList--item header_navList--item-cats">
+                        <a href="javascript:void(0)" class="header_navList--link no_link">Danh mục</a>
+                        <div class="menu_categories">
+                            <div class="menu_categories-left">
+                                @for (var i = 0; i < parentCategories.Count; i++)
+                                {
+                                    var parent = parentCategories[i];
+                                    var children = childCategoryMap.TryGetValue(parent.Id, out var c) ? c : new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>();
+                                    <div class="menu_categories-parent-wrap @(i == 0 ? "is-default" : "")">
+                                        <a asp-controller="Store"
+                                           asp-action="Products"
+                                           asp-route-category="@parent.Slug"
+                                           class="menu_categories-parent-item @(children.Count > 0 ? "has-children" : "")">
+                                            <span>@parent.Name</span>
+                                            @if (children.Count > 0)
+                                            {
+                                                <i class="fa-solid fa-angle-right"></i>
+                                            }
+                                        </a>
+                                        <div class="menu_categories-right @(children.Count == 0 ? "is-empty" : "")">
+                                            <h4>@parent.Name</h4>
+                                            @if (children.Count > 0)
+                                            {
+                                                <div class="menu_categories-children">
+                                                    @foreach (var child in children)
+                                                    {
+                                                        <a asp-controller="Store"
+                                                           asp-action="Products"
+                                                           asp-route-category="@child.Slug"
+                                                           class="menu_categories-child-item">@child.Name</a>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </li>
                     <li class="header_navList--item">
                         <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
-                        <div class="menu_product">
-                            <a asp-controller="Store" asp-action="Products" class="menu_product--item">Tất cả sản phẩm</a>
-                            @foreach (var category in Model.Categories)
-                            {
-                                <a asp-controller="Store" asp-action="Products" asp-route-category="@category.Slug" class="menu_product--item">@category.Name</a>
-                            }
-                        </div>
                     </li>
 
                     <li class="header_navList--item">
-                        <a asp-controller="Store" asp-action="Index" asp-fragment="Abouts" class="header_navList--link no_link">Giới thiệu</a>
+                        <a asp-controller="Store" asp-action="Index" asp-fragment="featured" class="header_navList--link no_link">Nổi bật</a>
                     </li>
                     <li class="header_navList--item">
-                        <a asp-controller="Store" asp-action="Index" asp-fragment="Certificate" class="header_navList--link no_link">Chứng nhận</a>
+                        <a asp-controller="Store" asp-action="TrackOrder" class="header_navList--link no_link">Tra cứu đơn hàng</a>
                     </li>
                 </ul>
             </div>
@@ -119,3 +184,8 @@
 </script>
 <script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <script src="~/language.js" asp-append-version="true"></script>
+
+
+
+
+

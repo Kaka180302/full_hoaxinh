@@ -7,7 +7,6 @@
 <form method="post" asp-action="Save" enctype="multipart/form-data" class="admin-card p-3">
     @Html.AntiForgeryToken()
     <input asp-for="Id" type="hidden" />
-    <input asp-for="ImageUrl" type="hidden" />
     <div class="row g-3">
         <div class="col-md-6">
             <label asp-for="Name" class="form-label"></label>
@@ -27,7 +26,7 @@
                 <img id="brandImagePreview"
                      src="@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "" : Model.ImageUrl)"
                      alt="Brand"
-                     style="width:88px;height:88px;object-fit:cover;border-radius:10px;border:1px solid #e5e7eb;@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "display:none;" : "")" />
+                     style="width:88px;height:88px;object-fit:contain;border-radius:10px;border:1px solid #e5e7eb;@(string.IsNullOrWhiteSpace(Model.ImageUrl) ? "display:none;" : "")" />
             </div>
         </div>
         <div class="col-12">
