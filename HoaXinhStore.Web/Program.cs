@@ -7,6 +7,8 @@ using HoaXinhStore.Web.Services.Inventory;
 using HoaXinhStore.Web.Services.Notifications;
 using HoaXinhStore.Web.Services.Payments;
 using HoaXinhStore.Web.Services.Policies;
+using HoaXinhStore.Web.Services.Checkout;
+using HoaXinhStore.Web.Services.Orders;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -22,10 +24,13 @@ builder.Services.Configure<AdminAccountOptions>(builder.Configuration.GetSection
 builder.Services.Configure<VnpayOptions>(builder.Configuration.GetSection("Vnpay"));
 builder.Services.Configure<SmtpOptions>(builder.Configuration.GetSection("Smtp"));
 builder.Services.Configure<ShippingIntegrationOptions>(builder.Configuration.GetSection("ShippingIntegration"));
+builder.Services.Configure<OrderPaymentTimeoutOptions>(builder.Configuration.GetSection("OrderPaymentTimeout"));
 builder.Services.AddScoped<IVnpayService, VnpayService>();
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
+builder.Services.AddScoped<IOrderCheckoutService, OrderCheckoutService>();
 builder.Services.AddSingleton<IPolicyContentService, JsonPolicyContentService>();
+builder.Services.AddHostedService<OrderPaymentTimeoutWorker>();
 
 builder.Services
     .AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -394,6 +399,37 @@ using (var scope = app.Services.CreateScope())
             IF NOT EXISTS (SELECT 1 FROM sys.foreign_keys WHERE name = N'FK_CartItems_ProductVariants_VariantId')
             BEGIN
                 ALTER TABLE [dbo].[CartItems] WITH CHECK ADD CONSTRAINT [FK_CartItems_ProductVariants_VariantId] FOREIGN KEY([VariantId]) REFERENCES [dbo].[ProductVariants]([Id]) ON DELETE NO ACTION;
+            END
+
+            IF OBJECT_ID(N'dbo.Orders', N'U') IS NOT NULL
+            BEGIN
+                DECLARE @ckName NVARCHAR(256);
+                DECLARE ck_cursor CURSOR LOCAL FAST_FORWARD FOR
+                    SELECT cc.name
+                    FROM sys.check_constraints cc
+                    WHERE cc.parent_object_id = OBJECT_ID(N'dbo.Orders')
+                      AND cc.definition LIKE N'%[PaymentMethod]%';
+
+                OPEN ck_cursor;
+                FETCH NEXT FROM ck_cursor INTO @ckName;
+                WHILE @@FETCH_STATUS = 0
+                BEGIN
+                    EXEC(N'ALTER TABLE [dbo].[Orders] DROP CONSTRAINT [' + @ckName + N']');
+                    FETCH NEXT FROM ck_cursor INTO @ckName;
+                END
+                CLOSE ck_cursor;
+                DEALLOCATE ck_cursor;
+
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.check_constraints
+                    WHERE parent_object_id = OBJECT_ID(N'dbo.Orders')
+                      AND name = N'CK_Orders_PaymentMethod')
+                BEGIN
+                    ALTER TABLE [dbo].[Orders] WITH CHECK
+                    ADD CONSTRAINT [CK_Orders_PaymentMethod]
+                    CHECK ([PaymentMethod] IN (0, 1, 2, 3));
+                END
             END
             """);
     }

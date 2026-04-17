@@ -1,14 +1,13 @@
 using HoaXinhStore.Web.Data;
-using HoaXinhStore.Web.Entities;
+using HoaXinhStore.Web.Services.Checkout;
 using HoaXinhStore.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace HoaXinhStore.Web.Controllers.Api;
 
 [ApiController]
 [Route("api/orders")]
-public class OrdersController(AppDbContext db) : ControllerBase
+public class OrdersController(IOrderCheckoutService orderCheckoutService) : ControllerBase
 {
     [HttpPost("create")]
     public async Task<IActionResult> Create([FromBody] CreateOrderRequest request)
@@ -23,149 +22,33 @@ public class OrdersController(AppDbContext db) : ControllerBase
             return BadRequest("Order must have at least one item.");
         }
 
-        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
-        var products = await db.Products
-            .Include(p => p.Variants)
-            .Where(p => productIds.Contains(p.Id))
-            .ToDictionaryAsync(p => p.Id);
-
-        if (products.Count != productIds.Count)
+        var checkoutResult = await orderCheckoutService.CreateOrderAsync(new CheckoutRequestData
         {
-            return BadRequest("One or more products are invalid.");
-        }
-
-        var paymentMethod = request.PaymentMethod.Equals("VNPAY", StringComparison.OrdinalIgnoreCase)
-            ? PaymentMethod.VNPAY
-            : PaymentMethod.COD;
-
-        foreach (var item in request.Items)
-        {
-            if (!products.ContainsKey(item.ProductId))
-            {
-                return BadRequest("One or more products are invalid.");
-            }
-        }
-
-        using var tx = await db.Database.BeginTransactionAsync();
-
-        var customer = await db.Customers
-            .FirstOrDefaultAsync(c => c.Phone == request.PhoneNumber && c.Email == request.Email);
-
-        if (customer is null)
-        {
-            customer = new Customer
-            {
-                CustomerType = "Guest",
-                FullName = request.CustomerName,
-                Phone = request.PhoneNumber,
-                Email = request.Email
-            };
-            db.Customers.Add(customer);
-            await db.SaveChangesAsync();
-        }
-
-        var orderItems = new List<OrderItem>();
-        foreach (var i in request.Items)
-        {
-            var qty = Math.Max(1, i.Quantity);
-            var product = products[i.ProductId];
-            var defaultVariant = (product.Variants ?? [])
-                .Where(v => v.IsActive)
-                .OrderByDescending(v => v.IsDefault)
-                .ThenBy(v => v.SortOrder)
-                .ThenBy(v => v.Id)
-                .FirstOrDefault();
-
-            if (defaultVariant is not null)
-            {
-                var available = Math.Max(0, defaultVariant.AvailableStock);
-                if (qty > available)
-                {
-                    await tx.RollbackAsync();
-                    return BadRequest("One or more products are out of stock.");
-                }
-
-                defaultVariant.StockQuantity = Math.Max(0, defaultVariant.StockQuantity - qty);
-                defaultVariant.AvailableStock = Math.Max(0, defaultVariant.StockQuantity - Math.Max(0, defaultVariant.ReservedStock));
-            }
-            else
-            {
-                if (qty > product.StockQuantity)
-                {
-                    await tx.RollbackAsync();
-                    return BadRequest("One or more products are out of stock.");
-                }
-                product.StockQuantity = Math.Max(0, product.StockQuantity - qty);
-            }
-
-            orderItems.Add(new OrderItem
-            {
-                ProductId = product.Id,
-                VariantId = null,
-                ProductNameSnapshot = product.Name,
-                SkuSnapshot = product.Sku,
-                VariantNameSnapshot = string.Empty,
-                Quantity = qty,
-                IsPreOrder = false,
-                UnitPrice = product.Price,
-                LineTotal = product.Price * qty
-            });
-        }
-
-        var subtotal = orderItems.Sum(i => i.LineTotal);
-        var order = new Order
-        {
-            OrderNo = $"HX{DateTime.UtcNow:yyyyMMddHHmmss}{Random.Shared.Next(10, 99)}",
-            CustomerId = customer.Id,
-            OrderStatus = "PendingConfirm",
-            PaymentStatus = paymentMethod == PaymentMethod.COD ? "Pending" : "AwaitingGateway",
-            PaymentMethod = paymentMethod,
-            Subtotal = subtotal,
-            DiscountAmount = 0,
-            ShippingFee = 0,
-            TotalAmount = subtotal,
-            Note = string.Empty,
+            CustomerName = request.CustomerName,
+            Email = request.Email,
+            PhoneNumber = request.PhoneNumber,
+            Address = request.Address,
+            PaymentMethodRaw = request.PaymentMethod,
             IsExportInvoice = request.IsExportInvoice,
             VatCompanyName = request.VatCompanyName,
             VatTaxCode = request.VatTaxCode,
             VatCompanyAddress = request.VatCompanyAddress,
             VatEmail = request.VatEmail,
-            Items = orderItems,
-            Payments = new List<Payment>
+            Items = request.Items.Select(i => new CheckoutItemData
             {
-                new()
-                {
-                    Provider = paymentMethod == PaymentMethod.VNPAY ? "VNPAY" : "COD",
-                    PaymentMethod = paymentMethod.ToString(),
-                    Amount = subtotal,
-                    Status = paymentMethod == PaymentMethod.COD ? "Pending" : "Initiated"
-                }
-            }
-        };
-
-        db.Orders.Add(order);
-        db.OrderTimelines.Add(new OrderTimeline
-        {
-            Order = order,
-            Action = "Created",
-            ToStatus = order.OrderStatus,
-            Note = "Tạo đơn từ API"
+                ProductId = i.ProductId,
+                VariantId = null,
+                Quantity = i.Quantity,
+                UnitFactor = 1,
+                UnitName = string.Empty
+            }).ToList()
         });
-        await db.SaveChangesAsync();
 
-        foreach (var p in products.Values)
+        if (!checkoutResult.Success)
         {
-            var activeVariants = (p.Variants ?? []).Where(v => v.IsActive).ToList();
-            if (activeVariants.Count > 0)
-            {
-                p.StockQuantity = activeVariants.Sum(v => Math.Max(0, v.AvailableStock));
-                p.IsPreOrderEnabled = p.StockQuantity <= 0;
-            }
+            return BadRequest(checkoutResult.ErrorMessage ?? "Unable to create order.");
         }
 
-        await db.SaveChangesAsync();
-        await tx.CommitAsync();
-
-        return Ok(new { id = order.Id, orderNo = order.OrderNo });
+        return Ok(new { id = checkoutResult.OrderId, orderNo = checkoutResult.OrderNo });
     }
 }

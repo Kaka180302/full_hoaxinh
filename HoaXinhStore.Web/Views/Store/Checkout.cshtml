@@ -1,5 +1,7 @@
 @{
     Layout = null;
+    var checkoutMessage = TempData["CheckoutMessage"] as string;
+    var checkoutStatus = TempData["CheckoutStatus"] as string;
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -27,8 +29,16 @@
             <h1 class="store-page-title">Thanh toán</h1>
             <p class="store-page-subtitle">Hoàn tất thông tin để đặt hàng</p>
 
-            <form method="post" asp-controller="Store" asp-action="Checkout" id="checkoutPageForm" class="row g-3">
+            <form method="post"
+                  asp-controller="Store"
+                  asp-action="Checkout"
+                  id="checkoutPageForm"
+                  class="row g-3"
+                  data-auto-qr-order-no="@(ViewBag.AutoQrOrderNo ?? "")"
+                  data-auto-qr-amount="@(ViewBag.AutoQrAmount ?? "")"
+                  data-auto-qr-image-url="@(ViewBag.AutoQrImageUrl ?? "")">
                 @Html.AntiForgeryToken()
+                <input type="hidden" name="QrPayConfirmed" id="qrPayConfirmedInput" value="false" />
                 <div class="col-lg-8">
                     <section class="checkout-panel">
                         <h3><i class="fa-solid fa-truck-fast"></i> Thông tin giao hàng</h3>
@@ -93,6 +103,14 @@
                                     <input type="radio" name="PaymentMethod" value="VNPAY" />
                                     <span>Thanh toán online (QR, ATM, Thẻ quốc tế, Ví điện tử)</span>
                                 </label>
+                                <label class="payment-choice">
+                                    <input type="radio" name="PaymentMethod" value="QRPAY" />
+                                    <span>Chuyển khoản QR (QRPAY)</span>
+                                </label>
+                                <label class="payment-choice">
+                                    <input type="radio" name="PaymentMethod" value="AUTOQR" />
+                                    <span>Thanh toán QR tự động</span>
+                                </label>
                             </section>
                         </div>
                     </div>
@@ -117,5 +135,28 @@
 
     <partial name="Partials/_Footer" />
     <script src="~/storefront.js"></script>
+
+    @if (!string.IsNullOrWhiteSpace(checkoutMessage))
+    {
+        <script>
+            window.__checkoutPageMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutMessage));
+            window.__checkoutPageStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutStatus ?? "info"));
+            (function () {
+                const message = String(window.__checkoutPageMessage || "").trim();
+                if (!message || !window.HXStorefront || typeof window.HXStorefront.showNoticeModal !== "function") return;
+
+                const status = String(window.__checkoutPageStatus || "info").toLowerCase();
+                const title = status === "success"
+                    ? "Thanh toán thành công"
+                    : status === "cancelled"
+                        ? "Bạn đã hủy thanh toán"
+                        : status === "error"
+                            ? "Thanh toán thất bại"
+                            : "Thông báo thanh toán";
+
+                window.HXStorefront.showNoticeModal(message, title, status === "cancelled" ? "error" : status);
+            })();
+        </script>
+    }
 </body>
 </html>

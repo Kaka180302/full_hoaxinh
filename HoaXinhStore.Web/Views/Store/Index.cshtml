@@ -202,7 +202,9 @@
                 if (title) {
                     title.textContent = status === 'success'
                         ? 'Thanh toán thành công'
-                        : (status === 'cancelled' ? 'Bạn đã hủy thanh toán' : 'Thanh toán thất bại');
+                        : (status === 'cancelled'
+                            ? 'Bạn đã hủy thanh toán'
+                            : (status === 'error' ? 'Thanh toán thất bại' : 'Thông báo thanh toán'));
                 }
                 const close = () => popup.style.display = 'none';
                 popup.style.display = 'flex';

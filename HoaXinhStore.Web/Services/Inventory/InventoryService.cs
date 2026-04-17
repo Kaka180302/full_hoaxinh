@@ -55,11 +55,37 @@ WHERE [Id] = {variantId}
 
     public async Task ReleaseOrderReservationsAsync(Order order)
     {
-        var items = order.Items
+        var variantItems = order.Items
             .Where(i => i.VariantId.HasValue)
             .Select(i => (VariantId: i.VariantId!.Value, Quantity: Math.Max(1, i.Quantity)))
             .ToList();
-        await ReleaseVariantReservationsAsync(items);
+        await ReleaseVariantReservationsAsync(variantItems);
+
+        var canRestoreNonVariantStock = !string.Equals(order.PaymentStatus, "Failed", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(order.PaymentStatus, "Cancelled", StringComparison.OrdinalIgnoreCase);
+        if (!canRestoreNonVariantStock) return;
+
+        var nonVariantGrouped = order.Items
+            .Where(i => !i.VariantId.HasValue)
+            .GroupBy(i => i.ProductId)
+            .Select(g => new
+            {
+                ProductId = g.Key,
+                Quantity = g.Sum(i => Math.Max(1, i.Quantity))
+            })
+            .ToList();
+        if (nonVariantGrouped.Count == 0) return;
+
+        var productIds = nonVariantGrouped.Select(x => x.ProductId).Distinct().ToList();
+        var products = await db.Products.Where(p => productIds.Contains(p.Id)).ToListAsync();
+        foreach (var row in nonVariantGrouped)
+        {
+            var product = products.FirstOrDefault(p => p.Id == row.ProductId);
+            if (product is null) continue;
+            product.StockQuantity = Math.Max(0, product.StockQuantity + row.Quantity);
+            product.IsPreOrderEnabled = product.StockQuantity <= 0;
+        }
+        await db.SaveChangesAsync();
     }
 
     public async Task ConsumeOrderReservationsAsync(Order order)
@@ -88,29 +114,6 @@ WHERE [Id] = {variantId}
             variant.StockQuantity = Math.Max(0, variant.StockQuantity - consumed);
             variant.ReservedStock = Math.Max(0, variant.ReservedStock - consumed);
             variant.AvailableStock = Math.Max(0, variant.StockQuantity - variant.ReservedStock);
-        }
-
-        // Non-variant order items: deduct directly on product stock as fallback.
-        var nonVariantGrouped = order.Items
-            .Where(i => !i.VariantId.HasValue)
-            .GroupBy(i => i.ProductId)
-            .Select(g => new
-            {
-                ProductId = g.Key,
-                Quantity = g.Sum(i => Math.Max(1, i.Quantity))
-            })
-            .ToList();
-        if (nonVariantGrouped.Count > 0)
-        {
-            var productIds = nonVariantGrouped.Select(x => x.ProductId).Distinct().ToList();
-            var products = await db.Products.Where(p => productIds.Contains(p.Id)).ToListAsync();
-            foreach (var row in nonVariantGrouped)
-            {
-                var product = products.FirstOrDefault(p => p.Id == row.ProductId);
-                if (product is null) continue;
-                product.StockQuantity = Math.Max(0, product.StockQuantity - row.Quantity);
-                product.IsPreOrderEnabled = product.StockQuantity <= 0;
-            }
         }
 
         await db.SaveChangesAsync();

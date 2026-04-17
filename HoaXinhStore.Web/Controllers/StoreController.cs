@@ -5,9 +5,11 @@ using HoaXinhStore.Web.Services.Payments;
 using HoaXinhStore.Web.Services.Policies;
 using HoaXinhStore.Web.Services;
 using HoaXinhStore.Web.Services.Inventory;
+using HoaXinhStore.Web.Services.Checkout;
 using HoaXinhStore.Web.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -18,7 +20,8 @@ public class StoreController(
     IVnpayService vnpayService,
     IEmailService emailService,
     IPolicyContentService policyContentService,
-    IInventoryService inventoryService) : Controller
+    IInventoryService inventoryService,
+    IOrderCheckoutService orderCheckoutService) : Controller
 {
     private const string CartCookieName = "hx_cart_token";
 
@@ -81,6 +84,7 @@ public class StoreController(
             .AsNoTracking()
             .Include(o => o.Customer)
                 .ThenInclude(c => c.Addresses)
+            .Include(o => o.Timelines)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(orderNo))
@@ -105,6 +109,11 @@ public class StoreController(
         }
 
         ParseShippingNote(order.Note, out var carrier, out var trackingCode, out var shippingNote);
+        var isPaymentTimeoutCancelled = order.Timelines.Any(t => t.Action == "PaymentTimeoutCancelled");
+        if (isPaymentTimeoutCancelled && string.IsNullOrWhiteSpace(shippingNote))
+        {
+            shippingNote = "Đơn hàng đã tự hủy do quá hạn thanh toán.";
+        }
         var shippingAddress = order.Customer?.Addresses?.FirstOrDefault(a => a.IsDefault)?.AddressLine
                               ?? order.Customer?.Addresses?.FirstOrDefault()?.AddressLine
                               ?? "Chưa có địa chỉ";
@@ -959,6 +968,9 @@ public class StoreController(
     [HttpGet]
     public IActionResult Checkout()
     {
+        ViewBag.AutoQrOrderNo = TempData["AutoQrOrderNo"]?.ToString() ?? string.Empty;
+        ViewBag.AutoQrAmount = TempData["AutoQrAmount"]?.ToString() ?? string.Empty;
+        ViewBag.AutoQrImageUrl = TempData["AutoQrImageUrl"]?.ToString() ?? string.Empty;
         return View();
     }
 
@@ -966,263 +978,55 @@ public class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(CheckoutFormViewModel request)
     {
-        if (request.Items.Count == 0)
-        {
-            TempData["CheckoutMessage"] = "Vui lòng chọn ít nhất 1 sản phẩm.";
-            TempData["CheckoutStatus"] = "error";
-            return RedirectToAction(nameof(Index));
-        }
-
-        var productIds = request.Items.Select(i => i.ProductId).Distinct().ToList();
-        var products = await db.Products
-            .Where(p => productIds.Contains(p.Id) && p.IsActive)
-            .ToDictionaryAsync(p => p.Id);
-
-        if (products.Count != productIds.Count)
-        {
-            TempData["CheckoutMessage"] = "Có sản phẩm không hợp lệ hoặc đã ngừng bán.";
-            TempData["CheckoutStatus"] = "error";
-            return RedirectToAction(nameof(Index));
-        }
-
+        var paymentMethod = orderCheckoutService.ParsePaymentMethod(request.PaymentMethod);
         var normalizedMethod = (request.PaymentMethod ?? "COD").Trim().ToUpperInvariant();
-        var paymentMethod = normalizedMethod == "COD" ? PaymentMethod.COD : PaymentMethod.VNPAY;
-        var vnpBankCode = normalizedMethod switch
-        {
-            "VNPAY" => string.Empty,
-            _ => string.Empty
-        };
 
-        foreach (var item in request.Items)
+        if (paymentMethod == PaymentMethod.QRPAY && !request.QrPayConfirmed)
         {
-            if (!products.TryGetValue(item.ProductId, out _))
-            {
-                TempData["CheckoutMessage"] = "Có sản phẩm không hợp lệ.";
-                TempData["CheckoutStatus"] = "error";
-                return RedirectToAction(nameof(Index));
-            }
-            if (item.VariantId.HasValue)
-            {
-                var validVariant = await db.ProductVariants.AnyAsync(v => v.Id == item.VariantId.Value && v.ProductId == item.ProductId && v.IsActive);
-                if (!validVariant)
-                {
-                    TempData["CheckoutMessage"] = "Biến thể sản phẩm không hợp lệ.";
-                    TempData["CheckoutStatus"] = "error";
-                    return RedirectToAction(nameof(Index));
-                }
-            }
+            TempData["CheckoutMessage"] = "Vui lòng xác nhận đã thanh toán QR trước khi đặt hàng.";
+            TempData["CheckoutStatus"] = "error";
+            return RedirectToAction(nameof(Checkout));
         }
-
-        using var tx = await db.Database.BeginTransactionAsync();
-
-        var customer = await db.Customers
-            .FirstOrDefaultAsync(c => c.Phone == request.PhoneNumber && c.Email == request.Email);
-
-        if (customer is null)
+        var checkoutResult = await orderCheckoutService.CreateOrderAsync(new CheckoutRequestData
         {
-            customer = new Customer
-            {
-                CustomerType = "Guest",
-                FullName = request.CustomerName,
-                Phone = request.PhoneNumber,
-                Email = request.Email
-            };
-            db.Customers.Add(customer);
-            await db.SaveChangesAsync();
-        }
-
-        var shippingAddress = (request.Address ?? string.Empty).Trim();
-        if (!string.IsNullOrWhiteSpace(shippingAddress))
-        {
-            var defaultAddress = await db.CustomerAddresses
-                .FirstOrDefaultAsync(a => a.CustomerId == customer.Id && a.IsDefault);
-
-            if (defaultAddress is null)
-            {
-                db.CustomerAddresses.Add(new CustomerAddress
-                {
-                    CustomerId = customer.Id,
-                    ReceiverName = request.CustomerName,
-                    Phone = request.PhoneNumber,
-                    AddressLine = shippingAddress,
-                    Ward = string.Empty,
-                    District = string.Empty,
-                    Province = string.Empty,
-                    IsDefault = true
-                });
-            }
-            else
-            {
-                defaultAddress.ReceiverName = request.CustomerName;
-                defaultAddress.Phone = request.PhoneNumber;
-                defaultAddress.AddressLine = shippingAddress;
-            }
-        }
-
-        var activeVariants = await db.ProductVariants
-            .Where(v => productIds.Contains(v.ProductId) && v.IsActive)
-            .OrderBy(v => v.SortOrder)
-            .ThenBy(v => v.Id)
-            .ToListAsync();
-        var variantsById = activeVariants.ToDictionary(v => v.Id, v => v);
-        var defaultVariantByProductId = activeVariants
-            .GroupBy(v => v.ProductId)
-            .ToDictionary(
-                g => g.Key,
-                g => g.OrderByDescending(x => x.IsDefault).ThenBy(x => x.SortOrder).ThenBy(x => x.Id).FirstOrDefault());
-        void SyncProductFromVariants(int productId)
-        {
-            var rows = activeVariants.Where(x => x.ProductId == productId && x.IsActive).ToList();
-            if (rows.Count == 0) return;
-            var availableTotal = rows.Sum(x => Math.Max(0, x.AvailableStock));
-            if (products.TryGetValue(productId, out var productEntity))
-            {
-                productEntity.StockQuantity = availableTotal;
-                productEntity.IsPreOrderEnabled = availableTotal <= 0;
-            }
-        }
-
-        var orderItems = new List<OrderItem>();
-
-        foreach (var i in request.Items)
-        {
-            var qty = Math.Max(1, i.Quantity);
-            var unitFactor = Math.Max(1, i.UnitFactor);
-            var product = products[i.ProductId];
-            var variant = i.VariantId.HasValue && variantsById.TryGetValue(i.VariantId.Value, out var foundVariant)
-                ? foundVariant
-                : (defaultVariantByProductId.TryGetValue(i.ProductId, out var fallbackVariant) ? fallbackVariant : null);
-            var stockToReserve = qty;
-            ProductVariant? inventoryVariant = variant;
-
-            if (variant is not null)
-            {
-                if (paymentMethod == PaymentMethod.COD)
-                {
-                    var availableNow = Math.Max(0, variant.AvailableStock);
-                    if (qty > availableNow)
-                    {
-                        await tx.RollbackAsync();
-                        TempData["CheckoutMessage"] = $"Sản phẩm \"{product.Name}\" hiện không đủ tồn kho khả dụng.";
-                        TempData["CheckoutStatus"] = "error";
-                        return RedirectToAction(nameof(Cart));
-                    }
-                    inventoryVariant = variant;
-                    variant.StockQuantity = Math.Max(0, variant.StockQuantity - qty);
-                    variant.AvailableStock = Math.Max(0, variant.StockQuantity - Math.Max(0, variant.ReservedStock));
-                    SyncProductFromVariants(i.ProductId);
-                }
-                else
-                {
-                    inventoryVariant = variant;
-                    var reserveOk = await inventoryService.TryReserveVariantAsync(variant.Id, qty);
-                    if (!reserveOk)
-                    {
-                        await tx.RollbackAsync();
-                        TempData["CheckoutMessage"] = $"Sản phẩm \"{product.Name}\" hiện không đủ tồn kho khả dụng.";
-                        TempData["CheckoutStatus"] = "error";
-                        return RedirectToAction(nameof(Cart));
-                    }
-                    variant.ReservedStock += qty;
-                    variant.AvailableStock = Math.Max(0, variant.StockQuantity - variant.ReservedStock);
-                    SyncProductFromVariants(i.ProductId);
-                }
-            }
-            else
-            {
-                var available = Math.Max(0, product.StockQuantity);
-                if (stockToReserve > available)
-                {
-                    await tx.RollbackAsync();
-                    TempData["CheckoutMessage"] = $"Sản phẩm \"{product.Name}\" hiện chỉ còn {available} trong kho.";
-                    TempData["CheckoutStatus"] = "error";
-                    return RedirectToAction(nameof(Cart));
-                }
-                product.StockQuantity = Math.Max(0, available - stockToReserve);
-            }
-
-            var unitPrice = variant?.SalePrice ?? variant?.Price ?? product.SalePrice ?? product.Price;
-            var snapshotSku = variant?.Sku ?? product.Sku;
-            var snapshotVariantName = variant?.Name ?? string.Empty;
-
-            orderItems.Add(new OrderItem
-            {
-                ProductId = product.Id,
-                VariantId = inventoryVariant?.Id,
-                ProductNameSnapshot = product.Name,
-                SkuSnapshot = snapshotSku,
-                VariantNameSnapshot = snapshotVariantName,
-                Quantity = qty,
-                UnitFactor = unitFactor,
-                UnitName = i.UnitName ?? string.Empty,
-                IsPreOrder = variant is not null ? variant.AvailableStock <= 0 : product.StockQuantity <= 0,
-                UnitPrice = unitPrice,
-                LineTotal = unitPrice * qty
-            });
-        }
-
-        var subtotal = orderItems.Sum(i => i.LineTotal);
-        var order = new Order
-        {
-            OrderNo = $"HX{DateTime.UtcNow:yyyyMMddHHmmss}{Random.Shared.Next(10, 99)}",
-            CustomerId = customer.Id,
-            OrderStatus = "PendingConfirm",
-            PaymentStatus = paymentMethod == PaymentMethod.COD ? "Pending" : "AwaitingGateway",
-            PaymentMethod = paymentMethod,
-            Subtotal = subtotal,
-            DiscountAmount = 0,
-            ShippingFee = 0,
-            TotalAmount = subtotal,
-            Note = string.Empty,
+            CustomerName = request.CustomerName,
+            Email = request.Email,
+            PhoneNumber = request.PhoneNumber,
+            Address = request.Address,
+            PaymentMethodRaw = request.PaymentMethod,
             IsExportInvoice = request.IsExportInvoice,
-            VatCompanyName = request.VatCompanyName ?? string.Empty,
-            VatTaxCode = request.VatTaxCode ?? string.Empty,
-            VatCompanyAddress = request.VatCompanyAddress ?? string.Empty,
-            VatEmail = request.VatEmail ?? string.Empty,
-            Items = orderItems,
-            Payments = new List<Payment>
+            VatCompanyName = request.VatCompanyName,
+            VatTaxCode = request.VatTaxCode,
+            VatCompanyAddress = request.VatCompanyAddress,
+            VatEmail = request.VatEmail,
+            Items = request.Items.Select(x => new CheckoutItemData
             {
-                new()
-                {
-                    Provider = paymentMethod == PaymentMethod.VNPAY ? "VNPAY" : "COD",
-                    PaymentMethod = paymentMethod.ToString(),
-                    Amount = subtotal,
-                    Status = paymentMethod == PaymentMethod.COD ? "Pending" : "Initiated"
-                }
-            }
-        };
-
-        db.Orders.Add(order);
-        db.OrderTimelines.Add(new OrderTimeline
-        {
-            Order = order,
-            Action = "Created",
-            FromStatus = string.Empty,
-            ToStatus = order.OrderStatus,
-            Note = "Tạo đơn hàng mới"
+                ProductId = x.ProductId,
+                VariantId = x.VariantId,
+                Quantity = x.Quantity,
+                UnitFactor = x.UnitFactor,
+                UnitName = x.UnitName
+            }).ToList()
         });
-        await db.SaveChangesAsync();
-
-        if (paymentMethod == PaymentMethod.COD)
+        if (!checkoutResult.Success)
         {
-            var touchedIds = request.Items.Select(x => x.ProductId).Distinct().ToList();
-            foreach (var pid in touchedIds)
-            {
-                SyncProductFromVariants(pid);
-            }
-            await db.SaveChangesAsync();
+            TempData["CheckoutMessage"] = checkoutResult.ErrorMessage;
+            TempData["CheckoutStatus"] = "error";
+            return checkoutResult.RedirectToCart ? RedirectToAction(nameof(Cart)) : RedirectToAction(nameof(Index));
+        }
+        if (checkoutResult.ShouldClearCartImmediately)
+        {
             await ClearCartAsync();
         }
-        await tx.CommitAsync();
 
         var orderForMail = await db.Orders
             .AsNoTracking()
             .Include(o => o.Customer)
                 .ThenInclude(c => c.Addresses)
             .Include(o => o.Items)
-            .FirstOrDefaultAsync(o => o.Id == order.Id);
+            .FirstOrDefaultAsync(o => o.Id == checkoutResult.OrderId);
 
-        if (orderForMail is not null)
+        if (orderForMail is not null && paymentMethod != PaymentMethod.QRPAY && paymentMethod != PaymentMethod.AUTOQR)
         {
             var trackUrl = Url.Action(
                 nameof(TrackOrder),
@@ -1235,6 +1039,15 @@ public class StoreController(
 
         if (paymentMethod == PaymentMethod.VNPAY)
         {
+            var order = await db.Orders
+                .Include(o => o.Payments)
+                .FirstOrDefaultAsync(o => o.Id == checkoutResult.OrderId);
+            if (order is null)
+            {
+                TempData["CheckoutMessage"] = "Đơn hàng không tồn tại.";
+                TempData["CheckoutStatus"] = "error";
+                return RedirectToAction(nameof(Index));
+            }
             var clientIp = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "127.0.0.1";
             var payment = order.Payments.FirstOrDefault();
             if (payment is not null)
@@ -1250,8 +1063,39 @@ public class StoreController(
                 protocol: Request.Scheme,
                 host: Request.Host.Value);
 
-            var payUrl = vnpayService.BuildPaymentUrl(order, clientIp, vnpBankCode, returnUrl);
+            var payUrl = vnpayService.BuildPaymentUrl(order, clientIp, null, returnUrl);
             return Redirect(payUrl);
+        }
+
+        if (paymentMethod == PaymentMethod.AUTOQR)
+        {
+            var transferContent = $"{checkoutResult.OrderNo} {request.CustomerName}".Trim();
+            var qrImageUrl = BuildAutoQrImageUrl(orderForMail?.TotalAmount ?? 0, transferContent);
+
+            TempData["AutoQrOrderNo"] = checkoutResult.OrderNo;
+            TempData["AutoQrAmount"] = (orderForMail?.TotalAmount ?? 0).ToString(CultureInfo.InvariantCulture);
+            TempData["AutoQrImageUrl"] = qrImageUrl;
+            TempData["CheckoutMessage"] = "Vui lòng quét mã QR tự động và xác nhận đã chuyển khoản để hoàn tất thanh toán.";
+            TempData["CheckoutStatus"] = "info";
+            return RedirectToAction(nameof(Checkout));
+        }
+
+        if (paymentMethod == PaymentMethod.QRPAY)
+        {
+            if (orderForMail is not null)
+            {
+                var trackUrl = Url.Action(
+                    nameof(TrackOrder),
+                    "Store",
+                    new { orderNo = orderForMail.OrderNo, phoneNumber = orderForMail.Customer?.Phone ?? string.Empty },
+                    Request.Scheme,
+                    Request.Host.Value);
+                await emailService.SendOrderPaymentSuccessAsync(orderForMail, trackUrl);
+            }
+
+            TempData["CheckoutMessage"] = "Thanh toán QR thành công. Cảm ơn bạn đã tin tưởng Hoa Xinh Store.";
+            TempData["CheckoutStatus"] = "success";
+            return RedirectToAction(nameof(Index));
         }
 
         TempData["CheckoutMessage"] = "Đặt hàng thành công! Hoa Xinh sẽ liên hệ xác nhận đơn sớm nhất.";
@@ -1449,8 +1293,144 @@ public class StoreController(
     {
         "COD" => "Thanh toán khi nhận hàng (COD)",
         "VNPAY" => "Thanh toán online (VNPAY)",
+        "QRPAY" => "Chuyển khoản QR (QRPAY)",
+        "AUTOQR" => "Thanh toán QR tự động",
         _ => method ?? "-"
     };
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmAutoQrPayment([FromForm] string orderNo)
+    {
+        var order = await db.Orders
+            .Include(o => o.Customer)
+                .ThenInclude(c => c.Addresses)
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.OrderNo == orderNo);
+
+        if (order is null)
+        {
+            return NotFound(new { ok = false, message = "Không tìm thấy đơn hàng." });
+        }
+
+        if (order.PaymentMethod != PaymentMethod.AUTOQR)
+        {
+            return BadRequest(new { ok = false, message = "Đơn hàng không thuộc phương thức QR tự động." });
+        }
+
+        var payment = order.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
+        if (payment is null)
+        {
+            return BadRequest(new { ok = false, message = "Không tìm thấy giao dịch thanh toán." });
+        }
+
+        var wasPaid = string.Equals(payment.Status, "Paid", StringComparison.OrdinalIgnoreCase);
+        if (!wasPaid)
+        {
+            payment.Provider = "AUTOQR";
+            payment.PaymentMethod = PaymentMethod.AUTOQR.ToString();
+            payment.TransactionRef = order.OrderNo;
+            payment.Status = "Paid";
+            payment.PaidAtUtc ??= DateTime.UtcNow;
+            order.PaymentStatus = "Paid";
+
+            if (!string.Equals(order.OrderStatus, "Confirmed", StringComparison.OrdinalIgnoreCase))
+            {
+                await inventoryService.ConsumeOrderReservationsAsync(order);
+                order.OrderStatus = "Confirmed";
+            }
+
+            await db.SaveChangesAsync();
+        }
+
+        if (!wasPaid)
+        {
+            var trackUrl = Url.Action(
+                nameof(TrackOrder),
+                "Store",
+                new { orderNo = order.OrderNo, phoneNumber = order.Customer?.Phone ?? string.Empty },
+                Request.Scheme,
+                Request.Host.Value);
+            await emailService.SendOrderPaymentSuccessAsync(order, trackUrl);
+        }
+        await ClearCartAsync();
+
+        return Ok(new
+        {
+            ok = true,
+            message = "Thanh toán QR tự động đã được ghi nhận. Cảm ơn bạn đã tin tưởng Hoa Xinh Store."
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> CancelAutoQrPayment([FromForm] string orderNo)
+    {
+        var order = await db.Orders
+            .Include(o => o.Items)
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.OrderNo == orderNo);
+
+        if (order is null)
+        {
+            return NotFound(new { ok = false, message = "Không tìm thấy đơn hàng." });
+        }
+
+        if (order.PaymentMethod != PaymentMethod.AUTOQR)
+        {
+            return BadRequest(new { ok = false, message = "Đơn hàng không thuộc phương thức QR tự động." });
+        }
+
+        var payment = order.Payments.OrderByDescending(p => p.Id).FirstOrDefault();
+        if (payment is null)
+        {
+            return BadRequest(new { ok = false, message = "Không tìm thấy giao dịch thanh toán." });
+        }
+
+        if (string.Equals(payment.Status, "Paid", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { ok = false, message = "Đơn hàng đã thanh toán, không thể hủy." });
+        }
+
+        if (string.Equals(order.PaymentStatus, "Cancelled", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(order.PaymentStatus, "Failed", StringComparison.OrdinalIgnoreCase))
+        {
+            await ClearCartAsync();
+            return Ok(new { ok = true, message = "Đơn hàng đã được hủy trước đó." });
+        }
+
+        var fromStatus = order.OrderStatus;
+        await inventoryService.ReleaseOrderReservationsAsync(order);
+
+        order.OrderStatus = "Cancelled";
+        order.PaymentStatus = "Cancelled";
+        payment.Status = "Cancelled";
+        payment.TransactionRef = order.OrderNo;
+
+        db.OrderTimelines.Add(new OrderTimeline
+        {
+            OrderId = order.Id,
+            Action = "CustomerCancelledAutoQr",
+            FromStatus = fromStatus,
+            ToStatus = order.OrderStatus,
+            Note = "Khách đóng popup QR tự động và hủy thanh toán."
+        });
+
+        await db.SaveChangesAsync();
+        await ClearCartAsync();
+
+        return Ok(new { ok = true, message = "Bạn đã hủy thanh toán QR tự động. Đơn hàng đã được hủy." });
+    }
+
+    private static string BuildAutoQrImageUrl(decimal totalAmount, string transferContent)
+    {
+        const string bankBin = "970441";
+        const string accountNumber = "675704060109421";
+        const string accountName = "CT TNHH SX TM&DV HOA XINH";
+        var amount = Math.Max(0L, (long)Math.Round(totalAmount, MidpointRounding.AwayFromZero));
+        return $"https://img.vietqr.io/image/{bankBin}-{accountNumber}-compact2.png?amount={amount}&addInfo={Uri.EscapeDataString(transferContent)}&accountName={Uri.EscapeDataString(accountName)}";
+    }
 
     private string EnsureCartToken()
     {

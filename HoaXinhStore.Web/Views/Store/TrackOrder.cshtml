@@ -50,8 +50,24 @@
                                         <div><strong>Tổng tiền:</strong> @o.TotalAmount.ToString("N0") đ</div>
                                         <div><strong>Mã vận đơn:</strong> @(string.IsNullOrWhiteSpace(o.TrackingCode) ? "Đang cập nhật" : o.TrackingCode)</div>
                                         <div><strong>Đơn vị VC:</strong> @(string.IsNullOrWhiteSpace(o.ShippingCarrier) ? "Đang cập nhật" : o.ShippingCarrier)</div>
+                                        <div><strong>Ghi chú:</strong> @(string.IsNullOrWhiteSpace(o.ShippingNote) ? "Không có" : o.ShippingNote)</div>
                                     </div>
                                 </div>
+
+                                @if (!string.IsNullOrWhiteSpace(o.ShippingNote) && o.ShippingNote.Contains("quá hạn thanh toán", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <script>
+                                        window.__trackOrderPaymentTimeoutMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(o.ShippingNote));
+                                        window.addEventListener("DOMContentLoaded", function () {
+                                            if (!window.HXStorefront || typeof window.HXStorefront.showNoticeModal !== "function") return;
+                                            window.HXStorefront.showNoticeModal(
+                                                window.__trackOrderPaymentTimeoutMessage,
+                                                "Đơn đã quá hạn thanh toán",
+                                                "error"
+                                            );
+                                        });
+                                    </script>
+                                }
                             }
                         }
                     </div>

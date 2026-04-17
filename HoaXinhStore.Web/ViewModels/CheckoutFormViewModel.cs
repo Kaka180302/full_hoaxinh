@@ -18,6 +18,7 @@ public class CheckoutFormViewModel
 
     [Required]
     public string PaymentMethod { get; set; } = "COD";
+    public bool QrPayConfirmed { get; set; }
 
     public bool IsExportInvoice { get; set; }
     public string VatCompanyName { get; set; } = string.Empty;

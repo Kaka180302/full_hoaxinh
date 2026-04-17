@@ -1,5 +1,6 @@
-﻿(function () {
+(function () {
     let hxModalEl = null;
+    let hxModalDismissHandler = null;
     let cartCache = [];
     let cartInitPromise = null;
 
@@ -82,32 +83,106 @@
         hxModalEl.innerHTML = '<div class="hx-popup-card"><button type="button" class="hx-popup-close">×</button><div class="hx-popup-body"></div></div>';
         hxModalEl.style.display = "none";
         document.body.appendChild(hxModalEl);
-        hxModalEl.querySelector(".hx-popup-close")?.addEventListener("click", () => closeModal());
-        hxModalEl.addEventListener("click", (e) => { if (e.target === hxModalEl) closeModal(); });
+        hxModalEl.querySelector(".hx-popup-close")?.addEventListener("click", () => closeModal({ reason: "dismiss" }));
+        hxModalEl.addEventListener("click", (e) => { if (e.target === hxModalEl) closeModal({ reason: "dismiss" }); });
         return hxModalEl;
     }
 
-    function closeModal() {
+    function closeModal(options = {}) {
         const modal = ensureModal();
+        const reason = String(options.reason || "dismiss");
+        const silent = options.silent === true;
+        const dismissHandler = hxModalDismissHandler;
+        hxModalDismissHandler = null;
         modal.classList.remove("is-open", "hx-popup-success", "hx-popup-error");
         modal.style.display = "none";
+        if (!silent && typeof dismissHandler === "function") {
+            dismissHandler(reason);
+        }
     }
 
     function showNoticeModal(message, title = "Thông báo", status = "info") {
         const modal = ensureModal();
+        hxModalDismissHandler = null;
         modal.classList.remove("hx-popup-success", "hx-popup-error");
         if (status === "success") modal.classList.add("hx-popup-success");
         if (status === "error") modal.classList.add("hx-popup-error");
         const body = modal.querySelector(".hx-popup-body");
         if (!body) return;
-        body.innerHTML = `<h4>${title}</h4><p>${message}</p><button type="button" class="mini-cart-view-btn" id="hxPopupOkBtn">Đã hiểu</button>`;
+        body.innerHTML = `
+            <h4>${title}</h4>
+            <p>${message}</p>
+            <div class="hx-popup-actions">
+                <button type="button" class="mini-cart-view-btn" id="hxPopupOkBtn">Đã hiểu</button>
+            </div>
+        `;
         modal.style.display = "flex";
         requestAnimationFrame(() => modal.classList.add("is-open"));
-        body.querySelector("#hxPopupOkBtn")?.addEventListener("click", closeModal);
+        body.querySelector("#hxPopupOkBtn")?.addEventListener("click", () => closeModal({ reason: "ack" }));
+    }
+
+    function showQrPayPopup(onConfirmPaid, onCancelled) {
+        const modal = ensureModal();
+        modal.classList.remove("hx-popup-success", "hx-popup-error");
+        const body = modal.querySelector(".hx-popup-body");
+        if (!body) return;
+        hxModalDismissHandler = (reason) => {
+            if (reason === "dismiss" && typeof onCancelled === "function") {
+                onCancelled();
+            }
+        };
+        body.innerHTML = `
+            <h4>Quét mã QR để thanh toán</h4>
+            <p>Vui lòng quét mã bên dưới và hoàn tất chuyển khoản cho đơn hàng của bạn.</p>
+            <div class="hx-qrpay-popup">
+                <img src="/assets/img/QR_cty.jpg" alt="Mã QR thanh toán Hoa Xinh Store" />
+            </div>
+            <div class="hx-popup-actions">
+                <button type="button" class="mini-cart-view-btn" id="hxQrPayConfirmBtn">Tôi đã chuyển khoản</button>
+            </div>
+        `;
+        modal.style.display = "flex";
+        requestAnimationFrame(() => modal.classList.add("is-open"));
+        body.querySelector("#hxQrPayConfirmBtn")?.addEventListener("click", () => {
+            closeModal({ reason: "confirmed" });
+            if (typeof onConfirmPaid === "function") {
+                onConfirmPaid();
+            }
+        });
+    }
+
+    function showAutoQrDynamicPopup(orderNo, amountText, qrImageUrl, onConfirmPaid, onCancelled) {
+        const modal = ensureModal();
+        modal.classList.remove("hx-popup-success", "hx-popup-error");
+        const body = modal.querySelector(".hx-popup-body");
+        if (!body) return;
+        hxModalDismissHandler = (reason) => {
+            if (reason === "dismiss" && typeof onCancelled === "function") {
+                onCancelled();
+            }
+        };
+        body.innerHTML = `
+            <h4>Thanh toán QR tự động</h4>
+            <p>Đơn <strong>${orderNo || ""}</strong> - Số tiền: <strong>${amountText || ""}</strong></p>
+            <div class="hx-qrpay-popup">
+                <img src="${qrImageUrl}" alt="Mã QR tự động thanh toán" />
+            </div>
+            <div class="hx-popup-actions">
+                <button type="button" class="mini-cart-view-btn" id="hxAutoQrConfirmBtn">Tôi đã chuyển khoản</button>
+            </div>
+        `;
+        modal.style.display = "flex";
+        requestAnimationFrame(() => modal.classList.add("is-open"));
+        body.querySelector("#hxAutoQrConfirmBtn")?.addEventListener("click", () => {
+            if (typeof onConfirmPaid === "function") {
+                onConfirmPaid();
+            }
+        });
     }
 
     function showPreOrderModal(item, qty = 1) {
         const modal = ensureModal();
+        hxModalDismissHandler = null;
         const body = modal.querySelector(".hx-popup-body");
         if (!body) return;
         body.innerHTML = `
@@ -987,12 +1062,112 @@
                 document.querySelectorAll(".payment-choice").forEach(el => el.classList.remove("active"));
                 const parent = input.closest(".payment-choice");
                 if (parent) parent.classList.add("active");
+                const qrPayConfirmedInput = document.getElementById("qrPayConfirmedInput");
+                if (qrPayConfirmedInput && String(input.value || "").toUpperCase() !== "QRPAY") {
+                    qrPayConfirmedInput.value = "false";
+                }
             });
         });
+
+        const checkoutForm = document.getElementById("checkoutPageForm");
+        const qrPayConfirmedInput = document.getElementById("qrPayConfirmedInput");
+        if (checkoutForm && qrPayConfirmedInput) {
+            checkoutForm.addEventListener("submit", (e) => {
+                const method = String(checkoutForm.querySelector("input[name='PaymentMethod']:checked")?.value || "COD").toUpperCase();
+                if (method !== "QRPAY" || qrPayConfirmedInput.value === "true") {
+                    return;
+                }
+
+                e.preventDefault();
+                showQrPayPopup(
+                    () => {
+                        showNoticeModal(
+                            "Hoa Xinh Store cảm ơn bạn đã tin tưởng. Chúng tôi đã ghi nhận thanh toán của bạn và đang xử lý đơn hàng.",
+                            "Thanh toán thành công",
+                            "success"
+                        );
+                        qrPayConfirmedInput.value = "true";
+                        window.setTimeout(() => checkoutForm.submit(), 900);
+                    },
+                    () => {
+                        qrPayConfirmedInput.value = "false";
+                        showNoticeModal(
+                            "Bạn đã hủy thanh toán QR. Đơn hàng chưa được tạo.",
+                            "Đã hủy thanh toán",
+                            "error"
+                        );
+                    });
+            });
+        }
+
+        if (checkoutForm) {
+            const orderNo = String(checkoutForm.getAttribute("data-auto-qr-order-no") || "").trim();
+            const amountRaw = Number(checkoutForm.getAttribute("data-auto-qr-amount") || 0);
+            const qrImageUrl = String(checkoutForm.getAttribute("data-auto-qr-image-url") || "").trim();
+            if (orderNo && qrImageUrl) {
+                const antiForgery = checkoutForm.querySelector("input[name='__RequestVerificationToken']")?.value || "";
+                showAutoQrDynamicPopup(
+                    orderNo,
+                    formatVnd(amountRaw),
+                    qrImageUrl,
+                    async () => {
+                        try {
+                            const body = new URLSearchParams();
+                            body.set("orderNo", orderNo);
+                            body.set("__RequestVerificationToken", antiForgery);
+                            const res = await fetch("/Store/ConfirmAutoQrPayment", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                                body: body.toString()
+                            });
+                            const data = await res.json().catch(() => ({ ok: false }));
+                            if (!res.ok || !data?.ok) {
+                                showNoticeModal(data?.message || "Không thể xác nhận thanh toán QR tự động.", "Lỗi xác nhận", "error");
+                                return;
+                            }
+
+                            showNoticeModal(
+                                data?.message || "Thanh toán thành công. Cảm ơn bạn đã tin tưởng Hoa Xinh Store.",
+                                "Thanh toán thành công",
+                                "success"
+                            );
+                            checkoutForm.setAttribute("data-auto-qr-order-no", "");
+                            window.setTimeout(() => { window.location.href = "/Store"; }, 1200);
+                        } catch {
+                            showNoticeModal("Không thể xác nhận thanh toán QR tự động.", "Lỗi xác nhận", "error");
+                        }
+                    },
+                    async () => {
+                        try {
+                            const body = new URLSearchParams();
+                            body.set("orderNo", orderNo);
+                            body.set("__RequestVerificationToken", antiForgery);
+                            const res = await fetch("/Store/CancelAutoQrPayment", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" },
+                                body: body.toString()
+                            });
+                            const data = await res.json().catch(() => ({ ok: false }));
+                            if (!res.ok || !data?.ok) {
+                                showNoticeModal(data?.message || "Không thể hủy thanh toán QR tự động.", "Lỗi hủy thanh toán", "error");
+                                return;
+                            }
+                            showNoticeModal(
+                                data?.message || "Bạn đã hủy thanh toán QR tự động.",
+                                "Đã hủy thanh toán",
+                                "error"
+                            );
+                            checkoutForm.setAttribute("data-auto-qr-order-no", "");
+                            window.setTimeout(() => { window.location.href = "/Store"; }, 1200);
+                        } catch {
+                            showNoticeModal("Không thể hủy thanh toán QR tự động.", "Lỗi hủy thanh toán", "error");
+                        }
+                    });
+            }
+        }
 
         pollStorefrontVersion();
         setInterval(syncCartWithServer, 15000);
         setInterval(pollStorefrontVersion, 10000);
     });
 })();
-

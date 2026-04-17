@@ -311,6 +311,8 @@ public class SmtpEmailService(IOptions<SmtpOptions> options, ILogger<SmtpEmailSe
         {
             PaymentMethod.COD => "Thanh toán khi nhận hàng (COD)",
             PaymentMethod.VNPAY => "Thanh toán online (VNPAY)",
+            PaymentMethod.QRPAY => "Chuyển khoản QR (QRPAY)",
+            PaymentMethod.AUTOQR => "Thanh toán QR tự động",
             _ => method.ToString()
         };
     }
