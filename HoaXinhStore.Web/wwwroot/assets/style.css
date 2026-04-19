@@ -1,4 +1,6 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Manrope:wght@600;700;800&display=swap');
+
 :root{
     --gold: #A07847;
     --gold-1: #A07847;
@@ -28,7 +30,7 @@ html, body{
     padding: 0;
     scroll-behavior: smooth;
     font-size: 15px;
-    font-family: 'Montserrat', sans-serif;
+    font-family: "Be Vietnam Pro", "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 html.modal-lock,
@@ -3708,7 +3710,7 @@ input{
 .hx-home2 {
     background: #fefaef;
     color: #222;
-    font-family: "Montserrat", sans-serif;
+    font-family: "Be Vietnam Pro", "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .hx-home2-shell {
@@ -4690,7 +4692,7 @@ input{
 .ref-home-page {
     background: #efefef;
     color: #1f1f1f;
-    font-family: "Montserrat", sans-serif;
+    font-family: "Be Vietnam Pro", "Segoe UI", Roboto, Arial, sans-serif;
 }
 
 .ref-shell {

@@ -7,6 +7,8 @@ using HoaXinhStore.Web.Services.Inventory;
 using HoaXinhStore.Web.Services.Notifications;
 using HoaXinhStore.Web.Services.Payments;
 using HoaXinhStore.Web.Services.Policies;
+using HoaXinhStore.Web.Services.HomeContent;
+using HoaXinhStore.Web.Services.Shipping;
 using HoaXinhStore.Web.Services.Checkout;
 using HoaXinhStore.Web.Services.Orders;
 using Microsoft.AspNetCore.Authentication;
@@ -30,6 +32,9 @@ builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 builder.Services.AddScoped<IInventoryService, InventoryService>();
 builder.Services.AddScoped<IOrderCheckoutService, OrderCheckoutService>();
 builder.Services.AddSingleton<IPolicyContentService, JsonPolicyContentService>();
+builder.Services.AddSingleton<IHomeContentService, JsonHomeContentService>();
+builder.Services.AddSingleton<IShippingSettingsService, JsonShippingSettingsService>();
+builder.Services.AddSingleton<IPaymentMethodSettingsService, JsonPaymentMethodSettingsService>();
 builder.Services.AddHostedService<OrderPaymentTimeoutWorker>();
 
 builder.Services

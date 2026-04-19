@@ -4,7 +4,8 @@
 }
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h2>Quản trị chính sách footer</h2>
+    <h2>Quản trị chính sách</h2>
+    <button type="button" class="btn btn-primary" id="btnAddPolicy"><i class="bi bi-plus-lg me-1"></i>Thêm chính sách</button>
 </div>
 
 @if (!string.IsNullOrWhiteSpace(Model.Message))
@@ -12,7 +13,7 @@
     <div class="alert alert-success">@Model.Message</div>
 }
 
-<form asp-action="Save" method="post">
+<form asp-action="Save" method="post" id="policyForm">
     @Html.AntiForgeryToken()
 
     <ul class="nav nav-tabs mb-3" id="policyTabs" role="tablist">
@@ -22,7 +23,7 @@
             var item = Model.Items[i];
             var tabId = $"policy-tab-{i}";
             var paneId = $"policy-pane-{i}";
-            <li class="nav-item" role="presentation">
+            <li class="nav-item" role="presentation" data-policy-nav-item>
                 <button class="nav-link @(isActive ? "active" : string.Empty)"
                         id="@tabId"
                         data-bs-toggle="tab"
@@ -31,7 +32,7 @@
                         role="tab"
                         aria-controls="@paneId"
                         aria-selected="@(isActive ? "true" : "false")">
-                    @item.Title
+                    @(!string.IsNullOrWhiteSpace(item.Title) ? item.Title : item.Key)
                 </button>
             </li>
         }
@@ -43,27 +44,32 @@
             var isActive = i == 0;
             var item = Model.Items[i];
             var paneId = $"policy-pane-{i}";
-            <div class="tab-pane fade @(isActive ? "show active" : string.Empty)" id="@paneId" role="tabpanel">
+            <div class="tab-pane fade @(isActive ? "show active" : string.Empty)" id="@paneId" role="tabpanel" data-policy-pane>
                 <div class="card mb-4">
-                    <div class="card-header fw-semibold">@item.Key</div>
+                    <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                        <strong class="text-break">@item.Key</strong>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-policy>Xóa</button>
+                    </div>
                     <div class="card-body">
-                        <input type="hidden" asp-for="Items[i].Key" />
-
-                        <div class="mb-3">
-                            <label class="form-label" asp-for="Items[i].Title">Tiêu đề</label>
-                            <input class="form-control" asp-for="Items[i].Title" />
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Key</label>
+                                <input class="form-control" data-field="key" name="Items[@i].Key" value="@item.Key" placeholder="vi-du: payment" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tiêu đề</label>
+                                <input class="form-control" data-field="title" name="Items[@i].Title" value="@item.Title" />
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Nguồn</label>
+                                <input class="form-control" data-field="source" name="Items[@i].Source" value="@item.Source" />
+                            </div>
                         </div>
 
-                        <div class="mb-3">
-                            <label class="form-label" asp-for="Items[i].Source">Nguồn</label>
-                            <input class="form-control" asp-for="Items[i].Source" />
+                        <div class="mt-3">
+                            <label class="form-label">Nội dung</label>
+                            <textarea class="form-control js-ckeditor" data-field="content" name="Items[@i].Content" rows="12">@item.Content</textarea>
                         </div>
-
-                        <div class="mb-1">
-                            <label class="form-label" asp-for="Items[i].Content">Nội dung</label>
-                            <textarea class="form-control js-ckeditor" asp-for="Items[i].Content" rows="12"></textarea>
-                        </div>
-                        <div class="form-text">Nhập nội dung thuần, không cần HTML. Xuống dòng sẽ hiển thị đúng trong popup.</div>
                     </div>
                 </div>
             </div>
@@ -73,20 +79,166 @@
     <button type="submit" class="btn btn-primary">Lưu chính sách</button>
 </form>
 
-<script src="https://cdn.ckeditor.com/4.22.1/full/ckeditor.js"></script>
-<script>
-    (function () {
-        if (!window.CKEDITOR) return;
-        document.querySelectorAll('.js-ckeditor').forEach((el) => {
-            if (!el.id) el.id = `policy_ck_${Math.random().toString(36).slice(2, 10)}`;
-            if (CKEDITOR.instances[el.id]) return;
-            try {
-                CKEDITOR.replace(el.id, {
-                    height: 280
+<template id="policyNavTpl">
+    <li class="nav-item" role="presentation" data-policy-nav-item>
+        <button class="nav-link"
+                data-bs-toggle="tab"
+                type="button"
+                role="tab"
+                aria-selected="false">Chính sách mới</button>
+    </li>
+</template>
+
+<template id="policyPaneTpl">
+    <div class="tab-pane fade" role="tabpanel" data-policy-pane>
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center gap-2">
+                <strong class="text-break" data-header-key>new-policy</strong>
+                <button type="button" class="btn btn-sm btn-outline-danger" data-remove-policy>Xóa</button>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Key</label>
+                        <input class="form-control" data-field="key" placeholder="vi-du: payment" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Tiêu đề</label>
+                        <input class="form-control" data-field="title" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Nguồn</label>
+                        <input class="form-control" data-field="source" />
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label">Nội dung</label>
+                    <textarea class="form-control js-ckeditor" data-field="content" rows="12"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <script src="https://cdn.ckeditor.com/4.22.1/full/ckeditor.js"></script>
+    <script>
+        (() => {
+            const form = document.getElementById("policyForm");
+            const tabs = document.getElementById("policyTabs");
+            const content = document.getElementById("policyTabsContent");
+            const addBtn = document.getElementById("btnAddPolicy");
+            const navTpl = document.getElementById("policyNavTpl");
+            const paneTpl = document.getElementById("policyPaneTpl");
+            if (!form || !tabs || !content || !addBtn || !navTpl || !paneTpl) return;
+
+            const initCkEditors = (root) => {
+                if (!window.CKEDITOR) return;
+                window.CKEDITOR.config.versionCheck = false;
+                root.querySelectorAll('.js-ckeditor').forEach((el) => {
+                    if (!el.id) el.id = `policy_ck_${Math.random().toString(36).slice(2, 10)}`;
+                    if (window.CKEDITOR.instances[el.id]) return;
+                    window.CKEDITOR.replace(el.id, { height: 280, toolbar: 'Full', allowedContent: true });
                 });
-            } catch (e) {
-                console.error('CKEditor policy init failed', e);
-            }
-        });
-    })();
-</script>
+            };
+
+            const activatePaneByButton = (btn) => {
+                const tab = new bootstrap.Tab(btn);
+                tab.show();
+            };
+
+            const syncLabels = () => {
+                content.querySelectorAll('[data-policy-pane]').forEach((pane) => {
+                    const title = pane.querySelector('[data-field="title"]')?.value?.trim();
+                    const key = pane.querySelector('[data-field="key"]')?.value?.trim();
+                    const text = title || key || 'Chính sách mới';
+                    const target = pane.getAttribute('id');
+                    if (!target) return;
+                    const btn = tabs.querySelector(`[data-bs-target="#${target}"]`);
+                    if (btn) btn.textContent = text;
+                    const header = pane.querySelector('[data-header-key]');
+                    if (header) header.textContent = key || 'new-policy';
+                });
+            };
+
+            const reindex = () => {
+                const panes = Array.from(content.querySelectorAll('[data-policy-pane]'));
+                panes.forEach((pane, idx) => {
+                    const paneId = `policy-pane-${idx}`;
+                    pane.id = paneId;
+
+                    const navBtn = tabs.querySelectorAll('[data-policy-nav-item] .nav-link')[idx];
+                    if (navBtn) {
+                        navBtn.id = `policy-tab-${idx}`;
+                        navBtn.setAttribute('data-bs-target', `#${paneId}`);
+                        navBtn.setAttribute('aria-controls', paneId);
+                    }
+
+                    const key = pane.querySelector('[data-field="key"]');
+                    const title = pane.querySelector('[data-field="title"]');
+                    const source = pane.querySelector('[data-field="source"]');
+                    const contentArea = pane.querySelector('[data-field="content"]');
+                    if (key) key.name = `Items[${idx}].Key`;
+                    if (title) title.name = `Items[${idx}].Title`;
+                    if (source) source.name = `Items[${idx}].Source`;
+                    if (contentArea) contentArea.name = `Items[${idx}].Content`;
+                });
+            };
+
+            addBtn.addEventListener('click', () => {
+                const nav = navTpl.content.firstElementChild.cloneNode(true);
+                const pane = paneTpl.content.firstElementChild.cloneNode(true);
+                tabs.appendChild(nav);
+                content.appendChild(pane);
+                reindex();
+                initCkEditors(pane);
+                syncLabels();
+                const btn = nav.querySelector('.nav-link');
+                if (btn) activatePaneByButton(btn);
+            });
+
+            form.addEventListener('input', (e) => {
+                const el = e.target;
+                if (!(el instanceof HTMLElement)) return;
+                if (el.matches('[data-field="title"], [data-field="key"]')) {
+                    syncLabels();
+                }
+            });
+
+            content.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-remove-policy]');
+                if (!btn) return;
+                const pane = btn.closest('[data-policy-pane]');
+                if (!pane) return;
+                const paneId = pane.id;
+                pane.querySelectorAll('textarea.js-ckeditor').forEach((ta) => {
+                    if (ta.id && window.CKEDITOR?.instances?.[ta.id]) {
+                        window.CKEDITOR.instances[ta.id].destroy(true);
+                    }
+                });
+                pane.remove();
+                const navBtn = tabs.querySelector(`[data-bs-target="#${paneId}"]`);
+                navBtn?.closest('[data-policy-nav-item]')?.remove();
+                reindex();
+                syncLabels();
+                const firstBtn = tabs.querySelector('.nav-link');
+                if (firstBtn) activatePaneByButton(firstBtn);
+            });
+
+            form.addEventListener('submit', () => {
+                if (window.CKEDITOR) {
+                    Object.keys(window.CKEDITOR.instances).forEach((key) => {
+                        const inst = window.CKEDITOR.instances[key];
+                        if (inst) inst.updateElement();
+                    });
+                }
+                reindex();
+            });
+
+            initCkEditors(document);
+            reindex();
+            syncLabels();
+        })();
+    </script>
+}

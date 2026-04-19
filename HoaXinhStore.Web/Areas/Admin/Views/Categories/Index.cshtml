@@ -13,7 +13,8 @@
     var type = (TempData["CategoryMessageType"] as string) == "error" ? "danger" : "success";
     <div class="alert alert-@type">@msg</div>
 }
-<table class="table table-bordered table-striped bg-white">
+<div class="table-responsive admin-table-scroll">
+<table class="table table-bordered table-striped bg-white mb-0">
     <thead><tr><th>ID</th><th>Tên</th><th>Danh mục cha</th><th>Slug</th><th>Mã SKU</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>
     @foreach (var c in Model)
@@ -40,6 +41,7 @@
     }
     </tbody>
 </table>
+</div>
 <div class="hx-popup-backdrop" id="adminConfirmPopup" style="display:none;">
     <div class="hx-popup-card">
         <button type="button" class="hx-popup-close" id="adminConfirmClose">×</button>

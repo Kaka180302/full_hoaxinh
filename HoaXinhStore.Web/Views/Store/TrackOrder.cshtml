@@ -21,15 +21,15 @@
                 <div class="store-order-lookup track-page-lookup">
                     <div class="store-order-lookup-head">
                         <div>
-                            <h3>Tra cứu đơn hàng</h3>
+                            <h3><i class="fa-solid fa-magnifying-glass-location me-2"></i>Tra cứu đơn hàng</h3>
                             <p>Nhập mã đơn hoặc số điện thoại để kiểm tra trạng thái đơn hàng của bạn.</p>
                         </div>
                     </div>
                     <form method="post" asp-controller="Store" asp-action="TrackOrder" class="store-order-lookup-form">
                         @Html.AntiForgeryToken()
-                        <input type="text" name="OrderNo" value="@m.OrderNo" placeholder="Mã đơn hàng" />
-                        <input type="text" name="PhoneNumber" value="@m.PhoneNumber" placeholder="Số điện thoại đặt hàng" />
-                        <button type="submit">Tra cứu</button>
+                        <input type="text" name="OrderNo" value="@m.OrderNo" placeholder="Mã đơn hàng" class="store-order-lookup-input" />
+                        <input type="text" name="PhoneNumber" value="@m.PhoneNumber" placeholder="Số điện thoại đặt hàng" class="store-order-lookup-input" />
+                        <button type="submit" class="store-order-lookup-submit"><i class="fa-solid fa-magnifying-glass me-2"></i>Tra cứu</button>
                     </form>
                     <div class="store-order-lookup-result">
                         @if (m.HasSearched)
@@ -41,17 +41,47 @@
                             else
                             {
                                 var o = m.Order;
+                                var orderStatus = (o.OrderStatus ?? string.Empty).ToLowerInvariant();
+                                var paymentStatus = (o.PaymentStatus ?? string.Empty).ToLowerInvariant();
+                                var orderStatusClass = orderStatus.Contains("hủy") ? "is-danger"
+                                    : orderStatus.Contains("hoàn thành") ? "is-success"
+                                    : orderStatus.Contains("đang giao") || orderStatus.Contains("shipping") ? "is-info"
+                                    : "is-warn";
+                                var paymentStatusClass = paymentStatus.Contains("đã thanh toán") || paymentStatus.Contains("paid") ? "is-success"
+                                    : paymentStatus.Contains("thất bại") || paymentStatus.Contains("hủy") || paymentStatus.Contains("failed") ? "is-danger"
+                                    : "is-warn";
                                 <div class="store-order-result-card mt-3">
-                                    <h4>Kết quả tra cứu</h4>
+                                    <h4><i class="fa-solid fa-receipt me-2"></i>Kết quả tra cứu</h4>
                                     <div class="store-order-result-grid">
-                                        <div><strong>Mã đơn:</strong> @o.OrderNo</div>
-                                        <div><strong>Trạng thái:</strong> @o.OrderStatus</div>
-                                        <div><strong>Thanh toán:</strong> @o.PaymentStatus</div>
-                                        <div><strong>Tổng tiền:</strong> @o.TotalAmount.ToString("N0") đ</div>
-                                        <div><strong>Mã vận đơn:</strong> @(string.IsNullOrWhiteSpace(o.TrackingCode) ? "Đang cập nhật" : o.TrackingCode)</div>
-                                        <div><strong>Đơn vị VC:</strong> @(string.IsNullOrWhiteSpace(o.ShippingCarrier) ? "Đang cập nhật" : o.ShippingCarrier)</div>
-                                        <div><strong>Ghi chú:</strong> @(string.IsNullOrWhiteSpace(o.ShippingNote) ? "Không có" : o.ShippingNote)</div>
+                                        <div class="store-order-field"><strong>Mã đơn</strong><span>@o.OrderNo</span></div>
+                                        <div class="store-order-field"><strong>Trạng thái đơn</strong><span class="store-status-pill @orderStatusClass">@o.OrderStatus</span></div>
+                                        <div class="store-order-field"><strong>Thanh toán</strong><span class="store-status-pill @paymentStatusClass">@o.PaymentStatus</span></div>
+                                        <div class="store-order-field"><strong>Tổng tiền</strong><span class="store-amount">@o.TotalAmount.ToString("N0") đ</span></div>
+                                        <div class="store-order-field"><strong>Ngày đặt</strong><span>@o.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span></div>
+                                        <div class="store-order-field"><strong>Mã vận đơn</strong><span>@(string.IsNullOrWhiteSpace(o.TrackingCode) ? "Đang cập nhật" : o.TrackingCode)</span></div>
+                                        <div class="store-order-field"><strong>Đơn vị vận chuyển</strong><span>@(string.IsNullOrWhiteSpace(o.ShippingCarrier) ? "Đang cập nhật" : o.ShippingCarrier)</span></div>
+                                        <div class="store-order-field"><strong>Ghi chú</strong><span>@(string.IsNullOrWhiteSpace(o.ShippingNote) ? "Không có" : o.ShippingNote)</span></div>
                                     </div>
+
+                                    @if (o.Timeline?.Count > 0)
+                                    {
+                                        <div class="store-track-timeline">
+                                            <h5>Lịch sử xử lý đơn</h5>
+                                            <ul>
+                                                @foreach (var step in o.Timeline)
+                                                {
+                                                    <li class="store-track-step">
+                                                        <div class="store-track-timeline-title">@step.Title</div>
+                                                        <div class="store-track-timeline-time">@step.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</div>
+                                                        @if (!string.IsNullOrWhiteSpace(step.Note))
+                                                        {
+                                                            <div class="store-track-timeline-note">@step.Note</div>
+                                                        }
+                                                    </li>
+                                                }
+                                            </ul>
+                                        </div>
+                                    }
                                 </div>
 
                                 @if (!string.IsNullOrWhiteSpace(o.ShippingNote) && o.ShippingNote.Contains("quá hạn thanh toán", StringComparison.OrdinalIgnoreCase))

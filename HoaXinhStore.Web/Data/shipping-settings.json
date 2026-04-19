@@ -1,0 +1,9 @@
+{
+  "ghnEnabled": true,
+  "providerName": "GHN",
+  "webhookKey": "change-this-shipping-webhook-key",
+  "defaultCarrierDisplayName": "GHN",
+  "autoUpdateOrderStatus": true,
+  "autoMarkCodPaidWhenDelivered": true,
+  "note": ""
+}

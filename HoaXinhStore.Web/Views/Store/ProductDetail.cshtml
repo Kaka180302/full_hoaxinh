@@ -225,20 +225,28 @@
                         @foreach (var item in Model.RelatedProducts)
                         {
                             var relatedImage = string.IsNullOrWhiteSpace(item.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : item.ImageUrl;
-                            var relatedSale = item.SalePrice ?? item.Price;
+                            var relatedDefaultVariant = (item.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+                                .OrderByDescending(v => v.IsDefault)
+                                .ThenBy(v => v.Id)
+                                .FirstOrDefault();
+                            var relatedPrice = relatedDefaultVariant?.Price ?? item.Price;
+                            var relatedRawSale = relatedDefaultVariant?.SalePrice ?? item.SalePrice;
+                            var relatedSale = relatedRawSale ?? relatedPrice;
+                            var relatedVariantId = relatedDefaultVariant?.Id ?? 0;
+                            var relatedVariantName = relatedDefaultVariant?.Name ?? string.Empty;
                             var relatedUnitOptionsJson = System.Text.Json.JsonSerializer.Serialize(
                                 item.UnitOptions.Select(u => new { name = u.Name, factor = u.Factor }).ToList());
                             <article class="luxe-card">
-                                <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@item.Id" class="luxe-card__img">
+                                <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@item.ProductSlug" class="luxe-card__img">
                                     <img src="@relatedImage" alt="@item.Name" />
                                 </a>
                                 <button type="button" class="luxe-fav"><i class="fa-regular fa-heart"></i></button>
-                                <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@item.Id" class="no_link">@item.Name</a></h3>
+                                <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@item.ProductSlug" class="no_link">@item.Name</a></h3>
                                 <div class="luxe-price">
                                     <strong>@relatedSale.ToString("N0", vi) đ</strong>
-                                    @if (item.SalePrice.HasValue && item.SalePrice.Value < item.Price)
+                                    @if (relatedRawSale.HasValue && relatedRawSale.Value > 0 && relatedRawSale.Value < relatedPrice)
                                     {
-                                        <span>@item.Price.ToString("N0", vi) đ</span>
+                                        <span>@relatedPrice.ToString("N0", vi) đ</span>
                                     }
                                 </div>
                                 @if (item.StockQuantity <= 0)
@@ -252,8 +260,12 @@
                                             data-add-cart
                                             data-id="@item.Id"
                                             data-name="@item.Name"
-                                            data-price="@item.Price"
-                                            data-sale-price="@item.SalePrice"
+                                            data-price="@relatedPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-sale-price="@(relatedRawSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                            data-variant-id="@(relatedVariantId > 0 ? relatedVariantId.ToString() : "")"
+                                            data-variant-name="@relatedVariantName"
+                                            data-unit-name="@relatedVariantName"
+                                            data-unit-factor="1"
                                             data-stock="@Math.Max(0, item.StockQuantity)"
                                             data-unit-options='@relatedUnitOptionsJson'
                                             data-image="@relatedImage"><i class="fa-solid fa-cart-shopping"></i></button>
@@ -550,7 +562,7 @@
                 }
 
                 if (window.HXStorefront && typeof window.HXStorefront.addToCart === "function") {
-                    await window.HXStorefront.addToCart({
+                    return await window.HXStorefront.addToCart({
                         id: productId,
                         variantId: variantId || null,
                         variantName: variantName,
@@ -564,14 +576,18 @@
                         unitOptions: Array.isArray(unitOptions) ? unitOptions : []
                     }, Math.max(1, qty));
                 }
+                return false;
             };
 
             addBtn?.addEventListener("click", async function (e) {
                 e.preventDefault();
                 e.stopImmediatePropagation();
-                await addDetailProduct(getQty());
-                if (window.HXStorefront && typeof window.HXStorefront.flyToCart === "function") {
-                    window.HXStorefront.flyToCart(addBtn);
+                const qty = getQty();
+                const added = await addDetailProduct(qty);
+                if (added && window.HXStorefront && typeof window.HXStorefront.showAddToCartFeedback === "function") {
+                    window.HXStorefront.showAddToCartFeedback({
+                        name: addBtn?.getAttribute("data-name") || ""
+                    }, qty, addBtn);
                 }
             });
 

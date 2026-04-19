@@ -1,0 +1,6 @@
+{
+  "codEnabled": true,
+  "vnPayEnabled": true,
+  "qrPayEnabled": false,
+  "autoQrEnabled": true
+}

@@ -2,6 +2,10 @@
     Layout = null;
     var checkoutMessage = TempData["CheckoutMessage"] as string;
     var checkoutStatus = TempData["CheckoutStatus"] as string;
+    var enabledMethods = ViewBag.EnabledPaymentMethods as HashSet<string> ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "COD", "VNPAY", "QRPAY", "AUTOQR" };
+    var defaultMethod = enabledMethods.Contains("COD")
+        ? "COD"
+        : enabledMethods.FirstOrDefault() ?? string.Empty;
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -95,22 +99,43 @@
                         <div class="col-md-6">
                             <section class="checkout-panel">
                                 <h3><i class="fa-solid fa-wallet"></i> Tùy chọn thanh toán</h3>
-                                <label class="payment-choice active">
-                                    <input type="radio" name="PaymentMethod" value="COD" checked />
-                                    <span>Thanh toán khi nhận hàng (COD)</span>
-                                </label>
-                                <label class="payment-choice">
-                                    <input type="radio" name="PaymentMethod" value="VNPAY" />
-                                    <span>Thanh toán online (QR, ATM, Thẻ quốc tế, Ví điện tử)</span>
-                                </label>
-                                <label class="payment-choice">
-                                    <input type="radio" name="PaymentMethod" value="QRPAY" />
-                                    <span>Chuyển khoản QR (QRPAY)</span>
-                                </label>
-                                <label class="payment-choice">
-                                    <input type="radio" name="PaymentMethod" value="AUTOQR" />
-                                    <span>Thanh toán QR tự động</span>
-                                </label>
+                                @if (enabledMethods.Count == 0)
+                                {
+                                    <div class="alert alert-warning mb-0">
+                                        Hiện chưa có phương thức thanh toán khả dụng. Vui lòng liên hệ cửa hàng.
+                                    </div>
+                                }
+                                else
+                                {
+                                    @if (enabledMethods.Contains("COD"))
+                                    {
+                                        <label class="payment-choice @(defaultMethod == "COD" ? "active" : "")">
+                                            <input type="radio" name="PaymentMethod" value="COD" @(defaultMethod == "COD" ? "checked" : "") />
+                                            <span>Thanh toán khi nhận hàng (COD)</span>
+                                        </label>
+                                    }
+                                    @if (enabledMethods.Contains("VNPAY"))
+                                    {
+                                        <label class="payment-choice @(defaultMethod == "VNPAY" ? "active" : "")">
+                                            <input type="radio" name="PaymentMethod" value="VNPAY" @(defaultMethod == "VNPAY" ? "checked" : "") />
+                                            <span>Thanh toán online (QR, ATM, Thẻ quốc tế, Ví điện tử)</span>
+                                        </label>
+                                    }
+                                    @if (enabledMethods.Contains("QRPAY"))
+                                    {
+                                        <label class="payment-choice @(defaultMethod == "QRPAY" ? "active" : "")">
+                                            <input type="radio" name="PaymentMethod" value="QRPAY" @(defaultMethod == "QRPAY" ? "checked" : "") />
+                                            <span>Chuyển khoản QR (QRPAY)</span>
+                                        </label>
+                                    }
+                                    @if (enabledMethods.Contains("AUTOQR"))
+                                    {
+                                        <label class="payment-choice @(defaultMethod == "AUTOQR" ? "active" : "")">
+                                            <input type="radio" name="PaymentMethod" value="AUTOQR" @(defaultMethod == "AUTOQR" ? "checked" : "") />
+                                            <span>Thanh toán QR tự động</span>
+                                        </label>
+                                    }
+                                }
                             </section>
                         </div>
                     </div>
@@ -125,7 +150,7 @@
                         <div class="checkout-total-row"><span><i class="fa-solid fa-ticket"></i> Giảm giá voucher</span><strong>0 đ</strong></div>
                         <div class="checkout-grand"><span>Tổng cộng</span><strong id="checkoutGrandTotal">0 đ</strong></div>
                         <div id="checkoutPageHiddenItems"></div>
-                        <button type="submit" class="btn-dark w-100">XÁC NHẬN ĐẶT HÀNG</button>
+                        <button type="submit" class="btn-dark w-100" @(enabledMethods.Count == 0 ? "disabled" : "")>XÁC NHẬN ĐẶT HÀNG</button>
                         <a asp-controller="Store" asp-action="Cart" class="btn-link-back">QUAY LẠI GIỎ HÀNG</a>
                     </aside>
                 </div>
@@ -139,23 +164,8 @@
     @if (!string.IsNullOrWhiteSpace(checkoutMessage))
     {
         <script>
-            window.__checkoutPageMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutMessage));
-            window.__checkoutPageStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutStatus ?? "info"));
-            (function () {
-                const message = String(window.__checkoutPageMessage || "").trim();
-                if (!message || !window.HXStorefront || typeof window.HXStorefront.showNoticeModal !== "function") return;
-
-                const status = String(window.__checkoutPageStatus || "info").toLowerCase();
-                const title = status === "success"
-                    ? "Thanh toán thành công"
-                    : status === "cancelled"
-                        ? "Bạn đã hủy thanh toán"
-                        : status === "error"
-                            ? "Thanh toán thất bại"
-                            : "Thông báo thanh toán";
-
-                window.HXStorefront.showNoticeModal(message, title, status === "cancelled" ? "error" : status);
-            })();
+            window.__checkoutMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutMessage));
+            window.__checkoutStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutStatus ?? "info"));
         </script>
     }
 </body>

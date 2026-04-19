@@ -37,8 +37,15 @@ public class OrderPaymentTimeoutWorker(
                 logger.LogError(ex, "Order payment-timeout sweep failed.");
             }
 
-            var hasNext = await timer.WaitForNextTickAsync(stoppingToken);
-            if (!hasNext) break;
+            try
+            {
+                var hasNext = await timer.WaitForNextTickAsync(stoppingToken);
+                if (!hasNext) break;
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
     }
 

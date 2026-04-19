@@ -3,6 +3,7 @@ using HoaXinhStore.Web.Entities;
 using HoaXinhStore.Web.Services.Notifications;
 using HoaXinhStore.Web.Services.Payments;
 using HoaXinhStore.Web.Services.Policies;
+using HoaXinhStore.Web.Services.HomeContent;
 using HoaXinhStore.Web.Services;
 using HoaXinhStore.Web.Services.Inventory;
 using HoaXinhStore.Web.Services.Checkout;
@@ -19,7 +20,9 @@ public class StoreController(
     AppDbContext db,
     IVnpayService vnpayService,
     IEmailService emailService,
+    IPaymentMethodSettingsService paymentMethodSettingsService,
     IPolicyContentService policyContentService,
+    IHomeContentService homeContentService,
     IInventoryService inventoryService,
     IOrderCheckoutService orderCheckoutService) : Controller
 {
@@ -132,7 +135,18 @@ public class StoreController(
             CreatedAtUtc = order.CreatedAtUtc,
             TrackingCode = trackingCode,
             ShippingCarrier = carrier,
-            ShippingNote = shippingNote
+            ShippingNote = shippingNote,
+            Timeline = (order.Timelines ?? [])
+                .OrderByDescending(t => t.CreatedAtUtc)
+                .Take(12)
+                .Select(t => new OrderTrackingTimelineItem
+                {
+                    Action = t.Action,
+                    Title = BuildTrackingTimelineTitle(t.Action, t.ToStatus),
+                    Note = (t.Note ?? string.Empty).Trim(),
+                    CreatedAtUtc = t.CreatedAtUtc
+                })
+                .ToList()
         };
 
         return model;
@@ -140,6 +154,7 @@ public class StoreController(
 
     public async Task<IActionResult> Index()
     {
+        var homeContent = await homeContentService.GetAsync();
         var categories = await db.Categories
             .AsNoTracking()
             .Where(c => c.IsActive)
@@ -202,7 +217,7 @@ public class StoreController(
         var featuredProducts = products
             .OrderByDescending(p => soldByProduct.TryGetValue(p.Id, out var sold) ? sold : 0)
             .ThenByDescending(p => p.Id)
-            .Take(8)
+            .Take(homeContent.FeaturedLimit)
             .ToList();
 
         var categoryById = categories.ToDictionary(c => c.Id);
@@ -238,7 +253,7 @@ public class StoreController(
                     .Where(p => rootIdByProductId.TryGetValue(p.Id, out var rootId) && rootId == parent.Id)
                     .OrderByDescending(p => soldByProduct.TryGetValue(p.Id, out var sold) ? sold : 0)
                     .ThenByDescending(p => p.Id)
-                    .Take(5)
+                    .Take(homeContent.CategorySectionProductLimit)
                     .ToList()
             })
             .Where(s => s.Products.Count > 0)
@@ -264,6 +279,7 @@ public class StoreController(
             PolicyData = await policyContentService.GetAllAsync()
         };
 
+        ViewBag.HomeContent = homeContent;
         return View(model);
     }
 
@@ -308,87 +324,7 @@ public class StoreController(
             .Where(p => p.IsActive && p.Category != null)
             .AsQueryable();
 
-        if (!string.IsNullOrWhiteSpace(q))
-        {
-            var keyword = q.Trim();
-            var lowered = keyword.ToLower();
-            query = query.Where(p =>
-                p.Name.ToLower().Contains(lowered) ||
-                p.Sku.ToLower().Contains(lowered) ||
-                p.Variants.Any(v => v.IsActive && (v.Name.ToLower().Contains(lowered) || v.Sku.ToLower().Contains(lowered))));
-        }
-
-        var selectedCategories = (category ?? "all")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(x => !string.Equals(x, "all", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (selectedCategories.Count > 0)
-        {
-            var selectedWithChildren = ExpandCategorySlugsWithDescendants(selectedCategories, categories);
-            query = query.Where(p => p.Category != null && selectedWithChildren.Contains(p.Category.Slug));
-        }
-
-        var selectedBrands = (brand ?? "all")
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Where(x => !string.Equals(x, "all", StringComparison.OrdinalIgnoreCase))
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        if (selectedBrands.Count > 0)
-        {
-            query = query.Where(p => p.Brand != null && selectedBrands.Contains(p.Brand.Name));
-        }
-        if (inStockOnly)
-        {
-            query = query.Where(p => p.StockQuantity > 0 || p.Variants.Any(v => v.IsActive && v.AvailableStock > 0));
-        }
-
-        var selectedStatuses = (statusFilters ?? string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(x => x.ToLowerInvariant())
-            .Distinct()
-            .ToList();
-
-        if (selectedStatuses.Contains("in-stock"))
-        {
-            query = query.Where(p => p.StockQuantity > 0 || p.Variants.Any(v => v.IsActive && v.AvailableStock > 0));
-        }
-
-        var selectedPriceRanges = (priceRanges ?? string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        if (selectedPriceRanges.Count > 0)
-        {
-            query = query.Where(p =>
-                selectedPriceRanges.Contains("0-100000") && (p.SalePrice ?? p.Price) < 100000
-                || selectedPriceRanges.Contains("100000-500000") && (p.SalePrice ?? p.Price) >= 100000 && (p.SalePrice ?? p.Price) <= 500000
-                || selectedPriceRanges.Contains("500000-1000000") && (p.SalePrice ?? p.Price) >= 500000 && (p.SalePrice ?? p.Price) <= 1000000
-                || selectedPriceRanges.Contains("1000000-plus") && (p.SalePrice ?? p.Price) > 1000000
-            );
-        }
-        else
-        {
-            if (minPrice.HasValue)
-            {
-                query = query.Where(p => (p.SalePrice ?? p.Price) >= minPrice.Value);
-            }
-
-            if (maxPrice.HasValue)
-            {
-                query = query.Where(p => (p.SalePrice ?? p.Price) <= maxPrice.Value);
-            }
-        }
-
-        query = (sort ?? "newest").ToLowerInvariant() switch
-        {
-            "price-asc" => query.OrderBy(p => p.SalePrice ?? p.Price).ThenByDescending(p => p.Id),
-            "price-desc" => query.OrderByDescending(p => p.SalePrice ?? p.Price).ThenByDescending(p => p.Id),
-            "name-asc" => query.OrderBy(p => p.Name),
-            "name-desc" => query.OrderByDescending(p => p.Name),
-            _ => query.OrderByDescending(p => p.Id)
-        };
+        query = query.OrderByDescending(p => p.Id);
 
         var products = await query.Select(p => new StoreProductViewModel
         {
@@ -423,40 +359,32 @@ public class StoreController(
         }).ToListAsync();
         ApplyProductMeta(products);
 
-        if (selectedStatuses.Contains("bestseller") || selectedStatuses.Contains("featured"))
-        {
-            var soldByProduct = await db.OrderItems
-                .AsNoTracking()
-                .GroupBy(i => i.ProductId)
-                .Select(g => new { ProductId = g.Key, Sold = g.Sum(x => x.Quantity) })
-                .ToDictionaryAsync(x => x.ProductId, x => x.Sold);
+        var soldByProduct = await db.OrderItems
+            .AsNoTracking()
+            .GroupBy(i => i.ProductId)
+            .Select(g => new { ProductId = g.Key, Sold = g.Sum(x => x.Quantity) })
+            .ToDictionaryAsync(x => x.ProductId, x => x.Sold);
 
-            var featuredIds = products
-                .OrderByDescending(p => soldByProduct.TryGetValue(p.Id, out var sold) ? sold : 0)
-                .ThenByDescending(p => p.Id)
-                .Take(12)
-                .Select(p => p.Id)
-                .ToHashSet();
+        var featuredIds = products
+            .OrderByDescending(p => soldByProduct.TryGetValue(p.Id, out var sold) ? sold : 0)
+            .ThenByDescending(p => p.Id)
+            .Take(12)
+            .Select(p => p.Id)
+            .ToHashSet();
 
-            products = products
-                .Where(p =>
-                    (selectedStatuses.Contains("bestseller") && soldByProduct.TryGetValue(p.Id, out var soldQty) && soldQty > 0) ||
-                    (selectedStatuses.Contains("featured") && featuredIds.Contains(p.Id)) ||
-                    (selectedStatuses.Contains("sale") &&
-                        ((p.SalePrice.HasValue && p.SalePrice.Value > 0 && p.SalePrice.Value < p.Price) ||
-                         p.Variants.Any(v => v.SalePrice.HasValue && v.SalePrice.Value > 0 && v.SalePrice.Value < v.Price))) ||
-                    (selectedStatuses.Contains("in-stock") && p.StockQuantity > 0))
-                .ToList();
-        }
-        else if (selectedStatuses.Contains("sale"))
+        foreach (var product in products)
         {
-            products = products
-                .Where(p =>
-                    (p.SalePrice.HasValue && p.SalePrice.Value > 0 && p.SalePrice.Value < p.Price) ||
-                    p.Variants.Any(v => v.SalePrice.HasValue && v.SalePrice.Value > 0 && v.SalePrice.Value < v.Price))
-                .ToList();
+            product.IsFeatured = featuredIds.Contains(product.Id);
+            product.IsBestSeller = soldByProduct.TryGetValue(product.Id, out var soldQtyMark) && soldQtyMark > 0;
         }
-        var brands = await db.CategoryBrands.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Name).Select(x => x.Name).Distinct().ToListAsync();
+
+        var brands = await db.Products
+            .AsNoTracking()
+            .Where(p => p.IsActive && p.Brand != null && p.Brand.IsActive)
+            .Select(p => p.Brand!.Name)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
 
         return View(new ProductListPageViewModel
         {
@@ -535,12 +463,43 @@ public class StoreController(
     }
 
     [HttpGet]
-    public async Task<IActionResult> ProductDetail(int id)
+    public async Task<IActionResult> ProductDetail(string id)
     {
+        if (string.IsNullOrWhiteSpace(id))
+        {
+            return NotFound();
+        }
+
+        int targetId;
+        if (int.TryParse(id, out var legacyId))
+        {
+            targetId = legacyId;
+        }
+        else
+        {
+            var normalizedSlug = id.Trim().ToLowerInvariant();
+            var slugCandidates = await db.Products
+                .AsNoTracking()
+                .Where(p => p.IsActive)
+                .Select(p => new { p.Id, p.Name })
+                .ToListAsync();
+
+            targetId = slugCandidates
+                .Where(x => string.Equals(BuildProductSlug(x.Name), normalizedSlug, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(x => x.Id)
+                .Select(x => x.Id)
+                .FirstOrDefault();
+
+            if (targetId <= 0)
+            {
+                return NotFound();
+            }
+        }
+
         var product = await db.Products
             .AsNoTracking()
             .Include(p => p.Category)
-            .Where(p => p.IsActive && p.Category != null && p.Id == id)
+            .Where(p => p.IsActive && p.Category != null && p.Id == targetId)
             .Select(p => new StoreProductViewModel
             {
                 Id = p.Id,
@@ -579,11 +538,16 @@ public class StoreController(
             return NotFound();
         }
         ApplyProductMeta([product]);
+        var canonicalSlug = product.ProductSlug;
+        if (!string.Equals(id.Trim(), canonicalSlug, StringComparison.OrdinalIgnoreCase))
+        {
+            return RedirectToAction(nameof(ProductDetail), new { id = canonicalSlug });
+        }
 
         var related = await db.Products
             .AsNoTracking()
             .Include(p => p.Category)
-            .Where(p => p.IsActive && p.Id != id && p.Category != null && p.Category.Slug == product.CategorySlug)
+            .Where(p => p.IsActive && p.Id != targetId && p.Category != null && p.Category.Slug == product.CategorySlug)
             .OrderByDescending(p => p.Id)
             .Take(8)
             .Select(p => new StoreProductViewModel
@@ -810,9 +774,40 @@ public class StoreController(
             .Select(g => g.First())
             .ToList();
 
+        var candidateProductIds = distinctRows
+            .Select(x => x.ProductId)
+            .Where(x => x > 0)
+            .Distinct()
+            .ToList();
+        var validProductIds = await db.Products
+            .AsNoTracking()
+            .Where(p => p.IsActive && candidateProductIds.Contains(p.Id))
+            .Select(p => p.Id)
+            .ToHashSetAsync();
+
+        var candidateVariantIds = distinctRows
+            .Where(x => x.VariantId.HasValue && x.VariantId.Value > 0)
+            .Select(x => x.VariantId!.Value)
+            .Distinct()
+            .ToList();
+        var validVariantMap = await db.ProductVariants
+            .AsNoTracking()
+            .Where(v => v.IsActive && candidateVariantIds.Contains(v.Id))
+            .Select(v => new { v.Id, v.ProductId })
+            .ToDictionaryAsync(x => x.Id, x => x.ProductId);
+
         foreach (var row in distinctRows)
         {
             if (row.ProductId <= 0) continue;
+            if (!validProductIds.Contains(row.ProductId)) continue;
+            if (row.VariantId.HasValue && row.VariantId.Value > 0)
+            {
+                if (!validVariantMap.TryGetValue(row.VariantId.Value, out var variantProductId) || variantProductId != row.ProductId)
+                {
+                    continue;
+                }
+            }
+
             db.CartItems.Add(new CartItem
             {
                 CartId = cart.Id,
@@ -836,6 +831,16 @@ public class StoreController(
     public async Task<IActionResult> Policy(string key = "about")
     {
         var all = await policyContentService.GetAllAsync();
+        if (all.Count == 0)
+        {
+            ViewBag.PolicyKey = "about";
+            ViewBag.PolicyTitle = "Chính sách";
+            ViewBag.PolicyContent = "Chưa có nội dung.";
+            ViewBag.PolicySource = string.Empty;
+            ViewBag.PolicyList = new List<object>();
+            return View(await BuildHeaderViewModelAsync());
+        }
+
         if (!all.TryGetValue(key, out var current))
         {
             var first = all.FirstOrDefault();
@@ -843,11 +848,22 @@ public class StoreController(
             current = first.Value ?? new PolicyContentItem();
         }
 
+        var policyList = all
+            .Where(x => !string.IsNullOrWhiteSpace(x.Key) && x.Value != null)
+            .Select(x => new
+            {
+                Key = x.Key.Trim(),
+                Title = string.IsNullOrWhiteSpace(x.Value!.Title) ? x.Key.Trim() : x.Value.Title.Trim()
+            })
+            .OrderBy(x => x.Title)
+            .ToList();
+
         ViewBag.PolicyKey = key;
         ViewBag.PolicyTitle = current.Title;
         ViewBag.PolicyContent = current.Content;
         ViewBag.PolicySource = current.Source;
-        return View();
+        ViewBag.PolicyList = policyList;
+        return View(await BuildHeaderViewModelAsync());
     }
 
     [HttpPost]
@@ -966,8 +982,10 @@ public class StoreController(
     }
 
     [HttpGet]
-    public IActionResult Checkout()
+    public async Task<IActionResult> Checkout()
     {
+        var paymentSettings = await paymentMethodSettingsService.GetAsync();
+        ViewBag.EnabledPaymentMethods = paymentSettings.GetEnabledMethodSet();
         ViewBag.AutoQrOrderNo = TempData["AutoQrOrderNo"]?.ToString() ?? string.Empty;
         ViewBag.AutoQrAmount = TempData["AutoQrAmount"]?.ToString() ?? string.Empty;
         ViewBag.AutoQrImageUrl = TempData["AutoQrImageUrl"]?.ToString() ?? string.Empty;
@@ -978,8 +996,30 @@ public class StoreController(
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Checkout(CheckoutFormViewModel request)
     {
-        var paymentMethod = orderCheckoutService.ParsePaymentMethod(request.PaymentMethod);
-        var normalizedMethod = (request.PaymentMethod ?? "COD").Trim().ToUpperInvariant();
+        var paymentSettings = await paymentMethodSettingsService.GetAsync();
+        var enabledMethods = paymentSettings.GetEnabledMethodSet();
+        if (enabledMethods.Count == 0)
+        {
+            TempData["CheckoutMessage"] = "Hiện chưa có phương thức thanh toán khả dụng. Vui lòng liên hệ cửa hàng.";
+            TempData["CheckoutStatus"] = "error";
+            return RedirectToAction(nameof(Checkout));
+        }
+
+        var normalizedMethod = (request.PaymentMethod ?? string.Empty).Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(normalizedMethod))
+        {
+            normalizedMethod = enabledMethods.Contains("COD")
+                ? "COD"
+                : enabledMethods.First();
+        }
+        if (!enabledMethods.Contains(normalizedMethod))
+        {
+            TempData["CheckoutMessage"] = "Phương thức thanh toán bạn chọn đang tạm ngưng.";
+            TempData["CheckoutStatus"] = "error";
+            return RedirectToAction(nameof(Checkout));
+        }
+
+        var paymentMethod = orderCheckoutService.ParsePaymentMethod(normalizedMethod);
 
         if (paymentMethod == PaymentMethod.QRPAY && !request.QrPayConfirmed)
         {
@@ -993,7 +1033,7 @@ public class StoreController(
             Email = request.Email,
             PhoneNumber = request.PhoneNumber,
             Address = request.Address,
-            PaymentMethodRaw = request.PaymentMethod,
+            PaymentMethodRaw = normalizedMethod,
             IsExportInvoice = request.IsExportInvoice,
             VatCompanyName = request.VatCompanyName,
             VatTaxCode = request.VatTaxCode,
@@ -1219,6 +1259,7 @@ public class StoreController(
     {
         foreach (var item in items)
         {
+            item.ProductSlug = BuildProductSlug(item.Name);
             var parsed = ProductContentMeta.Parse(item.Description);
             item.Description = parsed.CleanDescription;
             item.TechnicalSpecs = parsed.TechnicalSpecs;
@@ -1239,6 +1280,33 @@ public class StoreController(
                 item.IsPreOrderEnabled = item.StockQuantity <= 0;
             }
         }
+    }
+
+    private static string BuildProductSlug(string? name)
+    {
+        var text = (name ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(text)) return "san-pham";
+        var normalized = text.Normalize(NormalizationForm.FormD);
+        var sb = new StringBuilder(normalized.Length);
+        foreach (var c in normalized)
+        {
+            var category = CharUnicodeInfo.GetUnicodeCategory(c);
+            if (category == UnicodeCategory.NonSpacingMark) continue;
+            if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'))
+            {
+                sb.Append(c);
+            }
+            else if (char.IsWhiteSpace(c) || c == '-' || c == '_' || c == '/' || c == '.')
+            {
+                sb.Append('-');
+            }
+        }
+        var slug = sb.ToString().Trim('-');
+        while (slug.Contains("--", StringComparison.Ordinal))
+        {
+            slug = slug.Replace("--", "-", StringComparison.Ordinal);
+        }
+        return string.IsNullOrWhiteSpace(slug) ? "san-pham" : slug;
     }
 
     private static void ParseShippingNote(string? rawNote, out string carrier, out string trackingCode, out string note)
@@ -1297,6 +1365,23 @@ public class StoreController(
         "AUTOQR" => "Thanh toán QR tự động",
         _ => method ?? "-"
     };
+
+    private static string BuildTrackingTimelineTitle(string? action, string? toStatus)
+    {
+        var actionKey = (action ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(actionKey))
+        {
+            return actionKey switch
+            {
+                "Created" => "Đơn hàng vừa được tạo",
+                "ShippingWebhook" => "Đã nhận cập nhật từ đơn vị vận chuyển",
+                "PaymentTimeoutCancelled" => "Đơn tự hủy do quá hạn thanh toán",
+                _ => actionKey
+            };
+        }
+
+        return ToOrderStatusVi(toStatus);
+    }
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -1396,7 +1481,6 @@ public class StoreController(
         if (string.Equals(order.PaymentStatus, "Cancelled", StringComparison.OrdinalIgnoreCase)
             || string.Equals(order.PaymentStatus, "Failed", StringComparison.OrdinalIgnoreCase))
         {
-            await ClearCartAsync();
             return Ok(new { ok = true, message = "Đơn hàng đã được hủy trước đó." });
         }
 
@@ -1418,7 +1502,6 @@ public class StoreController(
         });
 
         await db.SaveChangesAsync();
-        await ClearCartAsync();
 
         return Ok(new { ok = true, message = "Bạn đã hủy thanh toán QR tự động. Đơn hàng đã được hủy." });
     }
@@ -1502,7 +1585,7 @@ public class StoreController(
             results.Add(new CartSyncResponseItem
             {
                 ProductId = row.ProductId,
-                VariantId = variant?.Id ?? 0,
+                VariantId = variant?.Id ?? (row.VariantId ?? 0),
                 Name = product.Name,
                 Image = product.ImageUrl,
                 Price = price,
@@ -1511,7 +1594,7 @@ public class StoreController(
                 Qty = Math.Min(Math.Max(1, row.Quantity), Math.Max(1, stock == 0 ? 1 : stock)),
                 UnitName = !string.IsNullOrWhiteSpace(row.UnitName) ? row.UnitName : (variant?.Name ?? string.Empty),
                 UnitFactor = Math.Max(1, row.UnitFactor),
-                VariantName = variant?.Name ?? string.Empty,
+                VariantName = variant?.Name ?? row.UnitName ?? string.Empty,
                 Checked = row.Checked
             });
         }

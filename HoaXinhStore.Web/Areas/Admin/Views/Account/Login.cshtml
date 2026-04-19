@@ -8,29 +8,34 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Đăng nhập quản trị</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
     <style>
-        * { box-sizing: border-box; }
+        @@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: "Roboto", sans-serif;
-            background: #f4f4f4;
-            color: #333;
+            font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(1100px 520px at -10% -20%, #ecf4ff 0%, transparent 64%),
+                        radial-gradient(1000px 460px at 110% -25%, #f5ecdd 0%, transparent 62%),
+                        #f5f7fb;
+            color: #172033;
         }
 
         .top-strip {
-            background: #a07847;
-            color: #fff;
-            min-height: 58px;
+            min-height: 64px;
             display: flex;
             align-items: center;
+            background: linear-gradient(90deg, #0f274b 0%, #133f7a 42%, #1a5ec0 100%);
+            color: #fff;
+            box-shadow: 0 12px 30px rgba(7, 24, 54, .22);
         }
 
         .top-strip-inner {
-            width: min(1280px, calc(100% - 40px));
+            width: min(1240px, calc(100% - 32px));
             margin: 0 auto;
             display: flex;
             align-items: center;
@@ -39,93 +44,180 @@
         }
 
         .top-title {
-            font-size: 32px;
-            font-weight: 600;
-            letter-spacing: .2px;
+            font-size: 1.32rem;
+            font-weight: 700;
+            letter-spacing: .3px;
             margin: 0;
         }
 
         .back-link {
-            color: #fff;
+            color: rgba(255, 255, 255, .95);
             text-decoration: none;
-            font-size: 14px;
+            font-size: .95rem;
+            border: 1px solid rgba(255, 255, 255, .24);
+            border-radius: 999px;
+            padding: 7px 14px;
+            transition: background-color .2s ease, border-color .2s ease;
+        }
+
+        .back-link:hover {
+            background: rgba(255, 255, 255, .12);
+            border-color: rgba(255, 255, 255, .34);
         }
 
         .login-page {
-            min-height: calc(100vh - 58px);
+            min-height: calc(100vh - 64px);
             display: grid;
             place-items: center;
-            padding: 24px 16px;
-            background: radial-gradient(circle at top, #fafafa 0%, #f2f2f2 70%);
+            padding: 24px 16px 30px;
         }
 
         .login-card {
-            width: min(94vw, 430px);
+            width: min(980px, 100%);
             background: #fff;
-            border: 1px solid #dedede;
-            border-radius: 4px;
-            padding: 26px 28px 24px;
-            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.08);
+            border: 1px solid #d9e5f3;
+            border-radius: 20px;
+            box-shadow: 0 20px 44px rgba(16, 38, 74, .14);
+            overflow: hidden;
+            display: grid;
+            grid-template-columns: 1.02fr 1fr;
+        }
+
+        .brand-panel {
+            padding: 34px 30px;
+            background: linear-gradient(175deg, #15386b 0%, #0f2a51 55%, #0d2241 100%);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .brand-panel::after {
+            content: "";
+            position: absolute;
+            width: 220px;
+            height: 220px;
+            border-radius: 50%;
+            right: -70px;
+            bottom: -80px;
+            background: rgba(193, 154, 107, .2);
+            pointer-events: none;
         }
 
         .brand {
             display: flex;
             align-items: center;
             gap: 14px;
-            margin-bottom: 20px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #ececec;
+            margin-bottom: 18px;
         }
 
         .brand img {
-            width: 56px;
-            height: 56px;
+            width: 62px;
+            height: 62px;
             object-fit: contain;
+            background: #fff;
+            border-radius: 12px;
+            padding: 6px;
         }
 
         .brand-name {
             margin: 0;
-            color: #a07847;
-            font-size: 16px;
+            color: #fff;
+            font-size: 1.22rem;
             font-weight: 700;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            letter-spacing: .4px;
+        }
+
+        .brand-subtitle {
+            margin: 2px 0 0;
+            color: rgba(255, 255, 255, .8);
+            font-size: .95rem;
+        }
+
+        .brand-copy {
+            margin: 16px 0 0;
+            line-height: 1.55;
+            color: rgba(255, 255, 255, .86);
+        }
+
+        .brand-notes {
+            margin: 20px 0 0;
+            padding: 0;
+            list-style: none;
+            display: grid;
+            gap: 10px;
+        }
+
+        .brand-notes li {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: rgba(255, 255, 255, .92);
+            font-size: .95rem;
+        }
+
+        .brand-notes li::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #c19a6b;
+            flex: 0 0 8px;
+        }
+
+        .form-panel {
+            padding: 32px 30px 28px;
+        }
+
+        .form-title {
+            margin: 0;
+            font-size: 1.5rem;
+            color: #17305a;
+            font-weight: 800;
+        }
+
+        .form-subtitle {
+            margin: 8px 0 22px;
+            color: #5f6f89;
+            font-size: .95rem;
         }
 
         .field {
-            margin-bottom: 14px;
+            margin-bottom: 16px;
         }
 
         .field label {
             display: block;
             margin-bottom: 6px;
-            font-size: 17px;
-            color: #333;
-            font-weight: 500;
+            font-size: .95rem;
+            color: #304b72;
+            font-weight: 700;
         }
 
         .field input[type="text"],
         .field input[type="email"],
         .field input[type="password"] {
             width: 100%;
-            height: 44px;
-            border: 1px solid #cfcfcf;
-            border-radius: 2px;
-            padding: 0 10px;
-            font-size: 16px;
+            height: 46px;
+            border: 1px solid #cddbf0;
+            border-radius: 12px;
+            padding: 0 12px;
+            font-size: 1rem;
             outline: none;
+            color: #1f2f47;
+            background: #fff;
+            transition: border-color .2s ease, box-shadow .2s ease;
         }
 
         .field input:focus {
-            border-color: #b38753;
-            box-shadow: 0 0 0 2px rgba(179, 135, 83, 0.15);
+            border-color: #4f86d1;
+            box-shadow: 0 0 0 3px rgba(42, 112, 209, .16);
         }
 
         .errors {
-            margin: 6px 0 12px;
-            color: #c62828;
-            font-size: 14px;
-            min-height: 18px;
+            margin: 6px 0 14px;
+            color: #b62323;
+            font-size: .9rem;
+            min-height: 20px;
         }
 
         .errors ul {
@@ -134,7 +226,7 @@
         }
 
         .login-actions {
-            margin-top: 4px;
+            margin-top: 6px;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -146,41 +238,68 @@
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            color: #555;
-            font-size: 15px;
+            color: #5b6c88;
+            font-size: .92rem;
             cursor: pointer;
         }
 
         .remember-wrap input {
-            width: 16px;
-            height: 16px;
+            width: 17px;
+            height: 17px;
         }
 
         .btn-login {
             border: none;
-            height: 42px;
+            height: 44px;
             padding: 0 24px;
-            border-radius: 8px;
-            background: #a07847;
+            border-radius: 12px;
+            background: linear-gradient(90deg, #1f5fbf 0%, #184d9a 100%);
             color: #fff;
-            font-size: 20px;
-            font-weight: 500;
+            font-size: 1rem;
+            font-weight: 700;
             cursor: pointer;
             line-height: 1;
+            box-shadow: 0 10px 18px rgba(24, 77, 154, .28);
+            transition: transform .15s ease, box-shadow .15s ease, filter .15s ease;
         }
 
         .btn-login:hover {
-            background: #8f6c40;
+            transform: translateY(-1px);
+            box-shadow: 0 14px 20px rgba(24, 77, 154, .3);
+            filter: brightness(1.03);
+        }
+
+        @@media (max-width: 991.98px) {
+            .login-card {
+                grid-template-columns: 1fr;
+            }
+
+            .brand-panel {
+                padding: 24px 20px;
+            }
+
+            .form-panel {
+                padding: 24px 20px 22px;
+            }
         }
 
         @@media (max-width: 768px) {
             .top-title {
-                font-size: 28px;
+                font-size: 1.05rem;
+            }
+
+            .back-link {
+                font-size: .84rem;
+                padding: 6px 11px;
+            }
+
+            .brand img {
+                width: 54px;
+                height: 54px;
             }
 
             .btn-login {
                 width: 100%;
-                font-size: 26px;
             }
         }
     </style>
@@ -195,52 +314,70 @@
 
     <main class="login-page">
         <div class="login-card">
-            <div class="brand">
-                <img src="~/assets/img/logo/logoHX.png" alt="Hoa Xinh Group" />
-                <p class="brand-name">Hoa Xinh Group</p>
-            </div>
-
-            <form method="post">
-                @Html.AntiForgeryToken()
-                <input asp-for="ReturnUrl" type="hidden" />
-
-                <div class="field">
-                    <label asp-for="UsernameOrEmail">Tên đăng nhập</label>
-                    <input asp-for="UsernameOrEmail" autocomplete="username" />
+            <aside class="brand-panel">
+                <div class="brand">
+                    <img src="~/assets/img/logo/logoHX.png" alt="Hoa Xinh Group" />
+                    <div>
+                        <p class="brand-name">HoaXinh Admin</p>
+                        <p class="brand-subtitle">Hệ thống quản trị nội bộ</p>
+                    </div>
                 </div>
+                <p class="brand-copy">
+                    Quản lý sản phẩm, đơn hàng và vận hành tập trung trong một giao diện thống nhất.
+                </p>
+                <ul class="brand-notes">
+                    <li>Kiểm soát tồn kho và trạng thái đơn theo thời gian thực</li>
+                    <li>Phân quyền đăng nhập và theo dõi lịch sử phiên truy cập</li>
+                    <li>Giữ trải nghiệm đồng nhất với hệ màu thương hiệu hiện tại</li>
+                </ul>
+            </aside>
 
-                <div class="field">
-                    <label asp-for="Password">Mật khẩu:</label>
-                    <input asp-for="Password" type="password" autocomplete="current-password" />
-                </div>
+            <section class="form-panel">
+                <h2 class="form-title">Đăng nhập quản trị</h2>
+                <p class="form-subtitle">Vui lòng nhập tài khoản để truy cập khu vực Admin.</p>
 
-                <div class="errors">
-                    @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
-                    {
-                        <div>@Model.ErrorMessage</div>
-                    }
-                    else if (!ViewData.ModelState.IsValid)
-                    {
-                        <ul>
-                            @foreach (var state in ViewData.ModelState.Values)
-                            {
-                                foreach (var err in state.Errors)
+                <form method="post">
+                    @Html.AntiForgeryToken()
+                    <input asp-for="ReturnUrl" type="hidden" />
+
+                    <div class="field">
+                        <label asp-for="UsernameOrEmail">Tên đăng nhập</label>
+                        <input asp-for="UsernameOrEmail" autocomplete="username" />
+                    </div>
+
+                    <div class="field">
+                        <label asp-for="Password">Mật khẩu</label>
+                        <input asp-for="Password" type="password" autocomplete="current-password" />
+                    </div>
+
+                    <div class="errors">
+                        @if (!string.IsNullOrWhiteSpace(Model.ErrorMessage))
+                        {
+                            <div>@Model.ErrorMessage</div>
+                        }
+                        else if (!ViewData.ModelState.IsValid)
+                        {
+                            <ul>
+                                @foreach (var state in ViewData.ModelState.Values)
                                 {
-                                    <li>@err.ErrorMessage</li>
+                                    foreach (var err in state.Errors)
+                                    {
+                                        <li>@err.ErrorMessage</li>
+                                    }
                                 }
-                            }
-                        </ul>
-                    }
-                </div>
+                            </ul>
+                        }
+                    </div>
 
-                <div class="login-actions">
-                    <label class="remember-wrap">
-                        <input asp-for="RememberMe" type="checkbox" />
-                        <span>Nhớ thông tin đăng nhập</span>
-                    </label>
-                    <button class="btn-login" type="submit">Đăng nhập</button>
-                </div>
-            </form>
+                    <div class="login-actions">
+                        <label class="remember-wrap">
+                            <input asp-for="RememberMe" type="checkbox" />
+                            <span>Nhớ thông tin đăng nhập</span>
+                        </label>
+                        <button class="btn-login" type="submit">Đăng nhập</button>
+                    </div>
+                </form>
+            </section>
         </div>
     </main>
 </body>

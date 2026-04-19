@@ -1,8 +1,11 @@
+@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
 @{
     Layout = null;
     var title = (string?)ViewBag.PolicyTitle ?? "Chính sách";
     var content = (string?)ViewBag.PolicyContent ?? "Chưa có nội dung.";
     var source = (string?)ViewBag.PolicySource ?? string.Empty;
+    var activeKey = (string?)ViewBag.PolicyKey ?? string.Empty;
+    var policyList = (IEnumerable<dynamic>?)ViewBag.PolicyList ?? Enumerable.Empty<dynamic>();
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -14,19 +17,38 @@
     <link rel="stylesheet" href="~/assets/style.css" />
     <link rel="stylesheet" href="~/storefront.css" />
 </head>
-<body class="nav-only-page">
-    <partial name="Partials/_HeaderNavOnly" model='new HoaXinhStore.Web.ViewModels.StoreIndexViewModel()' />
-    <main class="product-luxe-page">
+<body class="nav-only-page policy-page">
+    <partial name="Partials/_HeaderNavOnly" model='Model' />
+    <main class="policy-modern-page">
         <div class="container py-4 py-lg-5">
-            <section class="sidebar-box">
-                <h1 class="products-luxe-title mb-3">@title</h1>
-                <div class="policy-page-content">@Html.Raw(content)</div>
-                @if (!string.IsNullOrWhiteSpace(source))
-                {
-                    <div class="mt-3">
-                        <a href="@source" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">Nguồn tham khảo</a>
+            <section class="policy-modern-wrap">
+                <aside class="policy-modern-side">
+                    <h2 class="policy-modern-side-title">Danh sách chính sách</h2>
+                    <div class="policy-modern-nav">
+                        @foreach (var item in policyList)
+                        {
+                            var itemKey = (string)item.Key;
+                            var itemTitle = (string)item.Title;
+                            <a href="/Store/Policy?key=@Uri.EscapeDataString(itemKey)"
+                               class="policy-modern-nav-item @(string.Equals(activeKey, itemKey, StringComparison.OrdinalIgnoreCase) ? "is-active" : "")">
+                                @itemTitle
+                            </a>
+                        }
                     </div>
-                }
+                </aside>
+                <article class="policy-modern-content">
+                    <div class="policy-modern-head">
+                        <p class="policy-modern-label">HoaXinh Store</p>
+                        <h1>@title</h1>
+                    </div>
+                    <div class="policy-page-content">@Html.Raw(content)</div>
+                    @if (!string.IsNullOrWhiteSpace(source))
+                    {
+                        <div class="policy-modern-source">
+                            <a href="@source" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm">Nguồn tham khảo</a>
+                        </div>
+                    }
+                </article>
             </section>
         </div>
     </main>

@@ -24,4 +24,13 @@ public class OrderTrackingResult
     public string TrackingCode { get; set; } = string.Empty;
     public string ShippingCarrier { get; set; } = string.Empty;
     public string ShippingNote { get; set; } = string.Empty;
+    public List<OrderTrackingTimelineItem> Timeline { get; set; } = [];
+}
+
+public class OrderTrackingTimelineItem
+{
+    public string Action { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Note { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; }
 }

@@ -275,12 +275,16 @@
     (function initAdminCkeditor() {
         const applyEditors = () => {
             if (!window.CKEDITOR) return;
+            CKEDITOR.config.versionCheck = false;
             document.querySelectorAll('.js-ckeditor-full').forEach((el) => {
                 if (!el.id) el.id = `ck_${Math.random().toString(36).slice(2, 10)}`;
                 if (CKEDITOR.instances[el.id]) return;
                 try {
                     CKEDITOR.replace(el.id, {
-                        height: 220
+                        height: 220,
+                        toolbar: 'Full',
+                        allowedContent: true,
+                        removeButtons: ''
                     });
                 } catch (err) {
                     console.error('CKEditor init failed:', err);

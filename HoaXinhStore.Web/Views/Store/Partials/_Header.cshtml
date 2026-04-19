@@ -1,6 +1,7 @@
 ﻿@model HoaXinhStore.Web.ViewModels.StoreIndexViewModel
 @using Microsoft.EntityFrameworkCore
 @inject HoaXinhStore.Web.Data.AppDbContext AppDb
+@inject HoaXinhStore.Web.Services.HomeContent.IHomeContentService HomeContentService
 @{
     var headerCategories = (Model?.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>()).ToList();
     if (headerCategories.Count == 0)
@@ -28,6 +29,25 @@
         .Where(c => c.ParentCategoryId.HasValue)
         .GroupBy(c => c.ParentCategoryId!.Value)
         .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+    var homeContent = await HomeContentService.GetAsync();
+    var bannerImages = (homeContent.BannerImages ?? new List<string>())
+        .Where(x => !string.IsNullOrWhiteSpace(x))
+        .Take(8)
+        .ToList();
+    if (!bannerImages.Any())
+    {
+        bannerImages.Add("/assets/img/banner/banner.jpg");
+    }
+    var bannerVer = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+    string WithBannerVersion(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url)) return string.Empty;
+        return url.Contains('?') ? $"{url}&v={bannerVer}" : $"{url}?v={bannerVer}";
+    }
+    var sliderImages = new List<string>();
+    sliderImages.Add(WithBannerVersion(bannerImages.Last()));
+    sliderImages.AddRange(bannerImages.Select(WithBannerVersion));
+    sliderImages.Add(WithBannerVersion(bannerImages.First()));
 }
 
 <header class="header">
@@ -35,6 +55,17 @@
         <a href="#" class="header_logoLink no_link">
             <img class="header_logo" src="~/assets/img/logo/Logo_HX.png">
         </a>
+        <div class="hx-mobile-lang-center notranslate" role="group" aria-label="Chọn ngôn ngữ">
+            <button class="lang-flag" data-lang="vi" title="Tiếng Việt" aria-label="Tiếng Việt">
+                <img src="~/assets/img/language/vietnam.png" class="flag_1" />
+            </button>
+            <button class="lang-flag" data-lang="en" title="English" aria-label="English">
+                <img src="~/assets/img/language/united-kingdom.png" class="flag_1" />
+            </button>
+            <button class="lang-flag" data-lang="ko" title="한국어" aria-label="Korean">
+                <img src="~/assets/img/language/ko.png" class="flag_1" />
+            </button>
+        </div>
 
         <div class="header_mobileWrap">
             <div title="Giỏ hàng" class="icon_cartWrap">
@@ -61,7 +92,6 @@
             <div class="menu_nav--btnClose">
                 <button id="btn_close" class="menu_nav--close">✕</button>
             </div>
-
             <div class="header_nav">
                 <ul class="header_navList no_list">
                     <li class="header_navList--item">
@@ -70,9 +100,12 @@
                     <li class="header_navList--item">
                         <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
                     </li>
-                    <li class="header_navList--item">
-                        <a href="#featured" class="header_navList--link no_link">Nổi bật</a>
-                    </li>
+                    @if (homeContent.ShowFeaturedSection)
+                    {
+                        <li class="header_navList--item">
+                            <a href="#featured" class="header_navList--link no_link">Nổi bật</a>
+                        </li>
+                    }
                     <li class="header_navList--item">
                         <a asp-controller="Store" asp-action="TrackOrder" class="header_navList--link no_link">Tra cứu đơn hàng</a>
                     </li>
@@ -133,9 +166,12 @@
                             <a asp-controller="Store" asp-action="Products" class="header_navList--link no_link">Sản phẩm</a>
                         </li>
 
-                        <li class="header_navList--item">
-                            <a href="#featured" class="header_navList--link no_link">Nổi bật</a>
-                        </li>
+                        @if (homeContent.ShowFeaturedSection)
+                        {
+                            <li class="header_navList--item">
+                                <a href="#featured" class="header_navList--link no_link">Nổi bật</a>
+                            </li>
+                        }
                         <li class="header_navList--item">
                             <a asp-controller="Store" asp-action="TrackOrder" class="header_navList--link no_link">Tra cứu đơn hàng</a>
                         </li>
@@ -173,23 +209,21 @@
             </div>
         </div>
 
-        <input type="radio" name="slider_check" id="s1" checked>
-        <input type="radio" name="slider_check" id="s2">
-        <input type="radio" name="slider_check" id="s3">
-        <input type="radio" name="slider_check" id="s4">
+        @for (var i = 0; i < bannerImages.Count; i++)
+        {
+            <input type="radio" name="slider_check" id="s@(i + 1)" @(i == 0 ? "checked" : "")>
+        }
         <div class="slider_item">
-            <img src="~/assets/img/banner/banner.jpg" alt="img_slide4">
-            <img src="~/assets/img/banner/banner.jpg" alt="img_slide1">
-            <img src="~/assets/img/banner/banner.jpg">
-            <img src="~/assets/img/banner/banner.jpg">
-            <img src="~/assets/img/banner/banner.jpg">
-            <img src="~/assets/img/banner/banner.jpg">
+            @for (var i = 0; i < sliderImages.Count; i++)
+            {
+                <img src="@sliderImages[i]" alt="banner-@(i + 1)">
+            }
         </div>
         <div class="slider_navigation">
-            <label for="s1"></label>
-            <label for="s2"></label>
-            <label for="s3"></label>
-            <label for="s4"></label>
+            @for (var i = 0; i < bannerImages.Count; i++)
+            {
+                <label for="s@(i + 1)"></label>
+            }
         </div>
     </div>
 </header>

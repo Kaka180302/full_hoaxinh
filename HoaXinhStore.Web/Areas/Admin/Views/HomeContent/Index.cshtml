@@ -1,0 +1,398 @@
+@model HoaXinhStore.Web.ViewModels.Admin.HomeContentEditViewModel
+@{
+    ViewData["Title"] = "Cấu hình trang chủ";
+    var policyOptions = (Model.PolicyItems ?? new List<HoaXinhStore.Web.ViewModels.Admin.PolicyEditViewModel>())
+        .Where(p => !string.IsNullOrWhiteSpace(p.Key))
+        .Select(p => new { p.Key, Title = string.IsNullOrWhiteSpace(p.Title) ? p.Key : p.Title })
+        .ToList();
+}
+
+<h2 class="mb-3">Cấu hình trang chủ</h2>
+
+@if (!string.IsNullOrWhiteSpace(Model.Message))
+{
+    <div class="alert alert-success">@Model.Message</div>
+}
+
+<form asp-action="Save" method="post" enctype="multipart/form-data" class="card p-3" id="homeContentForm">
+    @Html.AntiForgeryToken()
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+    <input type="hidden" asp-for="FeaturedLimit" />
+    <input type="hidden" asp-for="CategorySectionProductLimit" />
+
+    <h5 class="mb-3">1) Banner</h5>
+    <div class="row g-3">
+        <div class="col-12">
+            <label class="form-label">Upload banner (nhiều ảnh)</label>
+            <input type="file" class="form-control" name="BannerFiles" id="bannerFilesInput" multiple accept="image/*" />
+            <div class="form-text">Bạn có thể kéo thả hoặc dùng nút lên/xuống để chỉnh thứ tự hiển thị.</div>
+        </div>
+        <div class="col-12">
+            <div id="bannerPreviewList" class="d-grid gap-2">
+                @for (var i = 0; i < Model.BannerImages.Count; i++)
+                {
+                    <div class="border rounded p-2 d-flex align-items-center gap-2 home-banner-item" data-banner-item>
+                        <input type="hidden" name="ExistingBannerImages" value="@Model.BannerImages[i]" />
+                        <img src="@Model.BannerImages[i]" alt="banner" style="width:110px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #dbe5f3;" />
+                        <div class="small text-break flex-grow-1">@Model.BannerImages[i]</div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-move-up>↑</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" data-move-down>↓</button>
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-remove-item>Xóa</button>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <hr />
+    <h5 class="mb-3">2) Section trang chủ</h5>
+    <div class="table-responsive mt-3">
+        <table class="table table-bordered align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Section</th>
+                    <th style="width:120px;">Thứ tự</th>
+                    <th style="width:140px;">Hiển thị</th>
+                    <th style="width:140px;">Dạng Slide</th>
+                    <th style="width:180px;">Auto Slide (nhảy 1 card)</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (var i = 0; i < Model.Sections.Count; i++)
+                {
+                    <tr>
+                        <td>
+                            <input type="hidden" name="Sections[@i].Key" value="@Model.Sections[i].Key" />
+                            <input type="hidden" name="Sections[@i].Label" value="@Model.Sections[i].Label" />
+                            <strong>@Model.Sections[i].Label</strong>
+                        </td>
+                        <td><input class="form-control" type="number" name="Sections[@i].SortOrder" value="@Model.Sections[i].SortOrder" min="1" max="20" /></td>
+                        <td class="text-center"><input class="form-check-input" type="checkbox" name="Sections[@i].IsVisible" value="true" @(Model.Sections[i].IsVisible ? "checked" : "") /></td>
+                        <td class="text-center"><input class="form-check-input js-section-slider" type="checkbox" name="Sections[@i].IsSlider" value="true" data-index="@i" @(Model.Sections[i].IsSlider ? "checked" : "") /></td>
+                        <td class="text-center"><input class="form-check-input js-section-auto" type="checkbox" name="Sections[@i].AutoSlide" value="true" data-index="@i" @(Model.Sections[i].AutoSlide ? "checked" : "") /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <hr />
+    <div class="d-flex align-items-center justify-content-between gap-2 mb-3">
+        <h5 class="mb-0">3) Footer (quản lý cột + giá trị)</h5>
+        <button type="button" class="btn btn-sm btn-primary" id="btnAddFooterColumn">+ Thêm cột</button>
+    </div>
+    <div id="footerColumnsContainer" class="d-grid gap-3">
+        @for (var c = 0; c < Model.FooterColumns.Count; c++)
+        {
+            <div class="border rounded p-3" data-footer-column>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <strong class="flex-grow-1">Cột footer</strong>
+                    <button type="button" class="btn btn-sm btn-outline-danger" data-remove-column>Xóa cột</button>
+                </div>
+                <div class="mb-2">
+                    <label class="form-label">Tên cột</label>
+                    <input class="form-control" data-field="column-title" name="FooterColumns[@c].Title" value="@Model.FooterColumns[c].Title" placeholder="Ví dụ: Liên hệ / Chính sách / Giờ làm việc" />
+                </div>
+                <div class="d-grid gap-2" data-footer-items>
+                    @for (var i = 0; i < Model.FooterColumns[c].Items.Count; i++)
+                    {
+                        var item = Model.FooterColumns[c].Items[i];
+                        var itemType = string.IsNullOrWhiteSpace(item.ItemType) ? "text" : item.ItemType.Trim().ToLowerInvariant();
+                        <div class="border rounded p-2" data-footer-item>
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label">Loại</label>
+                                    <select class="form-select" data-field="item-type" name="FooterColumns[@c].Items[@i].ItemType">
+                                        <option value="text" selected="@(itemType == "text")">Text</option>
+                                        <option value="link" selected="@(itemType == "link")">Link</option>
+                                        <option value="policy" selected="@(itemType == "policy")">Chính sách</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Nội dung hiển thị</label>
+                                    <input class="form-control" data-field="item-label" name="FooterColumns[@c].Items[@i].Label" value="@item.Label" placeholder="Ví dụ: Hướng dẫn mua hàng" />
+                                </div>
+                                <div class="col-md-4" data-field-wrap="item-url" style="display:@(itemType == "link" ? "block" : "none");">
+                                    <label class="form-label">Link</label>
+                                    <input class="form-control" data-field="item-url" name="FooterColumns[@c].Items[@i].Url" value="@item.Url" placeholder="/Store/Products hoặc https://..." />
+                                </div>
+                                <div class="col-md-4" data-field-wrap="item-policy" style="display:@(itemType == "policy" ? "block" : "none");">
+                                    <label class="form-label">Chính sách</label>
+                                    <select class="form-select" data-field="item-policy" name="FooterColumns[@c].Items[@i].PolicyKey">
+                                        <option value="">-- Chọn chính sách --</option>
+                                        @foreach (var opt in policyOptions)
+                                        {
+                                            <option value="@opt.Key" data-title="@opt.Title" selected="@(string.Equals(item.PolicyKey, opt.Key, StringComparison.OrdinalIgnoreCase))">@opt.Title (@opt.Key)</option>
+                                        }
+                                    </select>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-sm btn-outline-danger w-100" data-remove-item>Xóa</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+                <div class="mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-primary" data-add-item>+ Thêm giá trị</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Lưu cấu hình</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Tải lại</a>
+    </div>
+</form>
+
+<template id="tplFooterColumn">
+    <div class="border rounded p-3" data-footer-column>
+        <div class="d-flex align-items-center gap-2 mb-2">
+            <strong class="flex-grow-1">Cột footer</strong>
+            <button type="button" class="btn btn-sm btn-outline-danger" data-remove-column>Xóa cột</button>
+        </div>
+        <div class="mb-2">
+            <label class="form-label">Tên cột</label>
+            <input class="form-control" data-field="column-title" placeholder="Ví dụ: Liên hệ / Chính sách / Giờ làm việc" />
+        </div>
+        <div class="d-grid gap-2" data-footer-items></div>
+        <div class="mt-2">
+            <button type="button" class="btn btn-sm btn-outline-primary" data-add-item>+ Thêm giá trị</button>
+        </div>
+    </div>
+</template>
+
+<template id="tplFooterItem">
+    <div class="border rounded p-2" data-footer-item>
+        <div class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Loại</label>
+                <select class="form-select" data-field="item-type">
+                    <option value="text" selected>Text</option>
+                    <option value="link">Link</option>
+                    <option value="policy">Chính sách</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Nội dung hiển thị</label>
+                <input class="form-control" data-field="item-label" placeholder="Ví dụ: Hướng dẫn mua hàng" />
+            </div>
+            <div class="col-md-4" data-field-wrap="item-url" style="display:none;">
+                <label class="form-label">Link</label>
+                <input class="form-control" data-field="item-url" placeholder="/Store/Products hoặc https://..." />
+            </div>
+            <div class="col-md-4" data-field-wrap="item-policy" style="display:none;">
+                <label class="form-label">Chính sách</label>
+                <select class="form-select" data-field="item-policy">
+                    <option value="">-- Chọn chính sách --</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger w-100" data-remove-item>Xóa</button>
+            </div>
+        </div>
+    </div>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const container = document.getElementById("bannerPreviewList");
+            const input = document.getElementById("bannerFilesInput");
+            if (!container || !input) return;
+            const selectedFiles = new Map();
+
+            const syncInputFiles = () => {
+                const dt = new DataTransfer();
+                Array.from(selectedFiles.values()).forEach(file => dt.items.add(file));
+                input.files = dt.files;
+            };
+
+            const createBannerRowActions = (row) => {
+                row.insertAdjacentHTML("beforeend", '<button type="button" class="btn btn-sm btn-outline-secondary" data-move-up>↑</button><button type="button" class="btn btn-sm btn-outline-secondary" data-move-down>↓</button><button type="button" class="btn btn-sm btn-outline-danger" data-remove-item>Xóa</button>');
+            };
+
+            container.addEventListener("click", (e) => {
+                const btn = e.target.closest("button");
+                if (!btn) return;
+                const item = btn.closest("[data-banner-item]");
+                if (!item) return;
+
+                if (btn.hasAttribute("data-remove-item")) {
+                    const newFileId = item.getAttribute("data-new-file-id");
+                    if (newFileId) {
+                        selectedFiles.delete(newFileId);
+                        syncInputFiles();
+                    }
+                    item.remove();
+                    return;
+                }
+                if (btn.hasAttribute("data-move-up")) {
+                    const prev = item.previousElementSibling;
+                    if (prev) container.insertBefore(item, prev);
+                    return;
+                }
+                if (btn.hasAttribute("data-move-down")) {
+                    const next = item.nextElementSibling;
+                    if (next) container.insertBefore(next, item);
+                }
+            });
+
+            input.addEventListener("change", () => {
+                const files = Array.from(input.files || []);
+                files.forEach(file => {
+                    const id = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${file.name}`;
+                    selectedFiles.set(id, file);
+
+                    const row = document.createElement("div");
+                    row.className = "border rounded p-2 d-flex align-items-center gap-2 home-banner-item";
+                    row.setAttribute("data-banner-item", "1");
+                    row.setAttribute("data-new-file-id", id);
+
+                    const img = document.createElement("img");
+                    img.src = URL.createObjectURL(file);
+                    img.alt = "banner";
+                    img.style.cssText = "width:110px;height:64px;object-fit:cover;border-radius:6px;border:1px solid #dbe5f3;";
+                    row.appendChild(img);
+
+                    const text = document.createElement("div");
+                    text.className = "small text-break flex-grow-1";
+                    text.textContent = file.name;
+                    row.appendChild(text);
+
+                    createBannerRowActions(row);
+                    container.appendChild(row);
+                });
+                syncInputFiles();
+            });
+        })();
+
+        (() => {
+            const form = document.getElementById("homeContentForm");
+            const footerContainer = document.getElementById("footerColumnsContainer");
+            const addColBtn = document.getElementById("btnAddFooterColumn");
+            const tplCol = document.getElementById("tplFooterColumn");
+            const tplItem = document.getElementById("tplFooterItem");
+            if (!form || !footerContainer || !addColBtn || !tplCol || !tplItem) return;
+
+            const ensurePolicyOptions = () => {
+                const staticOptions = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(policyOptions));
+                footerContainer.querySelectorAll('[data-field="item-policy"]').forEach((select) => {
+                    const current = select.value;
+                    select.innerHTML = '<option value="">-- Chọn chính sách --</option>';
+                    staticOptions.forEach(o => {
+                        const op = document.createElement("option");
+                        op.value = o.Key;
+                        op.dataset.title = o.Title;
+                        op.textContent = `${o.Title} (${o.Key})`;
+                        select.appendChild(op);
+                    });
+                    if (current) select.value = current;
+                });
+            };
+
+            const applyFooterItemState = (itemEl) => {
+                const type = itemEl.querySelector('[data-field="item-type"]')?.value || "text";
+                const urlWrap = itemEl.querySelector('[data-field-wrap="item-url"]');
+                const policyWrap = itemEl.querySelector('[data-field-wrap="item-policy"]');
+                if (urlWrap) urlWrap.style.display = type === "link" ? "block" : "none";
+                if (policyWrap) policyWrap.style.display = type === "policy" ? "block" : "none";
+            };
+
+            const createFooterItem = () => {
+                const node = tplItem.content.firstElementChild.cloneNode(true);
+                applyFooterItemState(node);
+                return node;
+            };
+
+            const createFooterColumn = () => {
+                const node = tplCol.content.firstElementChild.cloneNode(true);
+                node.querySelector('[data-footer-items]').appendChild(createFooterItem());
+                return node;
+            };
+
+            addColBtn.addEventListener("click", () => {
+                footerContainer.appendChild(createFooterColumn());
+                ensurePolicyOptions();
+            });
+
+            footerContainer.addEventListener("click", (e) => {
+                const btn = e.target.closest("button");
+                if (!btn) return;
+
+                if (btn.hasAttribute("data-remove-column")) {
+                    btn.closest('[data-footer-column]')?.remove();
+                    return;
+                }
+                if (btn.hasAttribute("data-add-item")) {
+                    const list = btn.closest('[data-footer-column]')?.querySelector('[data-footer-items]');
+                    if (!list) return;
+                    list.appendChild(createFooterItem());
+                    ensurePolicyOptions();
+                    return;
+                }
+                if (btn.hasAttribute("data-remove-item")) {
+                    btn.closest('[data-footer-item]')?.remove();
+                }
+            });
+
+            footerContainer.addEventListener("change", (e) => {
+                const el = e.target;
+                if (!(el instanceof HTMLElement)) return;
+                if (el.matches('[data-field="item-type"]')) {
+                    const item = el.closest('[data-footer-item]');
+                    if (item) applyFooterItemState(item);
+                }
+                if (el.matches('[data-field="item-policy"]')) {
+                    const item = el.closest('[data-footer-item]');
+                    if (!item) return;
+                    const labelInput = item.querySelector('[data-field="item-label"]');
+                    const selected = el.options[el.selectedIndex];
+                    if (labelInput && selected && !labelInput.value.trim()) {
+                        labelInput.value = (selected.dataset.title || "").trim();
+                    }
+                }
+            });
+
+            form.addEventListener("submit", () => {
+                const columns = Array.from(footerContainer.querySelectorAll('[data-footer-column]'));
+                columns.forEach((col, cIdx) => {
+                    const title = col.querySelector('[data-field="column-title"]');
+                    if (title) title.name = `FooterColumns[${cIdx}].Title`;
+                    const items = Array.from(col.querySelectorAll('[data-footer-item]'));
+                    items.forEach((item, iIdx) => {
+                        const type = item.querySelector('[data-field="item-type"]');
+                        const label = item.querySelector('[data-field="item-label"]');
+                        const url = item.querySelector('[data-field="item-url"]');
+                        const policy = item.querySelector('[data-field="item-policy"]');
+                        if (type) type.name = `FooterColumns[${cIdx}].Items[${iIdx}].ItemType`;
+                        if (label) label.name = `FooterColumns[${cIdx}].Items[${iIdx}].Label`;
+                        if (url) url.name = `FooterColumns[${cIdx}].Items[${iIdx}].Url`;
+                        if (policy) policy.name = `FooterColumns[${cIdx}].Items[${iIdx}].PolicyKey`;
+                    });
+                });
+            });
+
+            ensurePolicyOptions();
+            footerContainer.querySelectorAll('[data-footer-item]').forEach(applyFooterItemState);
+        })();
+
+        (() => {
+            const sliders = document.querySelectorAll(".js-section-slider");
+            const autos = document.querySelectorAll(".js-section-auto");
+            const sync = () => {
+                autos.forEach((auto) => {
+                    const idx = auto.getAttribute("data-index");
+                    const slider = document.querySelector(`.js-section-slider[data-index="${idx}"]`);
+                    if (!slider) return;
+                    auto.disabled = !slider.checked;
+                    if (!slider.checked) auto.checked = false;
+                });
+            };
+            sliders.forEach(s => s.addEventListener("change", sync));
+            sync();
+        })();
+    </script>
+}

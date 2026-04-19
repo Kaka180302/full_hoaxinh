@@ -1,6 +1,8 @@
 using HoaXinhStore.Web.Data;
 using HoaXinhStore.Web.Options;
+using HoaXinhStore.Web.Services.Shipping;
 using HoaXinhStore.Web.Services.Inventory;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,6 +14,7 @@ namespace HoaXinhStore.Web.Controllers.Api;
 public class ShippingWebhookController(
     AppDbContext db,
     IInventoryService inventoryService,
+    IShippingSettingsService shippingSettingsService,
     IOptions<ShippingIntegrationOptions> shippingOptions) : ControllerBase
 {
     private readonly ShippingIntegrationOptions _shipping = shippingOptions.Value;
@@ -19,9 +22,18 @@ public class ShippingWebhookController(
     [HttpPost("webhook")]
     public async Task<IActionResult> Webhook([FromBody] ShippingWebhookRequest request)
     {
+        var dynamicSettings = await shippingSettingsService.GetAsync();
+        var expectedKey = !string.IsNullOrWhiteSpace(dynamicSettings.WebhookKey)
+            ? dynamicSettings.WebhookKey
+            : _shipping.WebhookKey;
         var providedKey = Request.Headers["X-Shipping-Key"].ToString();
-        if (string.IsNullOrWhiteSpace(_shipping.WebhookKey) ||
-            !string.Equals(providedKey, _shipping.WebhookKey, StringComparison.Ordinal))
+        if (!dynamicSettings.GhnEnabled)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = "GHN webhook is disabled" });
+        }
+
+        if (string.IsNullOrWhiteSpace(expectedKey) ||
+            !string.Equals(providedKey, expectedKey, StringComparison.Ordinal))
         {
             return Unauthorized(new { message = "Invalid webhook key" });
         }
@@ -42,8 +54,22 @@ public class ShippingWebhookController(
         }
 
         var fromStatus = order.OrderStatus;
-        order.OrderStatus = MapShippingStatus(request.Status, order.OrderStatus);
-        order.Note = BuildShippingNote(request.Carrier, request.TrackingCode, request.Note);
+        if (dynamicSettings.AutoUpdateOrderStatus)
+        {
+            order.OrderStatus = MapShippingStatus(request.Status, order.OrderStatus);
+        }
+        order.Note = BuildShippingNote(
+            string.IsNullOrWhiteSpace(request.Carrier) ? dynamicSettings.DefaultCarrierDisplayName : request.Carrier,
+            request.TrackingCode,
+            request.Note);
+        db.OrderTimelines.Add(new Entities.OrderTimeline
+        {
+            Order = order,
+            Action = "ShippingWebhook",
+            FromStatus = fromStatus ?? string.Empty,
+            ToStatus = order.OrderStatus ?? string.Empty,
+            Note = order.Note ?? string.Empty
+        });
 
         if (!IsFulfillmentStatus(fromStatus) && IsFulfillmentStatus(order.OrderStatus))
         {
@@ -54,7 +80,8 @@ public class ShippingWebhookController(
             await inventoryService.ReleaseOrderReservationsAsync(order);
         }
 
-        if (string.Equals(order.OrderStatus, "Completed", StringComparison.OrdinalIgnoreCase)
+        if (dynamicSettings.AutoMarkCodPaidWhenDelivered
+            && string.Equals(order.OrderStatus, "Completed", StringComparison.OrdinalIgnoreCase)
             && string.Equals(order.PaymentMethod.ToString(), "COD", StringComparison.OrdinalIgnoreCase)
             && !string.Equals(order.PaymentStatus, "Paid", StringComparison.OrdinalIgnoreCase))
         {

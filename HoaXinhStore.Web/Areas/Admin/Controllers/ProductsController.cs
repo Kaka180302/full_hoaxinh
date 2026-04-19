@@ -416,14 +416,38 @@ public class ProductsController(AppDbContext db, IWebHostEnvironment env, IHubCo
             return RedirectToAction(nameof(Index));
         }
 
-        var preOrders = await db.PreOrderRequests.Where(x => x.ProductId == id).ToListAsync();
-        if (preOrders.Count > 0)
+        await using var tx = await db.Database.BeginTransactionAsync();
+        try
         {
-            db.PreOrderRequests.RemoveRange(preOrders);
+            var cartItems = await db.CartItems.Where(x => x.ProductId == id).ToListAsync();
+            if (cartItems.Count > 0)
+            {
+                db.CartItems.RemoveRange(cartItems);
+            }
+
+            var preOrders = await db.PreOrderRequests.Where(x => x.ProductId == id).ToListAsync();
+            if (preOrders.Count > 0)
+            {
+                db.PreOrderRequests.RemoveRange(preOrders);
+            }
+
+            await db.Database.ExecuteSqlInterpolatedAsync($"DELETE FROM [ProductImages] WHERE [ProductId] = {id}");
+
+            if (entity.Variants.Count > 0)
+            {
+                db.ProductVariants.RemoveRange(entity.Variants);
+            }
+
+            db.Products.Remove(entity);
+            await db.SaveChangesAsync();
+            await tx.CommitAsync();
+        }
+        catch
+        {
+            await tx.RollbackAsync();
+            throw;
         }
 
-        db.Products.Remove(entity);
-        await db.SaveChangesAsync();
         await hub.Clients.All.SendAsync("storefront-updated", new { type = "product", id, at = DateTimeOffset.UtcNow });
         TempData["ProductAdminMessage"] = "Đã xóa sản phẩm thành công.";
         TempData["ProductAdminStatus"] = "success";

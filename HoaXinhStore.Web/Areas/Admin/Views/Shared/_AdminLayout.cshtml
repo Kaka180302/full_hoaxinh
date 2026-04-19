@@ -16,10 +16,14 @@
     <nav class="navbar navbar-expand-lg admin-topbar">
         <div class="container-fluid">
             <a class="navbar-brand fw-semibold d-flex align-items-center gap-2" asp-area="Admin" asp-controller="Dashboard" asp-action="Index">
-                <img src="~/assets/img/logo/logoHX.png" alt="Hoa Xinh" style="width:34px;height:34px;object-fit:contain;border-radius:8px;background:#fff;" />
+                <img src="~/assets/img/logo/logoHX.png" alt="Hoa Xinh" style="width:34px;height:34px;object-fit:contain;" />
                 <span>HoaXinh Admin</span>
             </a>
-            <div class="d-flex text-white gap-3 align-items-center flex-wrap">
+            <button class="navbar-toggler border-0 text-white" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar" aria-controls="adminNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="adminNavbar">
+            <div class="d-flex text-white gap-3 align-items-center flex-wrap admin-top-links">
                 <a class="text-decoration-none admin-nav-link" asp-area="Admin" asp-controller="Dashboard" asp-action="Index"><i class="bi bi-bar-chart-line-fill me-1"></i>Tổng quan</a>
                 <div class="dropdown">
                     <a class="text-decoration-none admin-nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -33,12 +37,23 @@
                     </ul>
                 </div>
                 <a class="text-decoration-none admin-nav-link" asp-area="Admin" asp-controller="Orders" asp-action="Index"><i class="bi bi-receipt-cutoff me-1"></i>Đơn hàng</a>
-                <a class="text-decoration-none admin-nav-link" asp-area="Admin" asp-controller="Policies" asp-action="Index"><i class="bi bi-shield-check me-1"></i>Chính sách</a>
+                <div class="dropdown">
+                    <a class="text-decoration-none admin-nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-gear me-1"></i>Hệ thống
+                    </a>
+                    <ul class="dropdown-menu shadow-sm">
+                        <li><a class="dropdown-item" asp-area="Admin" asp-controller="HomeContent" asp-action="Index"><i class="bi bi-house-gear me-2"></i>Cấu hình trang chủ</a></li>
+                        <li><a class="dropdown-item" asp-area="Admin" asp-controller="Policies" asp-action="Index"><i class="bi bi-shield-check me-2"></i>Chính sách</a></li>
+                        <li><a class="dropdown-item" asp-area="Admin" asp-controller="PaymentMethods" asp-action="Index"><i class="bi bi-credit-card-2-front me-2"></i>Phương thức thanh toán</a></li>
+                        <li><a class="dropdown-item" asp-area="Admin" asp-controller="ShippingSettings" asp-action="Index"><i class="bi bi-truck me-2"></i>GHN Tracking</a></li>
+                    </ul>
+                </div>
                 <a class="text-decoration-none admin-nav-link" asp-area="Admin" asp-controller="Account" asp-action="Sessions"><i class="bi bi-clock-history me-1"></i>Lịch sử đăng nhập</a>
                 <form asp-area="Admin" asp-controller="Account" asp-action="Logout" method="post">
                     @Html.AntiForgeryToken()
                     <button type="submit" class="btn btn-sm btn-outline-light">Đăng xuất</button>
                 </form>
+            </div>
             </div>
         </div>
     </nav>

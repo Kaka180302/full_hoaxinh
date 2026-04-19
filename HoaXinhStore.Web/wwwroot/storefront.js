@@ -3,6 +3,7 @@
     let hxModalDismissHandler = null;
     let cartCache = [];
     let cartInitPromise = null;
+    let cartToastTimer = null;
 
     function readCart() { return Array.isArray(cartCache) ? cartCache : []; }
 
@@ -72,6 +73,25 @@
         return Number(value || 0).toLocaleString("vi-VN") + " đ";
     }
 
+    function slugifyProductName(value) {
+        return String(value || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "")
+            .replace(/-{2,}/g, "-");
+    }
+
+    function getProductDetailUrl(product) {
+        const slugRaw = String(product?.productSlug || product?.slug || "").trim();
+        const slug = slugRaw || slugifyProductName(product?.name || "");
+        if (slug) {
+            return `/Store/ProductDetail/${encodeURIComponent(slug)}`;
+        }
+        return `/Store/ProductDetail/${Number(product?.id || 0)}`;
+    }
+
     function getEffectivePrice(product) {
         return Number(product.salePrice ?? product.price ?? 0);
     }
@@ -119,6 +139,23 @@
         modal.style.display = "flex";
         requestAnimationFrame(() => modal.classList.add("is-open"));
         body.querySelector("#hxPopupOkBtn")?.addEventListener("click", () => closeModal({ reason: "ack" }));
+    }
+
+    function showCheckoutStatusPopupFromWindow() {
+        const message = String(window.__checkoutMessage || "").trim();
+        if (!message) return;
+        const statusRaw = String(window.__checkoutStatus || "info").toLowerCase();
+        const status = statusRaw === "cancelled" ? "error" : statusRaw;
+        const title = statusRaw === "success"
+            ? "Thanh toán thành công"
+            : statusRaw === "cancelled"
+                ? "Bạn đã hủy thanh toán"
+                : statusRaw === "error"
+                    ? "Thanh toán thất bại"
+                    : "Thông báo thanh toán";
+
+        showNoticeModal(message, title, status);
+        window.__checkoutMessage = "";
     }
 
     function showQrPayPopup(onConfirmPaid, onCancelled) {
@@ -292,7 +329,7 @@
         const nextQty = Number(found?.qty || 0) + Math.max(1, Number(qty || 1));
         const stockDecision = handleStockOverflow({ ...product, stock, qty: Number(found?.qty || 0) }, nextQty);
         if (stockDecision.action === "stop" || stockDecision.action === "cancel") {
-            return;
+            return false;
         }
 
         if (found) {
@@ -327,6 +364,7 @@
         writeCart(cart);
         updateCartBadge();
         renderMiniCart();
+        return true;
     }
 
     function getVisibleCartTarget() {
@@ -382,9 +420,84 @@
         setTimeout(() => clone.remove(), 650);
     }
 
+    function ensureCartToast() {
+        let toast = document.getElementById("hxCartToast");
+        if (toast) return toast;
+        toast = document.createElement("div");
+        toast.id = "hxCartToast";
+        toast.className = "hx-cart-toast";
+        toast.innerHTML = `
+            <div class="hx-cart-toast-icon"><i class="fa-solid fa-circle-check"></i></div>
+            <div class="hx-cart-toast-text">
+                <strong>Đã thêm vào giỏ hàng</strong>
+                <span id="hxCartToastLine"></span>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        return toast;
+    }
+
+    function placeCartToast(toast, fromButton = null) {
+        toast.style.left = "";
+        toast.style.right = "";
+        toast.style.top = "";
+        toast.style.bottom = "";
+        toast.classList.remove("is-center", "is-anchor");
+
+        const isMobile = window.matchMedia("(max-width: 992px)").matches;
+        if (isMobile || !fromButton) {
+            toast.classList.add("is-center");
+            return;
+        }
+
+        const rect = fromButton.getBoundingClientRect();
+        if (!rect || (!rect.width && !rect.height)) {
+            toast.classList.add("is-center");
+            return;
+        }
+
+        const vw = window.innerWidth || document.documentElement.clientWidth || 1366;
+        const targetWidth = Math.min(380, Math.max(280, Math.floor(vw * 0.3)));
+        const margin = 12;
+        let left = rect.left + (rect.width / 2) - (targetWidth / 2);
+        left = Math.max(margin, Math.min(vw - targetWidth - margin, left));
+        const top = Math.max(margin, rect.top - 74);
+
+        toast.style.left = `${Math.round(left)}px`;
+        toast.style.top = `${Math.round(top)}px`;
+        toast.classList.add("is-anchor");
+    }
+
+    function showCartAddedToast(product, qty = 1, fromButton = null) {
+        const toast = ensureCartToast();
+        const line = toast.querySelector("#hxCartToastLine");
+        const productName = String(product?.name || "Sản phẩm");
+        const safeQty = Math.max(1, Number(qty || 1));
+        if (line) {
+            line.textContent = `${productName} · SL: ${safeQty}`;
+        }
+        placeCartToast(toast, fromButton);
+        toast.classList.remove("is-visible", "is-hiding");
+        void toast.offsetWidth;
+        toast.classList.add("is-visible");
+        if (cartToastTimer) window.clearTimeout(cartToastTimer);
+        cartToastTimer = window.setTimeout(() => {
+            toast.classList.add("is-hiding");
+            window.setTimeout(() => {
+                toast.classList.remove("is-visible", "is-hiding");
+            }, 320);
+        }, 2400);
+    }
+
+    function showAddToCartFeedback(product, qty = 1, fromButton = null) {
+        if (fromButton) animateFlyToCart(fromButton);
+        showCartAddedToast(product, qty, fromButton);
+    }
+
     function initFeaturedSlider() {
         const root = document.querySelector("[data-f5-slider]");
         if (!root) return;
+        const auto = root.closest("[data-home-slider]")?.getAttribute("data-auto") === "1";
         const windowEl = root.querySelector("[data-f5-viewport]");
         const track = root.querySelector("[data-f5-track]");
         const prev = root.querySelector("[data-f5-prev]");
@@ -450,6 +563,171 @@
         layoutCards();
         windowEl.scrollLeft = 0;
         apply();
+
+        let timer = null;
+        const moveNext = () => {
+            const step = cardStep();
+            if (!step) return;
+            const max = maxScroll();
+            let target = windowEl.scrollLeft + step;
+            if (target >= max - 1) target = 0;
+            windowEl.scrollTo({ left: target, behavior: "smooth" });
+        };
+        const startAuto = () => {
+            if (!auto || timer) return;
+            timer = window.setInterval(moveNext, 3200);
+        };
+        const stopAuto = () => {
+            if (!timer) return;
+            window.clearInterval(timer);
+            timer = null;
+        };
+        root.addEventListener("mouseenter", stopAuto);
+        root.addEventListener("mouseleave", startAuto);
+        root.addEventListener("touchstart", stopAuto, { passive: true });
+        root.addEventListener("touchend", startAuto, { passive: true });
+        startAuto();
+    }
+
+    function initHomeSectionSliders() {
+        document.querySelectorAll("[data-home-slider]").forEach((root) => {
+            const viewport = root.querySelector("[data-home-viewport]");
+            const track = root.querySelector("[data-home-track]");
+            const prev = root.querySelector("[data-home-prev]");
+            const next = root.querySelector("[data-home-next]");
+            if (!viewport || !track || !prev || !next) return;
+            const auto = root.getAttribute("data-auto") === "1";
+
+            const cards = () => [...track.querySelectorAll("[data-home-card]")];
+            const layout = () => {
+                const list = cards();
+                if (!list.length) return;
+                const w = window.innerWidth || 1200;
+                let visible = 4;
+                if (w <= 767) visible = 2;
+                else if (w <= 1199) visible = 3;
+                const gap = 12;
+                const cardWidth = Math.floor((viewport.clientWidth - gap * (visible - 1)) / visible);
+                list.forEach((card) => {
+                    card.style.flex = `0 0 ${cardWidth}px`;
+                    card.style.width = `${cardWidth}px`;
+                });
+                track.style.display = "flex";
+                track.style.gap = `${gap}px`;
+            };
+
+            const step = () => {
+                const first = cards()[0];
+                if (!first) return 0;
+                const gap = parseFloat(window.getComputedStyle(track).gap || "0") || 0;
+                return first.getBoundingClientRect().width + gap;
+            };
+            const maxScroll = () => Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+            const scrollByStep = (dir) => {
+                const s = step();
+                if (!s) return;
+                const max = maxScroll();
+                let target = viewport.scrollLeft + (dir * s);
+                if (target >= max - 1) target = 0;
+                if (target <= 0 && dir < 0) target = max;
+                viewport.scrollTo({ left: target, behavior: "smooth" });
+            };
+            const refreshNav = () => {
+                const show = maxScroll() > 0;
+                prev.style.display = show ? "inline-flex" : "none";
+                next.style.display = show ? "inline-flex" : "none";
+            };
+
+            prev.addEventListener("click", () => scrollByStep(-1));
+            next.addEventListener("click", () => scrollByStep(1));
+            window.addEventListener("resize", () => {
+                layout();
+                viewport.scrollLeft = 0;
+                refreshNav();
+            });
+
+            let timer = null;
+            const startAuto = () => {
+                if (!auto || timer) return;
+                timer = window.setInterval(() => scrollByStep(1), 3200);
+            };
+            const stopAuto = () => {
+                if (!timer) return;
+                window.clearInterval(timer);
+                timer = null;
+            };
+            root.addEventListener("mouseenter", stopAuto);
+            root.addEventListener("mouseleave", startAuto);
+            root.addEventListener("touchstart", stopAuto, { passive: true });
+            root.addEventListener("touchend", startAuto, { passive: true });
+
+            layout();
+            refreshNav();
+            startAuto();
+        });
+    }
+
+    function bindFooterAccordion() {
+        document.querySelectorAll(".footer_accBtn").forEach((btn) => {
+            if (btn.dataset.bound === "1") return;
+            btn.dataset.bound = "1";
+            btn.addEventListener("click", () => {
+                const item = btn.closest(".footer_accItem");
+                if (!item) return;
+                item.classList.toggle("active");
+            });
+        });
+    }
+
+    function initTopBannerSlider() {
+        const slider = document.querySelector(".slider");
+        const track = slider?.querySelector(".slider_item");
+        const dotInputs = slider ? [...slider.querySelectorAll('input[name="slider_check"]')] : [];
+        if (!slider || !track || dotInputs.length === 0) return;
+
+        const total = dotInputs.length;
+        let index = Math.max(1, dotInputs.findIndex((x) => x.checked) + 1 || 1);
+        let timer = null;
+
+        const render = (withAnim = true) => {
+            track.style.transition = withAnim ? "transform 0.6s ease" : "none";
+            track.style.transform = `translateX(-${index * 100}%)`;
+            const active = dotInputs[index - 1];
+            if (active) active.checked = true;
+        };
+
+        const start = () => {
+            if (timer) return;
+            timer = window.setInterval(() => {
+                index += 1;
+                render(true);
+                if (index > total) {
+                    window.setTimeout(() => {
+                        index = 1;
+                        render(false);
+                    }, 620);
+                }
+            }, 3000);
+        };
+
+        const stop = () => {
+            if (!timer) return;
+            window.clearInterval(timer);
+            timer = null;
+        };
+
+        dotInputs.forEach((input, i) => {
+            input.addEventListener("change", () => {
+                index = i + 1;
+                render(true);
+            });
+        });
+
+        slider.addEventListener("touchstart", stop, { passive: true });
+        slider.addEventListener("touchend", start, { passive: true });
+
+        render(false);
+        start();
     }
 
     function initHeaderScrollEffect() {
@@ -541,16 +819,16 @@
             return;
         }
 
-        const latestItems = cart.slice().reverse().slice(0, 3);
+        const latestItems = cart.slice().reverse();
         const html = `
             <div class="mini-cart-title">Sản phẩm mới thêm</div>
             ${latestItems.map(item => `
             <div class="mini-cart-item">
-                <a href="/Store/ProductDetail/${item.id}" class="mini-cart-thumb-wrap">
+                <a href="${getProductDetailUrl(item)}" class="mini-cart-thumb-wrap">
                     <img src="${item.image || '/assets/img/logo/hoa_xinh_group_fav.png'}" alt="">
                 </a>
                 <div class="mini-cart-meta">
-                    <a href="/Store/ProductDetail/${item.id}" class="mini-cart-name">${item.name || ''}</a>
+                    <a href="${getProductDetailUrl(item)}" class="mini-cart-name">${item.name || ''}</a>
                     <div class="mini-cart-price">${formatVnd(Number(item.price || 0) * Number(item.qty || 1))}</div>
                 </div>
             </div>
@@ -626,6 +904,14 @@
         if (refreshingMain) return;
         refreshingMain = true;
         try {
+            const path = (window.location.pathname || "").toLowerCase();
+            // Product detail has inline variant logic; replacing only <main> can drop runtime state.
+            // Force full reload there to keep variant rendering and selection consistent.
+            if (path.startsWith("/store/productdetail/")) {
+                window.location.reload();
+                return;
+            }
+
             const res = await fetch(window.location.href, { cache: "no-store", headers: { "X-Requested-With": "XMLHttpRequest" } });
             if (!res.ok) return;
             const html = await res.text();
@@ -669,9 +955,10 @@
     }
 
     function bindAddButtons() {
-        document.addEventListener("click", (e) => {
+        document.addEventListener("click", async (e) => {
             const btn = e.target.closest("[data-add-cart]");
             if (!btn) return;
+                e.preventDefault();
                 const product = {
                     id: btn.getAttribute("data-id"),
                     variantId: btn.getAttribute("data-variant-id") ? Number(btn.getAttribute("data-variant-id")) : null,
@@ -688,16 +975,18 @@
                         try { return JSON.parse(raw); } catch { return []; }
                     })()
                 };
-                addToCart(product, 1);
-                animateFlyToCart(btn);
+                const ok = await addToCart(product, 1);
+                if (ok) {
+                    showAddToCartFeedback(product, 1, btn);
+                }
             });
 
         document.addEventListener("click", (e) => {
             const btn = e.target.closest("[data-preorder-popup]");
             if (!btn) return;
             e.preventDefault();
-            const pathMatch = window.location.pathname.match(/\/Store\/ProductDetail\/(\d+)/i);
-            const fallbackProductId = pathMatch ? Number(pathMatch[1] || 0) : 0;
+            const detailSegment = (window.location.pathname || "").split("/").filter(Boolean).pop() || "";
+            const fallbackProductId = /^\d+$/.test(detailSegment) ? Number(detailSegment) : 0;
             const fallbackProductName =
                 document.querySelector(".product-luxe-info h1")?.textContent?.trim() || "";
             showPreOrderModal({
@@ -774,11 +1063,11 @@
                     </div>
                     <div class="cart-col cart-col-product">
                         <div class="cart-product">
-                            <a href="/Store/ProductDetail/${item.id}">
+                            <a href="${getProductDetailUrl(item)}">
                                 <img src="${image}" class="cart-page-img" alt="">
                             </a>
                             <div>
-                                <a class="name" href="/Store/ProductDetail/${item.id}">${item.name || ""}</a>
+                                <a class="name" href="${getProductDetailUrl(item)}">${item.name || ""}</a>
                             </div>
                         </div>
                     </div>
@@ -898,7 +1187,7 @@
         checkoutItems.innerHTML = selected.map((item) => `
             <div class="checkout-item">
                 <div>
-                    <a href="/Store/ProductDetail/${item.id}" class="name">${item.name || ""}</a>
+                    <a href="${getProductDetailUrl(item)}" class="name">${item.name || ""}</a>
                     <div class="qty">SL: ${Number(item.qty || 1)}${(item.variantName || item.unitName) ? ` • ${(item.variantName || item.unitName)}` : ""}</div>
                 </div>
                 <strong class="checkout-item-price">${formatVnd(Number(item.price || 0) * Number(item.qty || 1))}</strong>
@@ -1004,6 +1293,7 @@
 
     document.addEventListener("DOMContentLoaded", async () => {
         initHeaderScrollEffect();
+        initTopBannerSlider();
         await ensureCartReady();
         updateCartBadge();
         renderMiniCart();
@@ -1021,14 +1311,19 @@
             showNoticeModal,
             addToCart,
             flyToCart: animateFlyToCart,
+            showCartAddedToast,
+            showAddToCartFeedback,
             getCart: () => readCart(),
             syncCart: syncCartWithServer
         };
+        showCheckoutStatusPopupFromWindow();
         renderCartPage();
         renderCheckoutPage();
         bindMobileMenu();
         bindLegacyHeaderMenu();
         initFeaturedSlider();
+        initHomeSectionSliders();
+        bindFooterAccordion();
         bindDetailQtyDelegation();
         connectStorefrontHub();
 

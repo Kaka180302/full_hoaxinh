@@ -39,7 +39,8 @@
     </div>
     <div class="col-md-3"><button class="btn btn-outline-secondary w-100">Lọc</button></div>
 </form>
-<table class="table table-striped table-bordered bg-white">
+<div class="table-responsive admin-table-scroll">
+<table class="table table-striped table-bordered bg-white mb-0">
     <thead><tr><th>ID</th><th>Ảnh</th><th>SKU</th><th>Tên</th><th>Danh mục</th><th>Giá gốc</th><th>Giá KM</th><th>Tồn</th><th>Trạng thái</th><th></th></tr></thead>
     <tbody>
     @foreach (var p in Model)
@@ -102,6 +103,7 @@
     }
     </tbody>
 </table>
+</div>
 <nav>
     <ul class="pagination">
         @for (int i = 1; i <= totalPages; i++)

@@ -3,6 +3,18 @@
     Layout = null;
     var checkoutMessage = TempData["CheckoutMessage"] as string;
     var checkoutStatus = TempData["CheckoutStatus"] as string;
+    var homeContent = ViewBag.HomeContent as HoaXinhStore.Web.Services.HomeContent.HomeContentSettings
+        ?? new HoaXinhStore.Web.Services.HomeContent.HomeContentSettings();
+    var orderedSections = new[]
+    {
+        homeContent.FeaturedSection,
+        homeContent.CategorySection,
+        homeContent.BrandSection
+    }
+    .Where(s => s.IsVisible)
+    .OrderBy(s => s.SortOrder)
+    .ThenBy(s => s.Key)
+    .ToList();
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -20,7 +32,13 @@
         <partial name="Partials/_Header" model="Model" />
 
         <main class="hx-home2-main">
-            <section id="featured" class="hxs-f5-section">
+            @foreach (var section in orderedSections)
+            {
+                if (section.Key == "featured")
+                {
+                    if (homeContent.FeaturedSection.IsSlider)
+                    {
+            <section id="featured" class="hxs-f5-section" data-home-slider data-auto="@(homeContent.FeaturedSection.AutoSlide ? "1" : "0")">
                 <div class="hxs-f5-head">
                     <h2 class="hxs-f5-title">Sản phẩm nổi bật</h2>
                     <a href="/Store/Products?filterLabel=S%E1%BA%A3n%20ph%E1%BA%A9m%20n%E1%BB%95i%20b%E1%BA%ADt" class="hxs-f5-viewall">Xem tất cả</a>
@@ -44,11 +62,13 @@
                                 var cardPrice = cardDefaultVariant?.Price ?? p.Price;
                                 var cardSale = cardDefaultVariant?.SalePrice;
                                 var cardActive = cardSale ?? cardPrice;
+                                var cardVariantId = cardDefaultVariant?.Id ?? 0;
+                                var cardVariantName = cardDefaultVariant?.Name ?? string.Empty;
                                 <article class="hxs-f5-card" data-f5-card>
-                                    <a href="/Store/ProductDetail/@p.Id" class="hxs-f5-media">
+                                    <a href="/Store/ProductDetail/@p.ProductSlug" class="hxs-f5-media">
                                         <img src="@img" alt="@p.Name">
                                     </a>
-                                    <h3 class="hxs-f5-name"><a href="/Store/ProductDetail/@p.Id">@p.Name</a></h3>
+                                    <h3 class="hxs-f5-name"><a href="/Store/ProductDetail/@p.ProductSlug">@p.Name</a></h3>
                                     <div class="hxs-f5-price">
                                         <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0} đ", cardActive)</strong>
                                         @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
@@ -77,6 +97,10 @@
                                                 data-name="@p.Name"
                                                 data-price="@cardPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                                 data-sale-price="@(cardSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                data-variant-id="@(cardVariantId > 0 ? cardVariantId.ToString() : "")"
+                                                data-variant-name="@cardVariantName"
+                                                data-unit-name="@cardVariantName"
+                                                data-unit-factor="1"
                                                 data-stock="@Math.Max(0, p.StockQuantity)"
                                                 data-image="@img">
                                             <i class="fa-solid fa-cart-shopping"></i>
@@ -91,16 +115,97 @@
                     </button>
                 </div>
             </section>
+                    }
+                    else
+                    {
+                        <section id="featured" class="hx-home2-section">
+                            <div class="hx-home2-section-head">
+                                <h2>Sản phẩm nổi bật</h2>
+                                <a href="/Store/Products?filterLabel=S%E1%BA%A3n%20ph%E1%BA%A9m%20n%E1%BB%95i%20b%E1%BA%ADt" class="hx-home2-viewall">Xem tất cả</a>
+                            </div>
+                            <div class="hx-home2-product-grid">
+                                @foreach (var p in Model.FeaturedProducts)
+                                {
+                                    var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
+                                    var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+                                        .OrderByDescending(v => v.IsDefault)
+                                        .ThenBy(v => v.Id)
+                                        .FirstOrDefault();
+                                    var cardPrice = cardDefaultVariant?.Price ?? p.Price;
+                                    var cardSale = cardDefaultVariant?.SalePrice;
+                                    var cardActive = cardSale ?? cardPrice;
+                                    <article class="hx-home2-product-card">
+                                        <a href="/Store/ProductDetail/@p.ProductSlug" class="hx-home2-product-media">
+                                            <img src="@img" alt="@p.Name">
+                                        </a>
+                                        <h3><a href="/Store/ProductDetail/@p.ProductSlug">@p.Name</a></h3>
+                                        <div class="hx-home2-price">
+                                            <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardActive)</strong>
+                                            @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
+                                            {
+                                                <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardPrice)</span>
+                                            }
+                                        </div>
+                                    </article>
+                                }
+                            </div>
+                        </section>
+                    }
+                    continue;
+                }
 
-            @foreach (var catSection in Model.CategorySections)
-            {
+                if (section.Key == "category")
+                {
+                    foreach (var catSection in Model.CategorySections)
+                    {
                 <section id="cat-@catSection.Category.Slug" class="hx-home2-section">
                     <div class="hx-home2-section-head">
                         <h2>@catSection.Category.Name</h2>
                         <a href="/Store/Products?category=@catSection.Category.Slug&filterLabel=@Uri.EscapeDataString(catSection.Category.Name)" class="hx-home2-viewall">Xem tất cả</a>
                     </div>
+                    @if (homeContent.CategorySection.IsSlider)
+                    {
+                        <div class="hxs-f5-slider" data-home-slider data-auto="@(homeContent.CategorySection.AutoSlide ? "1" : "0")">
+                            <button type="button" class="hxs-f5-nav hxs-f5-prev" data-home-prev aria-label="Sản phẩm trước">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <div class="hxs-f5-viewport" data-home-viewport>
+                                <div class="hx-home2-product-grid hx-home2-product-grid--slider" data-home-track>
+                                    @foreach (var p in catSection.Products.Take(homeContent.CategorySectionProductLimit))
+                                    {
+                                        var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
+                                        var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
+                                            .OrderByDescending(v => v.IsDefault)
+                                            .ThenBy(v => v.Id)
+                                            .FirstOrDefault();
+                                        var cardPrice = cardDefaultVariant?.Price ?? p.Price;
+                                        var cardSale = cardDefaultVariant?.SalePrice;
+                                        var cardActive = cardSale ?? cardPrice;
+                                        <article class="hx-home2-product-card" data-home-card>
+                                            <a href="/Store/ProductDetail/@p.ProductSlug" class="hx-home2-product-media">
+                                                <img src="@img" alt="@p.Name">
+                                            </a>
+                                            <h3><a href="/Store/ProductDetail/@p.ProductSlug">@p.Name</a></h3>
+                                            <div class="hx-home2-price">
+                                                <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardActive)</strong>
+                                                @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
+                                                {
+                                                    <span>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardPrice)</span>
+                                                }
+                                            </div>
+                                        </article>
+                                    }
+                                </div>
+                            </div>
+                            <button type="button" class="hxs-f5-nav hxs-f5-next" data-home-next aria-label="Sản phẩm tiếp theo">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                    }
+                    else
+                    {
                     <div class="hx-home2-product-grid">
-                        @foreach (var p in catSection.Products.Take(5))
+                        @foreach (var p in catSection.Products.Take(homeContent.CategorySectionProductLimit))
                         {
                             var img = string.IsNullOrWhiteSpace(p.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : p.ImageUrl;
                             var cardDefaultVariant = (p.Variants ?? new List<HoaXinhStore.Web.ViewModels.StoreVariantViewModel>())
@@ -110,11 +215,13 @@
                             var cardPrice = cardDefaultVariant?.Price ?? p.Price;
                             var cardSale = cardDefaultVariant?.SalePrice;
                             var cardActive = cardSale ?? cardPrice;
+                            var cardVariantId = cardDefaultVariant?.Id ?? 0;
+                            var cardVariantName = cardDefaultVariant?.Name ?? string.Empty;
                             <article class="hx-home2-product-card">
-                                <a href="/Store/ProductDetail/@p.Id" class="hx-home2-product-media">
+                                <a href="/Store/ProductDetail/@p.ProductSlug" class="hx-home2-product-media">
                                     <img src="@img" alt="@p.Name">
                                 </a>
-                                <h3><a href="/Store/ProductDetail/@p.Id">@p.Name</a></h3>
+                                <h3><a href="/Store/ProductDetail/@p.ProductSlug">@p.Name</a></h3>
                                 <div class="hx-home2-price">
                                     <strong>@string.Format(System.Globalization.CultureInfo.GetCultureInfo("vi-VN"), "{0:N0}đ", cardActive)</strong>
                                     @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
@@ -143,6 +250,10 @@
                                             data-name="@p.Name"
                                             data-price="@cardPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                             data-sale-price="@(cardSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                            data-variant-id="@(cardVariantId > 0 ? cardVariantId.ToString() : "")"
+                                            data-variant-name="@cardVariantName"
+                                            data-unit-name="@cardVariantName"
+                                            data-unit-factor="1"
                                             data-stock="@Math.Max(0, p.StockQuantity)"
                                             data-image="@img">
                                         <i class="fa-solid fa-cart-shopping"></i>
@@ -151,28 +262,60 @@
                             </article>
                         }
                     </div>
+                    }
                 </section>
-            }
+                    }
+                    continue;
+                }
 
-            @if (Model.Brands.Any())
-            {
-                <section class="hx-home2-section">
-                    <div class="hx-home2-section-head">
-                        <h2>Thương hiệu</h2>
-                    </div>
-                    <div class="hx-home2-brand-grid">
-                        @foreach (var b in Model.Brands)
+                if (section.Key == "brand" && Model.Brands.Any())
+                {
+                    <section class="hx-home2-section">
+                        <div class="hx-home2-section-head">
+                            <h2>Thương hiệu</h2>
+                        </div>
+                        @if (homeContent.BrandSection.IsSlider)
                         {
-                            var brandImage = string.IsNullOrWhiteSpace(b.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : b.ImageUrl;
-                            <article class="hx-home2-brand-card">
-                                <a href="/Store/Products?brand=@Uri.EscapeDataString(b.Name)&filterLabel=@Uri.EscapeDataString("Thương hiệu: " + b.Name)" class="no_link">
-                                    <img src="@brandImage" alt="@b.Name" />
-                                    <h3>@b.Name</h3>
-                                </a>
-                            </article>
+                            <div class="hxs-f5-slider" data-home-slider data-auto="@(homeContent.BrandSection.AutoSlide ? "1" : "0")">
+                                <button type="button" class="hxs-f5-nav hxs-f5-prev" data-home-prev aria-label="Thương hiệu trước">
+                                    <i class="fa-solid fa-chevron-left"></i>
+                                </button>
+                                <div class="hxs-f5-viewport" data-home-viewport>
+                                    <div class="hx-home2-brand-grid hx-home2-brand-grid--slider" data-home-track>
+                                        @foreach (var b in Model.Brands)
+                                        {
+                                            var brandImage = string.IsNullOrWhiteSpace(b.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : b.ImageUrl;
+                                            <article class="hx-home2-brand-card" data-home-card>
+                                                <a href="/Store/Products?brand=@Uri.EscapeDataString(b.Name)&filterLabel=@Uri.EscapeDataString("Thương hiệu: " + b.Name)" class="no_link">
+                                                    <img src="@brandImage" alt="@b.Name" />
+                                                    <h3>@b.Name</h3>
+                                                </a>
+                                            </article>
+                                        }
+                                    </div>
+                                </div>
+                                <button type="button" class="hxs-f5-nav hxs-f5-next" data-home-next aria-label="Thương hiệu tiếp theo">
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </button>
+                            </div>
                         }
-                    </div>
-                </section>
+                        else
+                        {
+                            <div class="hx-home2-brand-grid">
+                                @foreach (var b in Model.Brands)
+                                {
+                                    var brandImage = string.IsNullOrWhiteSpace(b.ImageUrl) ? "/assets/img/logo/hoa_xinh_group_fav.png" : b.ImageUrl;
+                                    <article class="hx-home2-brand-card">
+                                        <a href="/Store/Products?brand=@Uri.EscapeDataString(b.Name)&filterLabel=@Uri.EscapeDataString("Thương hiệu: " + b.Name)" class="no_link">
+                                            <img src="@brandImage" alt="@b.Name" />
+                                            <h3>@b.Name</h3>
+                                        </a>
+                                    </article>
+                                }
+                            </div>
+                        }
+                    </section>
+                }
             }
         </main>
     </div>
@@ -181,37 +324,9 @@
 
     @if (!string.IsNullOrWhiteSpace(checkoutMessage))
     {
-        <div class="hx-popup-backdrop" id="homeCheckoutPopup" style="display:none;">
-            <div class="hx-popup-card">
-                <button type="button" class="hx-popup-close" id="homeCheckoutPopupClose">×</button>
-                <div class="hx-popup-body">
-                    <h4 id="homeCheckoutPopupTitle">Thông báo</h4>
-                    <p id="homeCheckoutPopupMessage">@checkoutMessage</p>
-                    <button type="button" class="mini-cart-view-btn" id="homeCheckoutPopupOk">Đã hiểu</button>
-                </div>
-            </div>
-        </div>
         <script>
             window.__checkoutMessage = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutMessage));
-            window.__checkoutStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutStatus ?? ""));
-            (function(){
-                const popup = document.getElementById('homeCheckoutPopup');
-                if (!popup) return;
-                const title = document.getElementById('homeCheckoutPopupTitle');
-                const status = (window.__checkoutStatus || '').toLowerCase();
-                if (title) {
-                    title.textContent = status === 'success'
-                        ? 'Thanh toán thành công'
-                        : (status === 'cancelled'
-                            ? 'Bạn đã hủy thanh toán'
-                            : (status === 'error' ? 'Thanh toán thất bại' : 'Thông báo thanh toán'));
-                }
-                const close = () => popup.style.display = 'none';
-                popup.style.display = 'flex';
-                document.getElementById('homeCheckoutPopupClose')?.addEventListener('click', close);
-                document.getElementById('homeCheckoutPopupOk')?.addEventListener('click', close);
-                popup.addEventListener('click', (e) => { if (e.target === popup) close(); });
-            })();
+            window.__checkoutStatus = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(checkoutStatus ?? "info"));
         </script>
     }
 

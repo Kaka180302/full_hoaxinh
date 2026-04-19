@@ -38,6 +38,7 @@ public class StoreCategoryViewModel
 public class StoreProductViewModel
 {
     public int Id { get; set; }
+    public string ProductSlug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public decimal? SalePrice { get; set; }
@@ -46,6 +47,8 @@ public class StoreProductViewModel
     public string BrandName { get; set; } = string.Empty;
     public string BrandImageUrl { get; set; } = string.Empty;
     public bool IsPreOrderEnabled { get; set; }
+    public bool IsFeatured { get; set; }
+    public bool IsBestSeller { get; set; }
     public string Summary { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string TechnicalSpecs { get; set; } = string.Empty;

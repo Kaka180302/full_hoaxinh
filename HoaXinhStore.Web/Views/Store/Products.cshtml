@@ -25,6 +25,81 @@
         .Where(c => c.ParentCategoryId.HasValue)
         .GroupBy(c => c.ParentCategoryId!.Value)
         .ToDictionary(g => g.Key, g => g.OrderBy(x => x.Name).ToList());
+    var categoryBySlug = (Model.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>())
+        .Where(c => !string.IsNullOrWhiteSpace(c.Slug))
+        .GroupBy(c => c.Slug, StringComparer.OrdinalIgnoreCase)
+        .ToDictionary(g => g.Key, g => g.First().Name, StringComparer.OrdinalIgnoreCase);
+    var categoriesById = (Model.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>())
+        .GroupBy(c => c.Id)
+        .ToDictionary(g => g.Key, g => g.First());
+    string ResolveRootSlug(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            return "all";
+        }
+
+        var current = (Model.Categories ?? new List<HoaXinhStore.Web.ViewModels.StoreCategoryViewModel>())
+            .FirstOrDefault(c => string.Equals(c.Slug, slug, StringComparison.OrdinalIgnoreCase));
+        if (current is null)
+        {
+            return slug;
+        }
+
+        var guard = 0;
+        while (guard++ < 32 && current.ParentCategoryId.HasValue && categoriesById.TryGetValue(current.ParentCategoryId.Value, out var parent))
+        {
+            current = parent;
+        }
+
+        return string.IsNullOrWhiteSpace(current.Slug) ? slug : current.Slug;
+    }
+    var appliedChips = new List<string>();
+    if (!string.IsNullOrWhiteSpace(Model.Query))
+    {
+        appliedChips.Add($"Từ khóa: {Model.Query}");
+    }
+    foreach (var catSlug in selectedCategories.Where(x => !string.Equals(x, "all", StringComparison.OrdinalIgnoreCase)))
+    {
+        if (categoryBySlug.TryGetValue(catSlug, out var catName))
+        {
+            appliedChips.Add($"Danh mục: {catName}");
+        }
+    }
+    foreach (var brandName in selectedBrands.Where(x => !string.Equals(x, "all", StringComparison.OrdinalIgnoreCase)))
+    {
+        appliedChips.Add($"Thương hiệu: {brandName}");
+    }
+    foreach (var priceRange in selectedPriceRanges)
+    {
+        var label = priceRange switch
+        {
+            "0-100000" => "Dưới 100.000đ",
+            "100000-500000" => "100.000đ - 500.000đ",
+            "500000-1000000" => "500.000đ - 1.000.000đ",
+            "1000000-plus" => "Trên 1.000.000đ",
+            _ => string.Empty
+        };
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            appliedChips.Add($"Giá: {label}");
+        }
+    }
+    foreach (var status in selectedStatuses)
+    {
+        var label = status switch
+        {
+            "in-stock" => "Còn hàng",
+            "bestseller" => "Bán chạy",
+            "featured" => "Nổi bật",
+            "sale" => "Khuyến mãi",
+            _ => string.Empty
+        };
+        if (!string.IsNullOrWhiteSpace(label))
+        {
+            appliedChips.Add($"Lọc: {label}");
+        }
+    }
 }
 <!DOCTYPE html>
 <html lang="vi">
@@ -43,7 +118,7 @@
     <main class="products-luxe-page @( (!string.IsNullOrWhiteSpace(Model.FilterLabel) || !string.IsNullOrWhiteSpace(Model.Query) || Model.Category != "all" || Model.MinPrice.HasValue || Model.MaxPrice.HasValue) ? "is-filtered" : "" )">
         <div class="container py-3">
             <h1 class="products-luxe-title">Sản phẩm</h1>
-            <form method="get" class="products-luxe-toolbar products-luxe-toolbar--search-only" id="productsSearchForm">
+            <form method="get" class="products-luxe-toolbar products-luxe-toolbar--search-only products-toolbar-sticky" id="productsSearchForm">
                 <input type="hidden" name="category" value="@Model.Category" />
                 <input type="hidden" name="brand" value="@Model.Brand" />
                 <input type="hidden" name="priceRanges" value="@Model.PriceRanges" />
@@ -63,6 +138,12 @@
             <div class="products-luxe-body">
                 <div class="products-filter-overlay" id="productsFilterOverlay"></div>
                 <aside class="products-luxe-sidebar" id="productsLuxeSidebar">
+                    <div class="products-filter-head-mobile">
+                        <h2 class="products-filter-title mb-0">Bộ lọc sản phẩm</h2>
+                        <button type="button" class="products-filter-close-btn" id="productsFilterClose" aria-label="Đóng bộ lọc">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    </div>
                     <h2 class="products-filter-title">Bộ lọc sản phẩm</h2>
                     <section class="sidebar-box">
                         <h3>Danh mục</h3>
@@ -86,7 +167,11 @@
                                     <ul class="checkbox-list category-tree-children" @(isOpen ? "" : "hidden")>
                                         <li>
                                             <label class="category-tree-all">
-                                                <input type="checkbox" class="js-category-filter" value="@parent.Slug" @(parentSelected ? "checked" : "") />
+                                                <input type="checkbox"
+                                                       class="js-category-filter js-category-all"
+                                                       data-parent="@parent.Slug"
+                                                       value="@parent.Slug"
+                                                       @(parentSelected ? "checked" : "") />
                                                 Tất cả
                                             </label>
                                         </li>
@@ -94,7 +179,11 @@
                                         {
                                             <li>
                                                 <label>
-                                                    <input type="checkbox" class="js-category-filter" value="@child.Slug" @(selectedCategories.Contains(child.Slug) ? "checked" : "") />
+                                                    <input type="checkbox"
+                                                           class="js-category-filter js-category-child"
+                                                           data-parent="@parent.Slug"
+                                                           value="@child.Slug"
+                                                           @(selectedCategories.Contains(child.Slug) ? "checked" : "") />
                                                     @child.Name
                                                 </label>
                                             </li>
@@ -201,6 +290,38 @@
                 </aside>
 
                 <section class="products-luxe-content">
+                    <div class="products-results-head products-results-head-sticky">
+                        <div class="products-results-summary">
+                            <h2>Kết quả sản phẩm</h2>
+                            <p id="productsResultSummary">Tìm thấy <strong id="productsResultCountValue">@Model.Products.Count</strong> sản phẩm phù hợp</p>
+                        </div>
+                        <div class="products-results-actions">
+                            <button type="button" class="products-mobile-filter-btn" id="mobileFilterBtn">
+                                <i class="fa-solid fa-sliders"></i> Bộ lọc
+                            </button>
+                            <label class="products-quick-sort">
+                                <span>Sắp xếp</span>
+                                <select id="productsQuickSort">
+                                    <option value="newest" selected="@(Model.Sort == "newest")">Mới nhất</option>
+                                    <option value="price-asc" selected="@(Model.Sort == "price-asc")">Giá tăng dần</option>
+                                    <option value="price-desc" selected="@(Model.Sort == "price-desc")">Giá giảm dần</option>
+                                    <option value="name-asc" selected="@(Model.Sort == "name-asc")">Tên A-Z</option>
+                                    <option value="name-desc" selected="@(Model.Sort == "name-desc")">Tên Z-A</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+
+                    @if (appliedChips.Count > 0)
+                    {
+                        <div class="products-active-filters">
+                            @foreach (var chip in appliedChips)
+                            {
+                                <span class="products-filter-chip">@chip</span>
+                            }
+                            <a class="products-clear-filters" href="/Store/Products">Xóa tất cả lọc</a>
+                        </div>
+                    }
 
                     <div class="products-luxe-grid">
                         @if (!Model.Products.Any())
@@ -222,12 +343,26 @@
                                 var cardPrice = cardDefaultVariant?.Price ?? p.Price;
                                 var cardSale = cardDefaultVariant?.SalePrice;
                                 var cardActive = cardSale ?? cardPrice;
-                                <article class="luxe-card" data-category="@p.CategorySlug">
-                                    <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.Id" class="luxe-card__img">
+                                var cardVariantId = cardDefaultVariant?.Id ?? 0;
+                                var cardVariantName = cardDefaultVariant?.Name ?? string.Empty;
+                                var cardBrand = (p.BrandName ?? string.Empty).Trim();
+                                var cardRootCategory = ResolveRootSlug(p.CategorySlug);
+                                var hasSale = (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice);
+                                <article class="luxe-card"
+                                         data-category="@p.CategorySlug"
+                                         data-root-category="@cardRootCategory"
+                                         data-brand="@cardBrand"
+                                         data-name="@p.Name"
+                                         data-price="@cardActive.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                                         data-stock="@Math.Max(0, p.StockQuantity)"
+                                         data-sale="@(hasSale ? "1" : "0")"
+                                         data-featured="@(p.IsFeatured ? "1" : "0")"
+                                         data-bestseller="@(p.IsBestSeller ? "1" : "0")">
+                                    <a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.ProductSlug" class="luxe-card__img">
                                         <img src="@image" alt="@p.Name" />
                                     </a>
                                     <button type="button" class="luxe-fav" aria-label="Yêu thích"><i class="fa-regular fa-heart"></i></button>
-                                    <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.Id" class="no_link">@p.Name</a></h3>
+                                    <h3><a asp-controller="Store" asp-action="ProductDetail" asp-route-id="@p.ProductSlug" class="no_link">@p.Name</a></h3>
                                     <div class="luxe-price">
                                         <strong>@cardActive.ToString("N0", vi) đ</strong>
                                         @if (cardSale.HasValue && cardSale.Value > 0 && cardSale.Value < cardPrice)
@@ -252,6 +387,10 @@
                                                 data-name="@p.Name"
                                                 data-price="@cardPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)"
                                                 data-sale-price="@(cardSale?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "")"
+                                                data-variant-id="@(cardVariantId > 0 ? cardVariantId.ToString() : "")"
+                                                data-variant-name="@cardVariantName"
+                                                data-unit-name="@cardVariantName"
+                                                data-unit-factor="1"
                                                 data-stock="@Math.Max(0, p.StockQuantity)"
                                                 data-image="@image"><i class="fa-solid fa-cart-shopping"></i></button>
                                     }
@@ -271,8 +410,10 @@
             const searchForm = document.getElementById("productsSearchForm");
             if (!searchForm) return;
             const mobileFilterBtn = document.getElementById("mobileFilterBtn");
+            const mobileFilterCloseBtn = document.getElementById("productsFilterClose");
             const sidebar = document.getElementById("productsLuxeSidebar");
             const overlay = document.getElementById("productsFilterOverlay");
+            const quickSortSelect = document.getElementById("productsQuickSort");
             const categoryInput = searchForm.querySelector('input[name="category"]');
             const brandInput = searchForm.querySelector('input[name="brand"]');
             const stockInput = searchForm.querySelector('input[name="inStockOnly"]');
@@ -281,12 +422,183 @@
             const minPriceInput = searchForm.querySelector('input[name="minPrice"]');
             const maxPriceInput = searchForm.querySelector('input[name="maxPrice"]');
             const priceRangesInput = searchForm.querySelector('input[name="priceRanges"]');
+            const searchTextInput = searchForm.querySelector('input[name="q"]');
+            const productsGrid = document.querySelector(".products-luxe-grid");
+            const resultCountValue = document.getElementById("productsResultCountValue");
+            const realtimeCards = Array.from(document.querySelectorAll(".products-luxe-grid .luxe-card"));
+            const brandBoxes = Array.from(document.querySelectorAll('.js-filter-multi[data-filter="brand"]'));
+            const topNav = document.querySelector(".store-topnav");
+
+            function parsePriceRanges() {
+                return String(priceRangesInput?.value || "")
+                    .split(",")
+                    .map(v => v.trim())
+                    .filter(Boolean);
+            }
+
+            function parseSelectedList(value, fallbackAll = true) {
+                const parts = String(value || "")
+                    .split(",")
+                    .map(v => v.trim())
+                    .filter(Boolean);
+                return fallbackAll && !parts.length ? ["all"] : parts;
+            }
+
+            function computeSortValue(card) {
+                const name = (card.getAttribute("data-name") || "").toLowerCase();
+                const price = Number(card.getAttribute("data-price") || 0);
+                const id = Number(card.querySelector("[data-add-cart], [data-preorder-popup]")?.getAttribute("data-id") || 0);
+                return { name, price, id };
+            }
+
+            function matchPriceRanges(price, ranges) {
+                if (!ranges.length) return true;
+                return ranges.some(range => {
+                    if (range === "0-100000") return price < 100000;
+                    if (range === "100000-500000") return price >= 100000 && price <= 500000;
+                    if (range === "500000-1000000") return price >= 500000 && price <= 1000000;
+                    if (range === "1000000-plus") return price > 1000000;
+                    return false;
+                });
+            }
+
+            function applyRealtimeFilters() {
+                if (!productsGrid || !realtimeCards.length) return;
+
+                const keyword = normalizeText(searchTextInput?.value || "");
+                const selectedCategories = parseSelectedList(categoryInput?.value || "all");
+                const selectedBrands = parseSelectedList(brandInput?.value || "all");
+                const selectedStatuses = parseSelectedList(statusFiltersInput?.value || "", false).map(s => s.toLowerCase());
+                const selectedRanges = parsePriceRanges();
+                const currentSort = String(sortInput?.value || "newest").toLowerCase();
+                const availableBrandsByCategory = new Set();
+
+                const ranked = realtimeCards.map((card, idx) => ({ card, idx, sort: computeSortValue(card) }));
+
+                ranked.forEach(item => {
+                    const card = item.card;
+                    const name = normalizeText(card.getAttribute("data-name") || "");
+                    const category = String(card.getAttribute("data-category") || "all");
+                    const rootCategory = String(card.getAttribute("data-root-category") || category || "all");
+                    const brand = String(card.getAttribute("data-brand") || "").trim();
+                    const price = Number(card.getAttribute("data-price") || 0);
+                    const stock = Number(card.getAttribute("data-stock") || 0);
+                    const hasSale = card.getAttribute("data-sale") === "1";
+                    const isFeatured = card.getAttribute("data-featured") === "1";
+                    const isBestSeller = card.getAttribute("data-bestseller") === "1";
+
+                    const byKeyword = !keyword || name.includes(keyword);
+                    const byCategory = selectedCategories.includes("all")
+                        || selectedCategories.includes(category)
+                        || selectedCategories.includes(rootCategory);
+
+                    if (byCategory && brand) {
+                        availableBrandsByCategory.add(brand.toLowerCase());
+                    }
+                    const byBrand = selectedBrands.includes("all") || selectedBrands.includes(brand);
+                    const byPrice = matchPriceRanges(price, selectedRanges);
+                    const byStatus = !selectedStatuses.length || selectedStatuses.every(s => {
+                        if (s === "in-stock") return stock > 0;
+                        if (s === "sale") return hasSale;
+                        if (s === "featured") return isFeatured;
+                        if (s === "bestseller") return isBestSeller;
+                        return true;
+                    });
+
+                    const visible = byKeyword && byCategory && byBrand && byPrice && byStatus;
+                    card.style.display = visible ? "" : "none";
+                });
+
+                const visibleItems = ranked.filter(x => x.card.style.display !== "none");
+                visibleItems.sort((a, b) => {
+                    if (currentSort === "name-asc") return a.sort.name.localeCompare(b.sort.name, "vi");
+                    if (currentSort === "name-desc") return b.sort.name.localeCompare(a.sort.name, "vi");
+                    if (currentSort === "price-asc") return a.sort.price - b.sort.price;
+                    if (currentSort === "price-desc") return b.sort.price - a.sort.price;
+                    return b.sort.id - a.sort.id;
+                });
+                visibleItems.forEach(x => productsGrid.appendChild(x.card));
+                ranked.filter(x => x.card.style.display === "none").forEach(x => productsGrid.appendChild(x.card));
+
+                let emptyState = productsGrid.querySelector(".products-empty-state.products-empty-state--instant");
+                if (visibleItems.length === 0) {
+                    if (!emptyState) {
+                        emptyState = document.createElement("div");
+                        emptyState.className = "products-empty-state products-empty-state--instant";
+                        emptyState.innerHTML = '<i class="fa-regular fa-face-frown-open"></i><p>Không có sản phẩm phù hợp.</p>';
+                        productsGrid.appendChild(emptyState);
+                    }
+                } else if (emptyState) {
+                    emptyState.remove();
+                }
+
+                if (resultCountValue) {
+                    resultCountValue.textContent = String(visibleItems.length);
+                }
+
+                syncBrandOptionsByCategory(selectedCategories, availableBrandsByCategory);
+            }
+
+            function syncBrandOptionsByCategory(selectedCategories, availableBrandsByCategory) {
+                if (!brandBoxes.length || !brandInput) return;
+                const isAllCategories = selectedCategories.includes("all");
+                const allBox = brandBoxes.find(b => (b.value || "").toLowerCase() === "all");
+                const selectedBrandValues = parseSelectedList(brandInput.value || "all");
+                let changed = false;
+
+                brandBoxes.forEach(function (box) {
+                    const value = String(box.value || "").trim();
+                    const item = box.closest("li");
+                    if (!item) return;
+                    if (value.toLowerCase() === "all") {
+                        item.hidden = false;
+                        return;
+                    }
+
+                    const brandAllowed = isAllCategories || availableBrandsByCategory.has(value.toLowerCase());
+                    item.hidden = !brandAllowed;
+                    if (!brandAllowed && box.checked) {
+                        box.checked = false;
+                        changed = true;
+                    }
+                });
+
+                if (changed) {
+                    const stillSelected = brandBoxes
+                        .filter(b => (b.value || "").toLowerCase() !== "all" && !b.closest("li")?.hidden && b.checked)
+                        .map(b => b.value)
+                        .filter(Boolean);
+                    if (!stillSelected.length) {
+                        if (allBox) allBox.checked = true;
+                        brandInput.value = "all";
+                    } else {
+                        if (allBox) allBox.checked = false;
+                        brandInput.value = stillSelected.join(",");
+                    }
+                    applyRealtimeFilters();
+                } else {
+                    const hasVisibleChecked = brandBoxes.some(b => (b.value || "").toLowerCase() !== "all" && !b.closest("li")?.hidden && b.checked);
+                    if (!hasVisibleChecked && allBox) {
+                        allBox.checked = true;
+                        brandInput.value = "all";
+                    } else if (hasVisibleChecked && allBox) {
+                        allBox.checked = false;
+                    }
+                }
+            }
+
+            function applyStickyOffsets() {
+                const navHeight = topNav ? Math.ceil(topNav.getBoundingClientRect().height) : 68;
+                const toolbarHeight = searchForm ? Math.ceil(searchForm.getBoundingClientRect().height) : 74;
+                document.documentElement.style.setProperty("--products-nav-h", `${navHeight}px`);
+                document.documentElement.style.setProperty("--products-toolbar-h", `${toolbarHeight}px`);
+            }
 
             document.querySelectorAll(".js-sort-radio").forEach(function (radio) {
                 radio.addEventListener("change", function () {
                     if (!radio.checked) return;
                     if (sortInput) sortInput.value = radio.value || "newest";
-                    searchForm.submit();
+                    applyRealtimeFilters();
                 });
             });
 
@@ -313,7 +625,7 @@
                         } else {
                             hiddenInput.value = selected.join(",");
                         }
-                        searchForm.submit();
+                        applyRealtimeFilters();
                     });
                 });
             }
@@ -321,13 +633,26 @@
 
             document.querySelectorAll(".js-category-filter").forEach(function (box) {
                 box.addEventListener("change", function () {
+                    const parentSlug = String(box.getAttribute("data-parent") || "");
+                    if (box.classList.contains("js-category-all")) {
+                        const siblingChildren = Array.from(document.querySelectorAll(`.js-category-child[data-parent="${parentSlug}"]`));
+                        if (box.checked) {
+                            siblingChildren.forEach(cb => cb.checked = false);
+                        }
+                    } else if (box.classList.contains("js-category-child")) {
+                        const allBox = document.querySelector(`.js-category-all[data-parent="${parentSlug}"]`);
+                        if (box.checked && allBox) {
+                            allBox.checked = false;
+                        }
+                    }
+
                     const selected = Array.from(document.querySelectorAll(".js-category-filter:checked"))
                         .map(cb => (cb.value || "").trim())
                         .filter(Boolean);
                     if (categoryInput) {
                         categoryInput.value = selected.length ? selected.join(",") : "all";
                     }
-                    searchForm.submit();
+                    applyRealtimeFilters();
                 });
             });
 
@@ -370,7 +695,7 @@
                     document.querySelectorAll(".js-price-range").forEach(function (cb) {
                         if (cb !== checkbox && checkbox.classList.contains("js-price-all") && checkbox.checked) cb.checked = false;
                     });
-                    searchForm.submit();
+                    applyRealtimeFilters();
                 });
             });
 
@@ -381,7 +706,7 @@
                         .filter(Boolean);
                     if (statusFiltersInput) statusFiltersInput.value = selected.join(",");
                     if (stockInput) stockInput.value = selected.includes("in-stock") ? "true" : "false";
-                    searchForm.submit();
+                    applyRealtimeFilters();
                 });
             });
 
@@ -400,10 +725,44 @@
                 if (sidebar.classList.contains("open")) closeMobileFilter();
                 else openMobileFilter();
             });
+            mobileFilterCloseBtn?.addEventListener("click", closeMobileFilter);
             overlay?.addEventListener("click", closeMobileFilter);
             window.addEventListener("resize", function () {
                 if (window.innerWidth > 992) closeMobileFilter();
+                applyStickyOffsets();
             });
+            quickSortSelect?.addEventListener("change", function () {
+                if (sortInput) sortInput.value = quickSortSelect.value || "newest";
+                applyRealtimeFilters();
+            });
+
+            function normalizeText(value) {
+                return String(value || "")
+                    .toLowerCase()
+                    .normalize("NFD")
+                    .replace(/[\u0300-\u036f]/g, "")
+                    .trim();
+            }
+
+            if (searchTextInput) {
+                const initialKeyword = searchTextInput.value || "";
+                let debounceTimer = null;
+                searchTextInput.addEventListener("input", function () {
+                    if (debounceTimer) window.clearTimeout(debounceTimer);
+                    debounceTimer = window.setTimeout(applyRealtimeFilters, 120);
+                });
+                if (initialKeyword.trim().length > 0) {
+                    applyRealtimeFilters();
+                }
+            }
+
+            searchForm.addEventListener("submit", function (e) {
+                e.preventDefault();
+                applyRealtimeFilters();
+            });
+
+            applyStickyOffsets();
+            applyRealtimeFilters();
 
         });
     </script>

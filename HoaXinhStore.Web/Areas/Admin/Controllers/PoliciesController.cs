@@ -1,7 +1,9 @@
 using HoaXinhStore.Web.Services.Policies;
+using HoaXinhStore.Web.Hubs;
 using HoaXinhStore.Web.ViewModels.Admin;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using System.Net;
 using System.Text.RegularExpressions;
 
@@ -9,7 +11,9 @@ namespace HoaXinhStore.Web.Areas.Admin.Controllers;
 
 [Area("Admin")]
 [Authorize(Roles = "Admin")]
-public class PoliciesController(IPolicyContentService policyService) : Controller
+public class PoliciesController(
+    IPolicyContentService policyService,
+    IHubContext<StorefrontHub> hub) : Controller
 {
     [HttpGet]
     public async Task<IActionResult> Index()
@@ -46,6 +50,7 @@ public class PoliciesController(IPolicyContentService policyService) : Controlle
                 });
 
         await policyService.SaveAllAsync(data);
+        await hub.Clients.All.SendAsync("storefront-updated", new { type = "policy", at = DateTimeOffset.UtcNow });
         TempData["PolicyMessage"] = "Đã lưu nội dung chính sách.";
         return RedirectToAction(nameof(Index));
     }

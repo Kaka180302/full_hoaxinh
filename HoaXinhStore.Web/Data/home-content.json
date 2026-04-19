@@ -1,0 +1,146 @@
+{
+  "featuredSection": {
+    "key": "featured",
+    "sortOrder": 1,
+    "isVisible": true,
+    "isSlider": true,
+    "autoSlide": true
+  },
+  "categorySection": {
+    "key": "category",
+    "sortOrder": 2,
+    "isVisible": true,
+    "isSlider": false,
+    "autoSlide": false
+  },
+  "brandSection": {
+    "key": "brand",
+    "sortOrder": 3,
+    "isVisible": true,
+    "isSlider": false,
+    "autoSlide": false
+  },
+  "featuredLimit": 8,
+  "categorySectionProductLimit": 5,
+  "bannerImages": [
+    "/uploads/home/banners/home_banner_1776464430981_69cbcf7d5fc743dbad303bdc87106e74.jpg",
+    "/uploads/home/banners/home_banner_1776464690969_4f1c71a5f6504e3f8ea667b7dd27da89.jpg",
+    "/uploads/home/banners/home_banner_1776466672912_23392f2ad1fb4d149c97c2b0392ee057.jpg",
+    "/uploads/home/banners/home_banner_1776467982119_ec9fd163e9334d45a7893b68ec724c8d.jpg"
+  ],
+  "footerColumns": [
+    {
+      "title": "Li\u00EAn h\u1EC7",
+      "items": [
+        {
+          "label": "68 Nguy\u1EC5n Hu\u1EC7, Ph\u01B0\u1EDDng S\u00E0i G\u00F2n, TP HCM",
+          "url": "",
+          "itemType": "text",
+          "policyKey": ""
+        },
+        {
+          "label": "08.1998.1900",
+          "url": "tel:0819981900",
+          "itemType": "text",
+          "policyKey": ""
+        },
+        {
+          "label": "infor@hoaxinhgroup.vn",
+          "url": "mailto:infor@hoaxinhgroup.vn",
+          "itemType": "text",
+          "policyKey": ""
+        }
+      ]
+    },
+    {
+      "title": "Gi\u1EDD l\u00E0m vi\u1EC7c",
+      "items": [
+        {
+          "label": "8:00 - 19:00",
+          "url": "",
+          "itemType": "text",
+          "policyKey": ""
+        },
+        {
+          "label": "Th\u1EE9 2 - Th\u1EE9 7",
+          "url": "",
+          "itemType": "text",
+          "policyKey": ""
+        }
+      ]
+    },
+    {
+      "title": "Trang website",
+      "items": [
+        {
+          "label": "S\u1EA3n ph\u1EA9m",
+          "url": "/Store/Products",
+          "itemType": "text",
+          "policyKey": ""
+        },
+        {
+          "label": "N\u1ED5i b\u1EADt",
+          "url": "/Store#featured",
+          "itemType": "text",
+          "policyKey": ""
+        },
+        {
+          "label": "Tra c\u1EE9u \u0111\u01A1n h\u00E0ng",
+          "url": "/Store/TrackOrder",
+          "itemType": "text",
+          "policyKey": ""
+        }
+      ]
+    },
+    {
+      "title": "Ch\u00EDnh s\u00E1ch",
+      "items": [
+        {
+          "label": "Ch\u00EDnh s\u00E1ch b\u1EA3o h\u00E0nh",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "warranty"
+        },
+        {
+          "label": "Ch\u00EDnh S\u00E1ch B\u1EA3o M\u1EADt Th\u00F4ng Tin C\u00E1 Nh\u00E2n",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "privacy"
+        },
+        {
+          "label": "Ch\u00EDnh s\u00E1ch giao nh\u1EADn v\u00E0 v\u1EADn chuy\u1EC3n",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "shipping"
+        },
+        {
+          "label": "Ch\u00EDnh s\u00E1ch thanh to\u00E1n",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "payment"
+        },
+        {
+          "label": "Ch\u00EDnh s\u00E1ch \u0111\u1ED5i tr\u1EA3 v\u00E0 ho\u00E0n ti\u1EC1n",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "refund"
+        },
+        {
+          "label": "H\u01B0\u1EDBng d\u1EABn mua h\u00E0ng",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "buy-guide"
+        },
+        {
+          "label": "V\u1EC1 Ch\u00FAng T\u00F4i",
+          "url": "",
+          "itemType": "policy",
+          "policyKey": "about"
+        }
+      ]
+    }
+  ],
+  "footerLinks": [],
+  "showFeaturedSection": true,
+  "showBrandSection": true
+}

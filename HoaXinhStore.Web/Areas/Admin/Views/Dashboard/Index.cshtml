@@ -1,65 +1,444 @@
 @{
     ViewData["Title"] = "Tổng quan";
     var lowStockVariants = ViewBag.LowStockVariants as List<HoaXinhStore.Web.Entities.ProductVariant> ?? new();
-}
-<h2 class="mb-4">Tổng quan</h2>
-<div class="row g-3">
-    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Sản phẩm</div><h4>@ViewBag.ProductCount</h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Danh mục</div><h4>@ViewBag.CategoryCount</h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Đơn hàng</div><h4>@ViewBag.OrderCount</h4></div></div></div>
-    <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-muted">Chờ xác nhận</div><h4>@ViewBag.PendingOrderCount</h4></div></div></div>
-    <div class="col-md-3"><div class="card border-warning"><div class="card-body"><div class="text-muted">Tồn kho thấp (&lt;10)</div><h4 class="text-warning">@ViewBag.LowStockCount</h4></div></div></div>
-    <div class="col-md-3"><div class="card border-success"><div class="card-body"><div class="text-muted">Doanh thu 30 ngày</div><h4 class="text-success">@(((decimal)ViewBag.Revenue30Days).ToString("N0")) đ</h4></div></div></div>
-    <div class="col-md-3"><div class="card border-info"><div class="card-body"><div class="text-muted">Đơn hoàn thành 30 ngày</div><h4 class="text-info">@ViewBag.Completed30Days</h4></div></div></div>
-    <div class="col-md-3"><div class="card border-primary"><div class="card-body"><div class="text-muted">AOV 30 ngày</div><h4 class="text-primary">@(((decimal)ViewBag.Aov30Days).ToString("N0")) đ</h4></div></div></div>
-</div>
-
-@if (lowStockVariants.Any())
-{
-    <div class="card mt-4">
-        <div class="card-header fw-semibold">Biến thể sắp hết hàng</div>
-        <div class="card-body p-0">
-            <table class="table table-striped table-bordered mb-0">
-                <thead><tr><th>SKU biến thể</th><th>Sản phẩm</th><th>Biến thể</th><th>Danh mục</th><th>Tồn khả dụng</th><th></th></tr></thead>
-                <tbody>
-                @foreach (var v in lowStockVariants)
-                {
-                    <tr>
-                        <td>@v.Sku</td>
-                        <td>@v.Product?.Name</td>
-                        <td>@v.Name</td>
-                        <td>@v.Product?.Category?.Name</td>
-                        <td class="text-danger fw-bold">@v.AvailableStock</td>
-                        <td><a asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@v.ProductId" class="btn btn-sm btn-warning">Sửa</a></td>
-                    </tr>
-                }
-                </tbody>
-            </table>
-        </div>
-    </div>
+    var recentAttentionOrders = ViewBag.RecentAttentionOrders as List<HoaXinhStore.Web.Entities.Order> ?? new();
+    var chartJson = (string?)ViewBag.DashboardChartJson ?? "{}";
+    var slaPendingTooLong = (int?)ViewBag.SlaPendingTooLong ?? 0;
+    var slaProcessingTooLong = (int?)ViewBag.SlaProcessingTooLong ?? 0;
+    var slaPaymentTooLong = (int?)ViewBag.SlaPaymentTooLong ?? 0;
+    var ghnWaitingCreate = (int?)ViewBag.GhnWaitingCreate ?? 0;
+    var ghnShipping = (int?)ViewBag.GhnShipping ?? 0;
+    var ghnFailed = (int?)ViewBag.GhnFailed ?? 0;
+    var ghnReturned = (int?)ViewBag.GhnReturned ?? 0;
+    var codRate = (decimal?)ViewBag.CodSuccessRate ?? 0m;
+    var vnpayRate = (decimal?)ViewBag.VnpaySuccessRate ?? 0m;
+    var qrRate = (decimal?)ViewBag.QrSuccessRate ?? 0m;
+    var windowDays = (int?)ViewBag.WindowDays ?? 30;
+    string ToOrderStatusVi(string status) => status switch
+    {
+        "PendingConfirm" => "Chờ xác nhận",
+        "Confirmed" => "Đã xác nhận",
+        "Preparing" => "Đang chuẩn bị",
+        "Shipping" => "Đang giao",
+        "Completed" => "Hoàn thành",
+        "Cancelled" => "Đã hủy",
+        _ => status
+    };
+    string ToPaymentStatusVi(string status) => status switch
+    {
+        "Pending" => "Chưa thanh toán",
+        "AwaitingGateway" => "Chờ cổng thanh toán",
+        "Paid" => "Đã thanh toán",
+        "Failed" => "Thất bại",
+        "Cancelled" => "Đã hủy",
+        _ => status
+    };
 }
 
-@{
-    var topProducts = ViewBag.TopProducts as IEnumerable<dynamic> ?? [];
-}
-@if (topProducts.Any())
-{
-    <div class="card mt-4">
-        <div class="card-header fw-semibold">Top sản phẩm 30 ngày</div>
-        <div class="card-body p-0">
-            <table class="table table-striped table-bordered mb-0">
-                <thead><tr><th>Tên</th><th>SL bán</th><th>Doanh thu</th></tr></thead>
-                <tbody>
-                @foreach (var p in topProducts)
-                {
-                    <tr>
-                        <td>@p.ProductNameSnapshot</td>
-                        <td>@p.Qty</td>
-                        <td>@(((decimal)p.Revenue).ToString("N0")) đ</td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+<section class="admin-dashboard">
+    <div class="admin-dashboard-head">
+        <div>
+            <h2 class="mb-1">Tổng quan vận hành
+                <span class="admin-help-tip" data-bs-toggle="tooltip" data-bs-placement="right" title="Dashboard tổng hợp KPI đơn hàng, tồn kho, thanh toán và vận chuyển theo mốc thời gian đã chọn.">
+                    <i class="bi bi-info-circle"></i>
+                </span>
+            </h2>
+            <p class="text-muted mb-0">Những chỉ số cần theo dõi hằng ngày để xử lý nhanh đơn hàng và tồn kho.</p>
+        </div>
+        <div class="admin-quick-actions">
+            <div class="btn-group admin-period-switch" role="group" aria-label="Khoảng thời gian">
+                <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" asp-route-days="7" class="btn btn-sm @(windowDays == 7 ? "btn-primary" : "btn-outline-secondary")">7 ngày</a>
+                <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" asp-route-days="30" class="btn btn-sm @(windowDays == 30 ? "btn-primary" : "btn-outline-secondary")">30 ngày</a>
+                <a asp-area="Admin" asp-controller="Dashboard" asp-action="Index" asp-route-days="90" class="btn btn-sm @(windowDays == 90 ? "btn-primary" : "btn-outline-secondary")">90 ngày</a>
+            </div>
+            <a asp-area="Admin" asp-controller="Orders" asp-action="Index" class="btn btn-primary"><i class="bi bi-receipt-cutoff me-1"></i>Đi tới đơn hàng</a>
+            <a asp-area="Admin" asp-controller="Products" asp-action="Index" class="btn btn-outline-primary"><i class="bi bi-box-seam me-1"></i>Đi tới sản phẩm</a>
         </div>
     </div>
-}
+
+    <div class="row g-3 mt-1">
+        <div class="col-xl-3 col-md-6">
+            <article class="card admin-kpi-card">
+                <div class="admin-kpi-label">Đơn chờ xác nhận <span class="admin-help-tip" data-bs-toggle="tooltip" title="Đơn mới tạo nhưng chưa được admin xác nhận xử lý."><i class="bi bi-info-circle"></i></span></div>
+                <div class="admin-kpi-value text-danger">@ViewBag.PendingOrderCount</div>
+                <a asp-area="Admin"
+                   asp-controller="Orders"
+                   asp-action="Index"
+                   asp-route-orderStatus="PendingConfirm"
+                   asp-route-activeTab="pending"
+                   class="admin-kpi-link">Xử lý ngay <i class="bi bi-arrow-right-short"></i></a>
+            </article>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <article class="card admin-kpi-card">
+                <div class="admin-kpi-label">Đơn chưa thanh toán <span class="admin-help-tip" data-bs-toggle="tooltip" title="Đơn có trạng thái thanh toán Pending hoặc AwaitingGateway."><i class="bi bi-info-circle"></i></span></div>
+                <div class="admin-kpi-value text-warning">@ViewBag.UnpaidOrderCount</div>
+                <div class="admin-kpi-sub">Theo dõi các đơn đang giữ chỗ</div>
+            </article>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <article class="card admin-kpi-card">
+                <div class="admin-kpi-label">Thanh toán lỗi/hủy <span class="admin-help-tip" data-bs-toggle="tooltip" title="Đơn có PaymentStatus Failed hoặc Cancelled."><i class="bi bi-info-circle"></i></span></div>
+                <div class="admin-kpi-value text-danger-emphasis">@ViewBag.FailedPaymentCount</div>
+                <div class="admin-kpi-sub">Cần kiểm tra lại với khách</div>
+            </article>
+        </div>
+        <div class="col-xl-3 col-md-6">
+            <article class="card admin-kpi-card">
+                <div class="admin-kpi-label">Tồn kho thấp (&lt;10) <span class="admin-help-tip" data-bs-toggle="tooltip" title="Số biến thể còn tồn khả dụng nhỏ hơn 10."><i class="bi bi-info-circle"></i></span></div>
+                <div class="admin-kpi-value text-warning-emphasis">@ViewBag.LowStockCount</div>
+                <div class="admin-kpi-sub">Ưu tiên nhập bổ sung</div>
+            </article>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-xl-3 col-md-6"><div class="card admin-stat-card"><div class="text-muted">Sản phẩm</div><h4>@ViewBag.ProductCount</h4></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card admin-stat-card"><div class="text-muted">Danh mục</div><h4>@ViewBag.CategoryCount</h4></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card admin-stat-card"><div class="text-muted">Đơn hôm nay</div><h4>@ViewBag.TodayOrderCount</h4></div></div>
+        <div class="col-xl-3 col-md-6"><div class="card admin-stat-card"><div class="text-muted">Khách mới 7 ngày</div><h4>@ViewBag.NewCustomers7Days</h4></div></div>
+        <div class="col-xl-4 col-md-6"><div class="card admin-stat-card"><div class="text-muted">Doanh thu @windowDays ngày</div><h4 class="text-success">@(((decimal)ViewBag.Revenue30Days).ToString("N0")) đ</h4></div></div>
+        <div class="col-xl-4 col-md-6"><div class="card admin-stat-card"><div class="text-muted">Đơn hoàn thành @windowDays ngày</div><h4 class="text-info">@ViewBag.Completed30Days</h4></div></div>
+        <div class="col-xl-4 col-md-12"><div class="card admin-stat-card"><div class="text-muted">AOV @windowDays ngày</div><h4 class="text-primary">@(((decimal)ViewBag.Aov30Days).ToString("N0")) đ</h4></div></div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-xl-4">
+            <div class="card admin-table-card h-100">
+                <div class="card-header fw-semibold">Cảnh báo SLA xử lý <span class="admin-help-tip" data-bs-toggle="tooltip" title="SLA là thời gian chuẩn xử lý đơn. Số càng cao nghĩa là càng nhiều đơn đang trễ xử lý."><i class="bi bi-info-circle"></i></span></div>
+                <div class="card-body admin-alert-list">
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">Đơn chờ xác nhận &gt; 15 phút</div>
+                        <div class="admin-alert-value text-danger">@slaPendingTooLong</div>
+                    </div>
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">Đơn xử lý &gt; 2 giờ</div>
+                        <div class="admin-alert-value text-warning">@slaProcessingTooLong</div>
+                    </div>
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">Đơn chờ thanh toán &gt; 30 phút</div>
+                        <div class="admin-alert-value text-danger-emphasis">@slaPaymentTooLong</div>
+                    </div>
+                    <a asp-area="Admin" asp-controller="Orders" asp-action="Index" asp-route-activeTab="pending" class="btn btn-sm btn-outline-primary mt-2">Mở danh sách cần xử lý</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card admin-table-card h-100">
+                <div class="card-header fw-semibold">Vận chuyển GHN <span class="admin-help-tip" data-bs-toggle="tooltip" title="Tổng hợp trạng thái vận chuyển dựa trên trạng thái đơn và dữ liệu mã vận đơn trong ghi chú đơn hàng."><i class="bi bi-info-circle"></i></span></div>
+                <div class="card-body admin-alert-list">
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">Chờ tạo vận đơn</div>
+                        <div class="admin-alert-value text-primary">@ghnWaitingCreate</div>
+                    </div>
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">Đang giao</div>
+                        <div class="admin-alert-value text-info">@ghnShipping</div>
+                    </div>
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">Giao thất bại / Hoàn hàng</div>
+                        <div class="admin-alert-value text-danger">@(ghnFailed + ghnReturned)</div>
+                    </div>
+                    <a asp-area="Admin" asp-controller="Orders" asp-action="Index" asp-route-orderStatus="Shipping" asp-route-activeTab="shipping" class="btn btn-sm btn-outline-primary mt-2">Đi tới đơn vận chuyển</a>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card admin-table-card h-100">
+                <div class="card-header fw-semibold">Payment health <span class="admin-help-tip" data-bs-toggle="tooltip" title="Tỷ lệ thành công = số đơn Paid / tổng số đơn theo từng phương thức thanh toán."><i class="bi bi-info-circle"></i></span></div>
+                <div class="card-body admin-alert-list">
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">COD thành công</div>
+                        <div class="admin-alert-value">@codRate.ToString("0.#")%</div>
+                    </div>
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">VNPAY thành công</div>
+                        <div class="admin-alert-value">@vnpayRate.ToString("0.#")%</div>
+                    </div>
+                    <div class="admin-alert-item">
+                        <div class="admin-alert-label">QR thành công</div>
+                        <div class="admin-alert-value">@qrRate.ToString("0.#")%</div>
+                    </div>
+                    <a asp-area="Admin" asp-controller="Orders" asp-action="Index" asp-route-activeTab="payments" class="btn btn-sm btn-outline-primary mt-2">Xem chi tiết thanh toán</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-xl-8">
+            <div class="card admin-table-card admin-chart-card h-100">
+                <div class="card-header fw-semibold">Doanh thu và số đơn @windowDays ngày <span class="admin-help-tip" data-bs-toggle="tooltip" title="Đường xanh: doanh thu Paid theo ngày. Đường lục: số đơn theo ngày. Click legend để bật/tắt từng đường."><i class="bi bi-info-circle"></i></span></div>
+                <div class="card-body">
+                    <canvas id="adminRevenueChart" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card admin-table-card admin-chart-card h-100">
+                <div class="card-header fw-semibold">Tỷ lệ thành công thanh toán <span class="admin-help-tip" data-bs-toggle="tooltip" title="Biểu đồ donut theo phần trăm thành công từng phương thức. Click vào từng phần để mở tab thanh toán."><i class="bi bi-info-circle"></i></span></div>
+                <div class="card-body">
+                    <canvas id="adminPaymentChart" height="210"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card admin-table-card admin-chart-card">
+                <div class="card-header fw-semibold">Phân bổ trạng thái đơn theo ngày (@windowDays ngày) <span class="admin-help-tip" data-bs-toggle="tooltip" title="Biểu đồ cột chồng trạng thái đơn theo từng ngày. Click từng màu để mở danh sách đơn đã lọc."><i class="bi bi-info-circle"></i></span></div>
+                <div class="card-body">
+                    <canvas id="adminStatusChart" height="100"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @if (recentAttentionOrders.Any())
+    {
+        <div class="card mt-4 admin-table-card">
+            <div class="card-header fw-semibold d-flex justify-content-between align-items-center">
+                <span>Đơn cần chú ý</span>
+                <a asp-area="Admin" asp-controller="Orders" asp-action="Index" class="btn btn-sm btn-outline-secondary">Xem tất cả</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Mã đơn</th>
+                            <th>Khách hàng</th>
+                            <th>Trạng thái đơn</th>
+                            <th>Trạng thái thanh toán</th>
+                            <th>Tổng tiền</th>
+                            <th>Thời gian</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var order in recentAttentionOrders)
+                    {
+                        var orderBadgeClass = order.OrderStatus == "PendingConfirm" ? "text-bg-danger"
+                            : order.OrderStatus == "Cancelled" ? "text-bg-dark"
+                            : "text-bg-secondary";
+                        var paymentBadgeClass = order.PaymentStatus == "Pending" || order.PaymentStatus == "AwaitingGateway" ? "text-bg-warning"
+                            : order.PaymentStatus == "Failed" || order.PaymentStatus == "Cancelled" ? "text-bg-danger"
+                            : "text-bg-success";
+                        <tr>
+                            <td class="fw-semibold">@order.OrderNo</td>
+                            <td>@(order.Customer?.FullName ?? "-")</td>
+                            <td><span class="badge @orderBadgeClass">@ToOrderStatusVi(order.OrderStatus)</span></td>
+                            <td><span class="badge @paymentBadgeClass">@ToPaymentStatusVi(order.PaymentStatus)</span></td>
+                            <td>@order.TotalAmount.ToString("N0") đ</td>
+                            <td>@order.CreatedAtUtc.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</td>
+                            <td>
+                                <a asp-area="Admin" asp-controller="Orders" asp-action="Details" asp-route-id="@order.Id" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (lowStockVariants.Any())
+    {
+        <div class="card mt-4 admin-table-card">
+            <div class="card-header fw-semibold">Biến thể sắp hết hàng</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>SKU</th><th>Sản phẩm</th><th>Biến thể</th><th>Danh mục</th><th>Tồn khả dụng</th><th></th></tr></thead>
+                    <tbody>
+                    @foreach (var v in lowStockVariants)
+                    {
+                        <tr>
+                            <td class="fw-semibold">@v.Sku</td>
+                            <td>@v.Product?.Name</td>
+                            <td>@v.Name</td>
+                            <td>@v.Product?.Category?.Name</td>
+                            <td><span class="badge text-bg-warning">@v.AvailableStock</span></td>
+                            <td><a asp-area="Admin" asp-controller="Products" asp-action="Edit" asp-route-id="@v.ProductId" class="btn btn-sm btn-outline-warning">Sửa</a></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+
+    @{
+        var topProducts = ViewBag.TopProducts as IEnumerable<dynamic> ?? [];
+    }
+    @if (topProducts.Any())
+    {
+        <div class="card mt-4 admin-table-card">
+            <div class="card-header fw-semibold">Top sản phẩm @windowDays ngày</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>Tên</th><th>SL bán</th><th>Doanh thu</th></tr></thead>
+                    <tbody>
+                    @foreach (var p in topProducts)
+                    {
+                        <tr>
+                            <td>@p.ProductNameSnapshot</td>
+                            <td class="fw-semibold">@p.Qty</td>
+                            <td>@(((decimal)p.Revenue).ToString("N0")) đ</td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    }
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+    (function () {
+        const payload = @Html.Raw(chartJson);
+        if (!payload || !window.Chart) return;
+        const toOrdersUrl = (status, tab) => {
+            const qs = new URLSearchParams();
+            if (status) qs.set("orderStatus", status);
+            if (tab) qs.set("activeTab", tab);
+            return `/Admin/Orders?${qs.toString()}`;
+        };
+
+        document.querySelectorAll(".admin-help-tip").forEach(function (el) {
+            const tip = el.getAttribute("title") || el.getAttribute("data-bs-title") || "";
+            if (tip) {
+                el.setAttribute("data-tip", tip);
+                el.removeAttribute("title");
+                el.removeAttribute("data-bs-title");
+                el.removeAttribute("data-bs-toggle");
+                el.removeAttribute("data-bs-placement");
+            }
+        });
+
+        const baseOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: "top" } }
+        };
+
+        const revenueEl = document.getElementById("adminRevenueChart");
+        if (revenueEl) {
+            new Chart(revenueEl, {
+                type: "line",
+                data: {
+                    labels: payload.labels || [],
+                    datasets: [
+                        {
+                            label: "Doanh thu đã thanh toán",
+                            data: payload.revenue || [],
+                            borderColor: "#1f5fbf",
+                            backgroundColor: "rgba(31,95,191,.15)",
+                            tension: 0.35,
+                            yAxisID: "y"
+                        },
+                        {
+                            label: "Số đơn",
+                            data: payload.orderCount || [],
+                            borderColor: "#10b981",
+                            backgroundColor: "rgba(16,185,129,.14)",
+                            tension: 0.35,
+                            yAxisID: "y1"
+                        }
+                    ]
+                },
+                options: {
+                    ...baseOptions,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: v => Number(v).toLocaleString("vi-VN") + " đ"
+                            }
+                        },
+                        y1: {
+                            beginAtZero: true,
+                            position: "right",
+                            grid: { drawOnChartArea: false },
+                            ticks: {
+                                precision: 0,
+                                stepSize: 1,
+                                callback: v => `${Math.round(Number(v))} đơn`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const paymentEl = document.getElementById("adminPaymentChart");
+        if (paymentEl) {
+            new Chart(paymentEl, {
+                type: "doughnut",
+                data: {
+                    labels: payload.paymentLabels || [],
+                    datasets: [{
+                        data: payload.paymentSuccessRate || [],
+                        backgroundColor: ["#1f5fbf", "#10b981", "#d97706"],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    ...baseOptions,
+                    onClick: (_, elements) => {
+                        if (!elements || !elements.length) return;
+                        const idx = elements[0].index;
+                        const label = (payload.paymentLabels || [])[idx] || "";
+                        if (label === "COD") window.location.href = "/Admin/Orders?activeTab=payments";
+                        if (label === "VNPAY") window.location.href = "/Admin/Orders?activeTab=payments";
+                        if (label === "QR") window.location.href = "/Admin/Orders?activeTab=payments";
+                    },
+                    plugins: {
+                        legend: { position: "bottom" },
+                        tooltip: {
+                            callbacks: {
+                                label: (ctx) => `${ctx.label}: ${Number(ctx.parsed).toFixed(1)}% thành công`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const statusEl = document.getElementById("adminStatusChart");
+        if (statusEl) {
+            new Chart(statusEl, {
+                type: "bar",
+                data: {
+                    labels: payload.labels || [],
+                    datasets: [
+                        { label: "Chờ xác nhận", data: payload.statusPending || [], backgroundColor: "#f59e0b" },
+                        { label: "Đang giao", data: payload.statusShipping || [], backgroundColor: "#3b82f6" },
+                        { label: "Hoàn thành", data: payload.statusCompleted || [], backgroundColor: "#10b981" },
+                        { label: "Đã hủy", data: payload.statusCancelled || [], backgroundColor: "#ef4444" }
+                    ]
+                },
+                options: {
+                    ...baseOptions,
+                    onClick: (_, elements) => {
+                        if (!elements || !elements.length) return;
+                        const datasetIndex = elements[0].datasetIndex;
+                        if (datasetIndex === 0) window.location.href = toOrdersUrl("PendingConfirm", "pending");
+                        if (datasetIndex === 1) window.location.href = toOrdersUrl("Shipping", "shipping");
+                        if (datasetIndex === 2) window.location.href = toOrdersUrl("Completed", "all");
+                        if (datasetIndex === 3) window.location.href = toOrdersUrl("Cancelled", "all");
+                    },
+                    scales: {
+                        x: { stacked: true },
+                        y: {
+                            stacked: true,
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0,
+                                stepSize: 1,
+                                callback: v => `${Math.round(Number(v))} đơn`
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    })();
+</script>
